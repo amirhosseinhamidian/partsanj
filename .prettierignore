@@ -1,0 +1,14 @@
+node_modules
+.pnpm-store
+.next
+dist
+coverage
+.turbo
+
+pnpm-lock.yaml
+*.log
+*.min.*
+*.snap
+
+apps/api/src/generated
+prisma/migrations

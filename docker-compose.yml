@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: partsanj-postgres
+    restart: unless-stopped
+
+    env_file:
+      - ./apps/api/.env
+
+    ports:
+      - '127.0.0.1:5433:5432'
+
+    volumes:
+      - partsanj_postgres_data:/var/lib/postgresql
+
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  partsanj_postgres_data:

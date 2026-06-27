@@ -1,0 +1,115 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../apps/api/src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum StockStatus {
+  IN_STOCK
+  OUT_OF_STOCK
+  CHECK_AVAILABILITY
+}
+
+enum ProductCodeType {
+  OEM
+  TECHNICAL
+  SUPPLIER
+}
+
+model Brand {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  products  Product[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Category {
+  id        String     @id @default(uuid())
+  name      String
+  slug      String     @unique
+  parentId  String?
+  isActive  Boolean    @default(true)
+  sortOrder Int        @default(0)
+
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children Category[] @relation("CategoryHierarchy")
+  products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+}
+
+model Product {
+  id               String        @id @default(uuid())
+  sku              String        @unique
+  slug             String        @unique
+  name             String
+  shortDescription String?
+  description      String?
+  specifications   Json?
+
+  priceToman    Int?
+  stockStatus   StockStatus   @default(CHECK_AVAILABILITY)
+  status        ProductStatus @default(DRAFT)
+  isPublished   Boolean       @default(false)
+  isTorobEnabled Boolean      @default(false)
+
+  brandId    String
+  categoryId String
+
+  brand    Brand    @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  codes    ProductCode[]
+  images   ProductImage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([brandId])
+  @@index([categoryId])
+  @@index([status, isPublished])
+  @@index([stockStatus, isTorobEnabled])
+}
+
+model ProductCode {
+  id        String          @id @default(uuid())
+  type      ProductCodeType
+  value     String
+  productId String
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([productId, type, value])
+  @@index([value])
+}
+
+model ProductImage {
+  id        String   @id @default(uuid())
+  url       String
+  alt       String?
+  sortOrder Int      @default(0)
+  productId String
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([productId, sortOrder])
+}
