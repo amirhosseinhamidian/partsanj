@@ -26,6 +26,49 @@ enum ProductCodeType {
   SUPPLIER
 }
 
+enum UserRole {
+  CUSTOMER
+  ADMIN
+  SUPPORT
+}
+
+enum OtpPurpose {
+  AUTHENTICATION
+}
+
+model User {
+  id               String   @id @default(uuid())
+  mobile           String   @unique
+  firstName        String?
+  lastName         String?
+  role             UserRole @default(CUSTOMER)
+  isActive         Boolean  @default(true)
+  mobileVerifiedAt DateTime?
+  lastLoginAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OtpChallenge {
+  id                String     @id @default(uuid())
+  mobile            String
+  purpose           OtpPurpose @default(AUTHENTICATION)
+  codeHash          String
+  expiresAt         DateTime
+  attempts          Int        @default(0)
+  maxAttempts       Int        @default(5)
+  consumedAt        DateTime?
+  invalidatedAt     DateTime?
+  provider          String     @default("KAVENEGAR")
+  providerMessageId String?
+  sentAt            DateTime   @default(now())
+  createdAt         DateTime   @default(now())
+
+  @@index([mobile, purpose, createdAt])
+  @@index([mobile, expiresAt])
+}
+
 model Brand {
   id        String   @id @default(uuid())
   name      String   @unique
