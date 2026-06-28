@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -35,6 +36,7 @@ import { FindAdminProductsQueryDto } from './dto/find-admin-products.query.dto.j
 import { UpdateBrandDto } from './dto/update-brand.dto.js';
 import { UpdateCategoryDto } from './dto/update-category.dto.js';
 import { UpdateProductDto } from './dto/update-product.dto.js';
+import { ReplaceProductCompatibilitiesDto } from './dto/replace-product-compatibilities.dto.js';
 
 @ApiTags('Admin Catalog')
 @ApiBearerAuth('access-token')
@@ -124,6 +126,29 @@ export class CatalogAdminController {
   @ApiOkResponse()
   findProducts(@Query() query: FindAdminProductsQueryDto) {
     return this.catalogAdminService.findProducts(query);
+  }
+
+  @Get('products/:id/compatibilities')
+  @ApiOperation({
+    summary: 'Get product vehicle compatibility records',
+  })
+  @ApiOkResponse()
+  findProductCompatibilities(@Param() params: EntityIdParamDto) {
+    return this.catalogAdminService.findProductCompatibilities(params.id);
+  }
+
+  @Put('products/:id/compatibilities')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Replace the complete vehicle compatibility list for a product',
+  })
+  @ApiOkResponse()
+  replaceProductCompatibilities(
+    @Param() params: EntityIdParamDto,
+    @Body() dto: ReplaceProductCompatibilitiesDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.catalogAdminService.replaceProductCompatibilities(params.id, dto, user.id);
   }
 
   @Get('products/:id')

@@ -20,6 +20,7 @@ import { ProductCodeInputDto, ProductImageInputDto } from './dto/product-input.d
 import { UpdateBrandDto } from './dto/update-brand.dto.js';
 import { UpdateCategoryDto } from './dto/update-category.dto.js';
 import { UpdateProductDto } from './dto/update-product.dto.js';
+import { ReplaceProductCompatibilitiesDto } from './dto/replace-product-compatibilities.dto.js';
 
 type ProductCodeRecord = {
   type: ProductCodeType;
@@ -437,6 +438,47 @@ export class CatalogAdminService {
             },
           },
         },
+        compatibilities: {
+          orderBy: {
+            createdAt: 'asc',
+          },
+          select: {
+            id: true,
+            notes: true,
+            requiresVerification: true,
+            createdAt: true,
+            updatedAt: true,
+            vehicleVariant: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                engineCode: true,
+                engineName: true,
+                yearFrom: true,
+                yearTo: true,
+                yearCalendar: true,
+                isActive: true,
+                model: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    isActive: true,
+                    make: {
+                      select: {
+                        id: true,
+                        name: true,
+                        slug: true,
+                        isActive: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -733,6 +775,160 @@ export class CatalogAdminService {
     return this.findProductById(id);
   }
 
+  async findProductCompatibilities(productId: string) {
+    const product = await this.prisma.product.findUnique({
+      where: {
+        id: productId,
+      },
+      select: {
+        id: true,
+        sku: true,
+        slug: true,
+        name: true,
+        status: true,
+        isPublished: true,
+        isTorobEnabled: true,
+        compatibilities: {
+          orderBy: {
+            createdAt: 'asc',
+          },
+          select: {
+            id: true,
+            notes: true,
+            requiresVerification: true,
+            createdAt: true,
+            updatedAt: true,
+            vehicleVariant: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                engineCode: true,
+                engineName: true,
+                yearFrom: true,
+                yearTo: true,
+                yearCalendar: true,
+                isActive: true,
+                model: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    isActive: true,
+                    make: {
+                      select: {
+                        id: true,
+                        name: true,
+                        slug: true,
+                        isActive: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    return {
+      data: product,
+    };
+  }
+
+  async replaceProductCompatibilities(
+    productId: string,
+    dto: ReplaceProductCompatibilitiesDto,
+    actorUserId: string,
+  ) {
+    const product = await this.prisma.product.findUnique({
+      where: {
+        id: productId,
+      },
+      select: {
+        id: true,
+        compatibilities: {
+          orderBy: {
+            createdAt: 'asc',
+          },
+          select: {
+            vehicleVariantId: true,
+            notes: true,
+            requiresVerification: true,
+          },
+        },
+      },
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    const vehicleVariantIds = dto.items.map((item) => item.vehicleVariantId);
+
+    await this.ensureVehicleVariantsAreActive(vehicleVariantIds);
+
+    const before = product.compatibilities.map((compatibility) => ({
+      vehicleVariantId: compatibility.vehicleVariantId,
+      notes: compatibility.notes,
+      requiresVerification: compatibility.requiresVerification,
+    }));
+
+    const after = dto.items.map((item) => ({
+      vehicleVariantId: item.vehicleVariantId,
+      notes: item.notes ?? null,
+      requiresVerification: item.requiresVerification ?? false,
+    }));
+
+    await this.prisma.$transaction(async (transaction) => {
+      await transaction.productVehicleCompatibility.deleteMany({
+        where: {
+          productId,
+        },
+      });
+
+      if (dto.items.length > 0) {
+        await transaction.productVehicleCompatibility.createMany({
+          data: dto.items.map((item) => ({
+            productId,
+            vehicleVariantId: item.vehicleVariantId,
+            notes: item.notes ?? null,
+            requiresVerification: item.requiresVerification ?? false,
+          })),
+        });
+      }
+
+      await transaction.productAuditLog.create({
+        data: {
+          productId,
+          actorUserId,
+          action: ProductAuditAction.COMPATIBILITIES_UPDATED,
+          changes: this.toJson({
+            event: 'admin_product_compatibilities_replaced',
+            before,
+            after,
+          }),
+        },
+      });
+
+      await transaction.product.update({
+        where: {
+          id: productId,
+        },
+        data: {
+          updatedAt: new Date(),
+        },
+      });
+    });
+
+    return this.findProductCompatibilities(productId);
+  }
+
   private async findProductForMutation(id: string): Promise<ProductMutationRecord> {
     const product = await this.prisma.product.findUnique({
       where: {
@@ -821,6 +1017,44 @@ export class CatalogAdminService {
       brand,
       category,
     };
+  }
+
+  private async ensureVehicleVariantsAreActive(vehicleVariantIds: string[]): Promise<void> {
+    if (vehicleVariantIds.length === 0) {
+      return;
+    }
+
+    const variants = await this.prisma.vehicleVariant.findMany({
+      where: {
+        id: {
+          in: vehicleVariantIds,
+        },
+      },
+      select: {
+        id: true,
+        isActive: true,
+        model: {
+          select: {
+            isActive: true,
+            make: {
+              select: {
+                isActive: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const hasInvalidVariant =
+      variants.length !== vehicleVariantIds.length ||
+      variants.some(
+        (variant) => !variant.isActive || !variant.model.isActive || !variant.model.make.isActive,
+      );
+
+    if (hasInvalidVariant) {
+      throw new BadRequestException('One or more vehicle variants do not exist or are inactive');
+    }
   }
 
   private assertProductState(candidate: ProductStateCandidate): void {

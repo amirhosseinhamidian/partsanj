@@ -39,7 +39,13 @@ enum OtpPurpose {
 enum ProductAuditAction {
   CREATED
   UPDATED
+  COMPATIBILITIES_UPDATED
   ARCHIVED
+}
+
+enum VehicleYearCalendar {
+  SHAMSI
+  GREGORIAN
 }
 
 model User {
@@ -129,6 +135,7 @@ model Product {
   images   ProductImage[]
 
   auditLogs ProductAuditLog[]
+  compatibilities ProductVehicleCompatibility[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -180,4 +187,77 @@ model ProductAuditLog {
 
   @@index([productId, createdAt])
   @@index([actorUserId, createdAt])
+}
+
+model VehicleMake {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+
+  models    VehicleModel[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VehicleModel {
+  id        String   @id @default(uuid())
+  makeId    String
+  name      String
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+
+  make      VehicleMake     @relation(fields: [makeId], references: [id], onDelete: Restrict)
+  variants  VehicleVariant[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([makeId, name])
+  @@index([makeId, isActive])
+}
+
+model VehicleVariant {
+  id           String              @id @default(uuid())
+  modelId      String
+  name         String
+  slug         String              @unique
+  engineCode   String?
+  engineName   String?
+  yearFrom     Int?
+  yearTo       Int?
+  yearCalendar VehicleYearCalendar @default(SHAMSI)
+  notes        String?
+  isActive     Boolean             @default(true)
+  sortOrder    Int                 @default(0)
+
+  model VehicleModel @relation(fields: [modelId], references: [id], onDelete: Restrict)
+  compatibilities  ProductVehicleCompatibility[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([modelId, isActive])
+  @@index([engineCode])
+  @@index([yearFrom, yearTo])
+}
+
+model ProductVehicleCompatibility {
+  id               String   @id @default(uuid())
+  productId        String
+  vehicleVariantId String
+  notes            String?
+  requiresVerification Boolean @default(false)
+
+  product        Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  vehicleVariant VehicleVariant @relation(fields: [vehicleVariantId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId, vehicleVariantId])
+  @@index([vehicleVariantId])
 }

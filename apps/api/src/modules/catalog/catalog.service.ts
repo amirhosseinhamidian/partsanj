@@ -187,6 +187,52 @@ export class CatalogService {
             sortOrder: true,
           },
         },
+        compatibilities: {
+          where: {
+            vehicleVariant: {
+              isActive: true,
+              model: {
+                isActive: true,
+                make: {
+                  isActive: true,
+                },
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+          select: {
+            notes: true,
+            requiresVerification: true,
+            vehicleVariant: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                engineCode: true,
+                engineName: true,
+                yearFrom: true,
+                yearTo: true,
+                yearCalendar: true,
+                model: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    make: {
+                      select: {
+                        id: true,
+                        name: true,
+                        slug: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -200,7 +246,10 @@ export class CatalogService {
   }
 
   private buildPublicProductWhere(
-    query: Pick<FindProductsQueryDto, 'q' | 'brand' | 'category' | 'stockStatus'>,
+    query: Pick<
+      FindProductsQueryDto,
+      'q' | 'brand' | 'category' | 'stockStatus' | 'vehicleVariantId'
+    >,
   ): Prisma.ProductWhereInput {
     const where: Prisma.ProductWhereInput = {
       status: ProductStatus.ACTIVE,
@@ -229,6 +278,23 @@ export class CatalogService {
 
     if (query.stockStatus) {
       where.stockStatus = query.stockStatus;
+    }
+
+    if (query.vehicleVariantId) {
+      where.compatibilities = {
+        some: {
+          vehicleVariantId: query.vehicleVariantId,
+          vehicleVariant: {
+            isActive: true,
+            model: {
+              isActive: true,
+              make: {
+                isActive: true,
+              },
+            },
+          },
+        },
+      };
     }
 
     if (query.q) {
