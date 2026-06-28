@@ -4,7 +4,7 @@ import { DatabaseModule } from './modules/database/database.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { CatalogModule } from './modules/catalog/catalog.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
-import { AdminModule } from './modules/admin/admin.module.js';
+import { CatalogAdminModule } from './modules/catalog/admin/catalog-admin.module.js';
 
 @Module({
   imports: [
@@ -16,7 +16,7 @@ import { AdminModule } from './modules/admin/admin.module.js';
     HealthModule,
     CatalogModule,
     AuthModule,
-    AdminModule,
+    CatalogAdminModule,
   ],
 })
 export class AppModule {}

@@ -36,6 +36,12 @@ enum OtpPurpose {
   AUTHENTICATION
 }
 
+enum ProductAuditAction {
+  CREATED
+  UPDATED
+  ARCHIVED
+}
+
 model User {
   id               String   @id @default(uuid())
   mobile           String   @unique
@@ -45,6 +51,8 @@ model User {
   isActive         Boolean  @default(true)
   mobileVerifiedAt DateTime?
   lastLoginAt      DateTime?
+
+  productAuditLogs ProductAuditLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -120,6 +128,8 @@ model Product {
   codes    ProductCode[]
   images   ProductImage[]
 
+  auditLogs ProductAuditLog[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -155,4 +165,19 @@ model ProductImage {
   createdAt DateTime @default(now())
 
   @@unique([productId, sortOrder])
+}
+
+model ProductAuditLog {
+  id          String             @id @default(uuid())
+  productId   String
+  actorUserId String
+  action      ProductAuditAction
+  changes     Json
+  createdAt   DateTime           @default(now())
+
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  actorUser User    @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([productId, createdAt])
+  @@index([actorUserId, createdAt])
 }
