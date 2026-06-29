@@ -28,12 +28,20 @@ export type AdminShellUser = {
   role: string;
 };
 
+type AdminNavigationChild = {
+  label: string;
+  href: string;
+  disabled?: boolean;
+  badge?: string;
+};
+
 type AdminNavigationItem = {
   label: string;
   href?: string;
   icon: LucideIcon;
   disabled?: boolean;
   badge?: string;
+  children?: AdminNavigationChild[];
 };
 
 type AdminNavigationGroup = {
@@ -57,8 +65,18 @@ const navigation: AdminNavigationGroup[] = [
     items: [
       {
         label: 'کاتالوگ',
-        href: '/admin/catalog/categories',
+        href: '/admin/catalog',
         icon: Boxes,
+        children: [
+          {
+            label: 'دسته‌بندی‌ها',
+            href: '/admin/catalog/categories',
+          },
+          {
+            label: 'برندها',
+            href: '/admin/catalog/brands',
+          },
+        ],
       },
       {
         label: 'خودروها و سازگاری',
@@ -100,13 +118,31 @@ function isRouteActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function getCurrentItem(pathname: string) {
-  const items = navigation.flatMap((group) => group.items);
+function isNavigationItemActive(pathname: string, item: AdminNavigationItem): boolean {
+  const isParentActive = item.href ? isRouteActive(pathname, item.href) : false;
 
-  return items
-    .filter((item): item is AdminNavigationItem & { href: string } => Boolean(item.href))
-    .sort((first, second) => second.href.length - first.href.length)
-    .find((item) => isRouteActive(pathname, item.href));
+  const isChildActive =
+    item.children?.some((child) => isRouteActive(pathname, child.href)) ?? false;
+
+  return isParentActive || isChildActive;
+}
+
+function getCurrentItem(pathname: string) {
+  for (const group of navigation) {
+    for (const item of group.items) {
+      const currentChild = item.children?.find((child) => isRouteActive(pathname, child.href));
+
+      if (currentChild) {
+        return currentChild;
+      }
+
+      if (item.href && isRouteActive(pathname, item.href)) {
+        return item;
+      }
+    }
+  }
+
+  return undefined;
 }
 
 function getAdminDisplayName(admin: AdminShellUser): string {
@@ -143,7 +179,7 @@ function SidebarContent({
       <div
         className={cn(
           'flex h-20 shrink-0 items-center border-b border-border',
-          collapsed ? 'justify-center px-3' : 'justify-between px-4',
+          collapsed ? 'flex-col justify-center gap-1 px-2' : 'justify-between px-4',
         )}
       >
         <Link
@@ -163,6 +199,7 @@ function SidebarContent({
               <span className='block truncate text-base font-extrabold text-foreground'>
                 پارت‌سنج
               </span>
+
               <span className='block truncate text-xs text-foreground-muted'>پنل مدیریت</span>
             </span>
           )}
@@ -173,8 +210,8 @@ function SidebarContent({
             type='button'
             size='sm'
             variant='ghost'
-            aria-label='جمع کردن منوی کناری'
-            icon={<PanelRightClose />}
+            aria-label={collapsed ? 'باز کردن منوی کناری' : 'جمع کردن منوی کناری'}
+            icon={collapsed ? <PanelRightOpen /> : <PanelRightClose />}
             onClick={onToggleCollapse}
           />
         ) : null}
@@ -205,7 +242,13 @@ function SidebarContent({
             <div className='space-y-1'>
               {group.items.map((item) => {
                 const Icon = item.icon;
-                const active = item.href && isRouteActive(pathname, item.href);
+
+                const isParentRouteActive = item.href ? isRouteActive(pathname, item.href) : false;
+
+                const isChildRouteActive =
+                  item.children?.some((child) => isRouteActive(pathname, child.href)) ?? false;
+
+                const active = isNavigationItemActive(pathname, item);
 
                 const itemClasses = cn(
                   'group flex h-11 items-center rounded-control text-sm font-semibold transition-colors',
@@ -237,30 +280,73 @@ function SidebarContent({
                   </>
                 );
 
-                if (item.disabled || !item.href) {
-                  return (
-                    <span
-                      key={item.label}
-                      aria-disabled='true'
-                      title={`${item.label} — به‌زودی`}
-                      className={itemClasses}
-                    >
-                      {itemContent}
-                    </span>
-                  );
-                }
-
                 return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onNavigate}
-                    aria-current={active ? 'page' : undefined}
-                    title={collapsed ? item.label : undefined}
-                    className={itemClasses}
-                  >
-                    {itemContent}
-                  </Link>
+                  <div key={item.href ?? item.label}>
+                    {item.disabled || !item.href ? (
+                      <span
+                        aria-disabled='true'
+                        title={`${item.label} — به‌زودی`}
+                        className={itemClasses}
+                      >
+                        {itemContent}
+                      </span>
+                    ) : (
+                      <Link
+                        href={item.href}
+                        onClick={onNavigate}
+                        aria-current={
+                          isParentRouteActive && !isChildRouteActive ? 'page' : undefined
+                        }
+                        title={collapsed ? item.label : undefined}
+                        className={itemClasses}
+                      >
+                        {itemContent}
+                      </Link>
+                    )}
+
+                    {!collapsed && item.children?.length ? (
+                      <div className='mt-1 space-y-1 border-s border-border ps-3'>
+                        {item.children.map((child) => {
+                          const childActive = isRouteActive(pathname, child.href);
+
+                          if (child.disabled) {
+                            return (
+                              <span
+                                key={child.href}
+                                aria-disabled='true'
+                                className='flex h-9 items-center rounded-[10px] px-3 text-xs font-semibold text-foreground-muted opacity-45'
+                              >
+                                {child.label}
+                              </span>
+                            );
+                          }
+
+                          return (
+                            <Link
+                              key={child.href}
+                              href={child.href}
+                              onClick={onNavigate}
+                              aria-current={childActive ? 'page' : undefined}
+                              className={cn(
+                                'flex h-9 items-center rounded-[10px] px-3 text-xs font-semibold transition-colors',
+                                childActive
+                                  ? 'bg-brand-soft text-brand'
+                                  : 'text-foreground-muted hover:bg-surface-muted hover:text-foreground',
+                              )}
+                            >
+                              <span className='truncate'>{child.label}</span>
+
+                              {child.badge ? (
+                                <span className='me-auto rounded-full bg-surface-muted px-1.5 py-0.5 text-[10px] font-bold text-foreground-muted'>
+                                  {child.badge}
+                                </span>
+                              ) : null}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
                 );
               })}
             </div>
@@ -282,6 +368,7 @@ function SidebarContent({
           {collapsed ? null : (
             <div className='min-w-0 flex-1'>
               <p className='truncate text-sm font-bold text-foreground'>{displayName}</p>
+
               <p className='truncate text-xs text-foreground-muted'>{admin.role}</p>
             </div>
           )}
@@ -330,10 +417,12 @@ export function AdminAppShell({ admin, children }: AdminAppShellProps) {
     }
 
     document.body.style.overflow = 'hidden';
+
     window.addEventListener('keydown', handleEscape);
 
     return () => {
       document.body.style.overflow = previousOverflow;
+
       window.removeEventListener('keydown', handleEscape);
     };
   }, [mobileSidebarOpen]);
@@ -342,15 +431,15 @@ export function AdminAppShell({ admin, children }: AdminAppShellProps) {
     <div className='min-h-dvh overflow-x-hidden bg-background text-foreground'>
       <a
         href='#admin-main-content'
-        className='sr-only fixed start-4 top-4 z-[110] rounded-control bg-brand px-4 py-2 text-sm font-bold text-brand-foreground focus:not-sr-only'
+        className='sr-only fixed inset-s-4 top-4 z-110 rounded-control bg-brand px-4 py-2 text-sm font-bold text-brand-foreground focus:not-sr-only'
       >
         رفتن به محتوای اصلی
       </a>
 
       <aside
         className={cn(
-          'fixed inset-y-0 start-0 z-40 hidden border-e border-border bg-surface transition-[width] duration-200 ease-out lg:flex',
-          desktopCollapsed ? 'w-[84px]' : 'w-72',
+          'fixed inset-y-0 inset-s-0 z-40 hidden border-e border-border bg-surface transition-[width] duration-200 ease-out lg:flex',
+          desktopCollapsed ? 'w-21' : 'w-72',
         )}
       >
         <SidebarContent
@@ -374,7 +463,7 @@ export function AdminAppShell({ admin, children }: AdminAppShellProps) {
             role='dialog'
             aria-modal='true'
             aria-label='منوی مدیریت'
-            className='fixed inset-y-0 start-0 z-50 flex w-80 max-w-[calc(100vw-1.5rem)] border-e border-border bg-surface shadow-floating lg:hidden'
+            className='fixed inset-y-0 inset-s-0 z-50 flex w-80 max-w-[calc(100vw-1.5rem)] border-e border-border bg-surface shadow-floating lg:hidden'
           >
             <SidebarContent
               admin={admin}
@@ -390,7 +479,7 @@ export function AdminAppShell({ admin, children }: AdminAppShellProps) {
       <div
         className={cn(
           'min-h-dvh transition-[padding-inline-start] duration-200 ease-out',
-          desktopCollapsed ? 'lg:ps-[84px]' : 'lg:ps-72',
+          desktopCollapsed ? 'lg:ps-21' : 'lg:ps-72',
         )}
       >
         <header className='sticky top-0 z-30 border-b border-border bg-surface'>
