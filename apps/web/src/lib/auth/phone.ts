@@ -1,14 +1,9 @@
-const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
-const arabicDigits = '٠١٢٣٤٥٦٧٨٩';
+import { digitsOnly } from '@/lib/utils/digits';
 
-export function toLatinDigits(value: string): string {
-  return value
-    .replace(/[۰-۹]/g, (digit) => String(persianDigits.indexOf(digit)))
-    .replace(/[٠-٩]/g, (digit) => String(arabicDigits.indexOf(digit)));
-}
+export { toLatinDigits } from '@/lib/utils/digits';
 
 export function normalizeIranianMobile(value: string): string | null {
-  const digits = toLatinDigits(value).replace(/\D/g, '');
+  const digits = digitsOnly(value);
 
   if (/^09\d{9}$/.test(digits)) {
     return digits;
@@ -26,5 +21,5 @@ export function normalizeIranianMobile(value: string): string | null {
 }
 
 export function normalizeOtp(value: string): string {
-  return toLatinDigits(value).replace(/\D/g, '').slice(0, 8);
+  return digitsOnly(value).slice(0, 4);
 }

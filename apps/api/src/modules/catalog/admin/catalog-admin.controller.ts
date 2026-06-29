@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Put,
+  Delete,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -117,6 +118,19 @@ export class CatalogAdminController {
   })
   updateCategory(@Param() params: EntityIdParamDto, @Body() dto: UpdateCategoryDto) {
     return this.catalogAdminService.updateCategory(params.id, dto);
+  }
+
+  @Delete('categories/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Delete a category without dependent products or child categories',
+  })
+  @ApiOkResponse()
+  @ApiConflictResponse({
+    description: 'Category has products or child categories and cannot be deleted',
+  })
+  deleteCategory(@Param() params: EntityIdParamDto) {
+    return this.catalogAdminService.deleteCategory(params.id);
   }
 
   @Get('products')

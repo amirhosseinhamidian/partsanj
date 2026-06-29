@@ -250,6 +250,71 @@ export class CatalogAdminService {
     }
   }
 
+  async deleteCategory(id: string) {
+    const category = await this.prisma.category.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        _count: {
+          select: {
+            children: true,
+            products: true,
+          },
+        },
+      },
+    });
+
+    if (!category) {
+      throw new NotFoundException('Category not found');
+    }
+
+    const hasChildren = category._count.children > 0;
+    const hasProducts = category._count.products > 0;
+
+    if (hasChildren || hasProducts) {
+      throw new ConflictException({
+        message: 'Category cannot be deleted because it has dependent records',
+        code: 'CATEGORY_HAS_DEPENDENCIES',
+        childrenCount: category._count.children,
+        productsCount: category._count.products,
+      });
+    }
+
+    try {
+      const deletedCategory = await this.prisma.category.delete({
+        where: {
+          id,
+        },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      });
+
+      return {
+        data: deletedCategory,
+      };
+    } catch (error) {
+      /*
+        اگر بین بررسی وابستگی‌ها و حذف، یک Product یا Child جدید ثبت شود،
+        Prisma با P2003 حذف را مسدود می‌کند
+      */
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+        throw new ConflictException({
+          message: 'Category cannot be deleted because it has dependent records',
+          code: 'CATEGORY_HAS_DEPENDENCIES',
+        });
+      }
+
+      this.rethrowKnownDatabaseError(error);
+    }
+  }
+
   async findProducts(query: FindAdminProductsQueryDto) {
     const where: Prisma.ProductWhereInput = {};
     const skip = (query.page - 1) * query.limit;

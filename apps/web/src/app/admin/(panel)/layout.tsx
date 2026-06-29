@@ -1,3 +1,4 @@
+import { AdminAppShell } from '@/components/admin/admin-app-shell';
 import { getCurrentAdmin } from '@/lib/auth/current-admin';
 import { redirect } from 'next/navigation';
 
@@ -13,21 +14,14 @@ export default async function AdminPanelLayout({
   }
 
   return (
-    <div dir='rtl' className='min-h-screen bg-zinc-100'>
-      <header className='border-b border-zinc-200 bg-white px-6 py-4'>
-        <div className='mx-auto flex max-w-7xl items-center justify-between'>
-          <div>
-            <p className='text-lg font-bold text-zinc-950'>PartSanj Admin</p>
-            <p className='text-sm text-zinc-500'>{admin.fullName ?? admin.phone ?? admin.id}</p>
-          </div>
-
-          <span className='rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700'>
-            {admin.role}
-          </span>
-        </div>
-      </header>
-
-      <main className='mx-auto max-w-7xl p-6'>{children}</main>
-    </div>
+    <AdminAppShell
+      admin={{
+        fullName: admin.fullName,
+        phone: admin.phone,
+        role: admin.role,
+      }}
+    >
+      {children}
+    </AdminAppShell>
   );
 }
