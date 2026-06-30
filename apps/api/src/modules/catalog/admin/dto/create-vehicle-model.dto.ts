@@ -5,13 +5,14 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsUrl,
   IsUUID,
   Matches,
   MaxLength,
   Min,
   MinLength,
 } from 'class-validator';
-import { trimText } from './catalog-admin.dto.utils.js';
+import { normalizeOptionalUrl, trimText } from './catalog-admin.dto.utils.js';
 
 export class CreateVehicleModelDto {
   @ApiProperty({
@@ -62,4 +63,19 @@ export class CreateVehicleModelDto {
   @IsInt()
   @Min(0)
   sortOrder?: number;
+
+  @ApiPropertyOptional({
+    example: 'https://cdn.partsanj.ir/vehicles/models/peugeot-206.webp',
+  })
+  @IsOptional()
+  @Transform(({ value }) => normalizeOptionalUrl(value), {
+    toClassOnly: true,
+  })
+  @IsString()
+  @IsUrl({
+    protocols: ['http', 'https'],
+    require_protocol: true,
+  })
+  @MaxLength(2048)
+  imageUrl?: string;
 }

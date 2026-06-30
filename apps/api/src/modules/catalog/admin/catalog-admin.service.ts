@@ -116,6 +116,7 @@ export class CatalogAdminService {
         data: {
           name: dto.name,
           slug: dto.slug,
+          logoUrl: dto.logoUrl ?? null,
           isActive: dto.isActive,
         },
       });
@@ -146,7 +147,20 @@ export class CatalogAdminService {
         where: {
           id,
         },
-        data: dto,
+        data: {
+          ...(dto.name !== undefined && {
+            name: dto.name,
+          }),
+          ...(dto.slug !== undefined && {
+            slug: dto.slug,
+          }),
+          ...(dto.logoUrl !== undefined && {
+            logoUrl: dto.logoUrl,
+          }),
+          ...(dto.isActive !== undefined && {
+            isActive: dto.isActive,
+          }),
+        },
       });
 
       return {
@@ -477,6 +491,7 @@ export class CatalogAdminService {
         data: {
           name: dto.name,
           slug: dto.slug,
+          logoUrl: dto.logoUrl ?? null,
           isActive: dto.isActive ?? true,
           sortOrder: dto.sortOrder ?? 0,
         },
@@ -525,6 +540,9 @@ export class CatalogAdminService {
           ...(dto.slug !== undefined && {
             slug: dto.slug,
           }),
+          ...(dto.logoUrl !== undefined && {
+            logoUrl: dto.logoUrl,
+          }),
           ...(dto.isActive !== undefined && {
             isActive: dto.isActive,
           }),
@@ -570,6 +588,7 @@ export class CatalogAdminService {
             id: true,
             name: true,
             slug: true,
+            logoUrl: true,
             isActive: true,
             sortOrder: true,
           },
@@ -596,6 +615,7 @@ export class CatalogAdminService {
           makeId: dto.makeId,
           name: dto.name,
           slug: dto.slug,
+          imageUrl: dto.imageUrl ?? null,
           isActive: dto.isActive ?? true,
           sortOrder: dto.sortOrder ?? 0,
         },
@@ -605,6 +625,7 @@ export class CatalogAdminService {
               id: true,
               name: true,
               slug: true,
+              logoUrl: true,
               isActive: true,
               sortOrder: true,
             },
@@ -673,6 +694,9 @@ export class CatalogAdminService {
       ...(dto.isActive !== undefined && {
         isActive: dto.isActive,
       }),
+      ...(dto.imageUrl !== undefined && {
+        imageUrl: dto.imageUrl,
+      }),
       ...(dto.sortOrder !== undefined && {
         sortOrder: dto.sortOrder,
       }),
@@ -693,6 +717,7 @@ export class CatalogAdminService {
               id: true,
               name: true,
               slug: true,
+              logoUrl: true,
               isActive: true,
               sortOrder: true,
             },
@@ -742,12 +767,14 @@ export class CatalogAdminService {
             name: true,
             slug: true,
             isActive: true,
+            imageUrl: true,
             sortOrder: true,
             make: {
               select: {
                 id: true,
                 name: true,
                 slug: true,
+                logoUrl: true,
                 isActive: true,
                 sortOrder: true,
               },
@@ -793,6 +820,7 @@ export class CatalogAdminService {
               id: true,
               name: true,
               slug: true,
+              imageUrl: true,
               isActive: true,
               sortOrder: true,
               make: {
@@ -800,6 +828,7 @@ export class CatalogAdminService {
                   id: true,
                   name: true,
                   slug: true,
+                  logoUrl: true,
                   isActive: true,
                   sortOrder: true,
                 },
@@ -919,6 +948,7 @@ export class CatalogAdminService {
               id: true,
               name: true,
               slug: true,
+              imageUrl: true,
               isActive: true,
               sortOrder: true,
               make: {
@@ -926,6 +956,7 @@ export class CatalogAdminService {
                   id: true,
                   name: true,
                   slug: true,
+                  logoUrl: true,
                   isActive: true,
                   sortOrder: true,
                 },
@@ -1165,12 +1196,14 @@ export class CatalogAdminService {
                     id: true,
                     name: true,
                     slug: true,
+                    imageUrl: true,
                     isActive: true,
                     make: {
                       select: {
                         id: true,
                         name: true,
                         slug: true,
+                        logoUrl: true,
                         isActive: true,
                       },
                     },

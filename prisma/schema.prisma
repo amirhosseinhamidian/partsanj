@@ -88,6 +88,7 @@ model Brand {
   name      String   @unique
   slug      String   @unique
   isActive  Boolean  @default(true)
+  logoUrl   String?
   products  Product[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -200,6 +201,7 @@ model VehicleMake {
   isActive  Boolean  @default(true)
   sortOrder Int      @default(0)
 
+  logoUrl   String?
   models    VehicleModel[]
 
   createdAt DateTime @default(now())
@@ -213,6 +215,7 @@ model VehicleModel {
   slug      String   @unique
   isActive  Boolean  @default(true)
   sortOrder Int      @default(0)
+  imageUrl  String?
 
   make      VehicleMake     @relation(fields: [makeId], references: [id], onDelete: Restrict)
   variants  VehicleVariant[]

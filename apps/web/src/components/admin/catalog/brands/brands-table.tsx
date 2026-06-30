@@ -4,6 +4,7 @@ import type { AdminBrand } from '@/lib/admin/catalog/brand.types';
 import { Badge } from '@/components/ui/badge';
 import { DataTable, type DataTableColumn, type DataTableSort } from '@/components/ui/data-table';
 import { IconButton } from '@/components/ui/icon-button';
+import { ImageUrlPreview } from '@/components/ui/image-url-preview';
 import { Tooltip } from '@/components/ui/tooltip';
 import { Edit } from 'lucide-react';
 import { useMemo } from 'react';
@@ -49,14 +50,24 @@ export function BrandsTable({
         header: 'برند',
         sortable: true,
         sortValue: (row) => row.name,
-        minWidth: '240px',
+        minWidth: '280px',
         cell: (row) => (
-          <div className='min-w-0'>
-            <p className='truncate font-bold text-foreground'>{row.name}</p>
+          <div className='flex min-w-0 items-center gap-3'>
+            <ImageUrlPreview
+              src={row.logoUrl}
+              alt={`لوگوی ${row.name}`}
+              emptyLabel=''
+              className='size-11 shrink-0'
+              imageClassName='object-contain p-1.5'
+            />
 
-            <p dir='ltr' className='mt-1 truncate text-xs text-foreground-muted'>
-              {row.slug}
-            </p>
+            <div className='min-w-0'>
+              <p className='truncate font-bold text-foreground'>{row.name}</p>
+
+              <p dir='ltr' className='mt-1 truncate text-xs text-foreground-muted'>
+                {row.slug}
+              </p>
+            </div>
           </div>
         ),
       },

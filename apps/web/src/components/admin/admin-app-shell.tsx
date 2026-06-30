@@ -179,7 +179,7 @@ function SidebarContent({
   const displayName = getAdminDisplayName(admin);
 
   return (
-    <div className='flex h-full min-h-0 flex-1 flex-col'>
+    <div dir='rtl' className='flex h-full min-h-0 flex-1 flex-col'>
       <div
         className={cn(
           'flex h-20 shrink-0 items-center border-b border-border',
@@ -432,7 +432,7 @@ export function AdminAppShell({ admin, children }: AdminAppShellProps) {
   }, [mobileSidebarOpen]);
 
   return (
-    <div className='min-h-dvh overflow-x-hidden bg-background text-foreground'>
+    <div dir='rtl' className='min-h-dvh overflow-x-hidden bg-background text-foreground'>
       <a
         href='#admin-main-content'
         className='sr-only fixed inset-s-4 top-4 z-110 rounded-control bg-brand px-4 py-2 text-sm font-bold text-brand-foreground focus:not-sr-only'

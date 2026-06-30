@@ -73,7 +73,7 @@ export const SheetContent = forwardRef<
         {...props}
         ref={ref}
         className={cn(
-          'fixed z-[80] flex flex-col overflow-hidden border bg-surface p-5 text-right text-foreground shadow-floating outline-none sm:p-6',
+          'fixed z-80 flex flex-col overflow-hidden border bg-surface p-5 text-right text-foreground shadow-floating outline-none sm:p-6',
           sheetSideClasses[side],
           className,
         )}
