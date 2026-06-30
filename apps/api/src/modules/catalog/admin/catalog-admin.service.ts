@@ -328,6 +328,119 @@ export class CatalogAdminService {
     }
   }
 
+  async findActiveVehicleMakes() {
+    const makes = await this.prisma.vehicleMake.findMany({
+      where: {
+        isActive: true,
+      },
+      orderBy: [
+        {
+          sortOrder: 'asc',
+        },
+        {
+          name: 'asc',
+        },
+      ],
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+      },
+    });
+
+    return {
+      data: makes,
+    };
+  }
+
+  async findActiveVehicleModels(makeId: string) {
+    const models = await this.prisma.vehicleModel.findMany({
+      where: {
+        makeId,
+        isActive: true,
+        make: {
+          is: {
+            isActive: true,
+          },
+        },
+      },
+      orderBy: [
+        {
+          sortOrder: 'asc',
+        },
+        {
+          name: 'asc',
+        },
+      ],
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        makeId: true,
+      },
+    });
+
+    return {
+      data: models,
+    };
+  }
+
+  async findActiveVehicleVariants(modelId: string) {
+    const variants = await this.prisma.vehicleVariant.findMany({
+      where: {
+        modelId,
+        isActive: true,
+        model: {
+          is: {
+            isActive: true,
+            make: {
+              is: {
+                isActive: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: [
+        {
+          sortOrder: 'asc',
+        },
+        {
+          name: 'asc',
+        },
+      ],
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        engineCode: true,
+        engineName: true,
+        yearFrom: true,
+        yearTo: true,
+        yearCalendar: true,
+        notes: true,
+        model: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            make: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return {
+      data: variants,
+    };
+  }
+
   async findProducts(query: FindAdminProductsQueryDto) {
     const where: Prisma.ProductWhereInput = {};
     const skip = (query.page - 1) * query.limit;

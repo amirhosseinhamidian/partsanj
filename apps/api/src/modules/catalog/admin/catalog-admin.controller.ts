@@ -38,6 +38,10 @@ import { UpdateBrandDto } from './dto/update-brand.dto.js';
 import { UpdateCategoryDto } from './dto/update-category.dto.js';
 import { UpdateProductDto } from './dto/update-product.dto.js';
 import { ReplaceProductCompatibilitiesDto } from './dto/replace-product-compatibilities.dto.js';
+import {
+  FindActiveVehicleModelsQueryDto,
+  FindActiveVehicleVariantsQueryDto,
+} from './dto/find-active-vehicle-catalog.query.dto.js';
 
 @ApiTags('Admin Catalog')
 @ApiBearerAuth('access-token')
@@ -131,6 +135,33 @@ export class CatalogAdminController {
   })
   deleteCategory(@Param() params: EntityIdParamDto) {
     return this.catalogAdminService.deleteCategory(params.id);
+  }
+
+  @Get('vehicle-makes')
+  @ApiOperation({
+    summary: 'List active vehicle makes for product compatibility',
+  })
+  @ApiOkResponse()
+  findActiveVehicleMakes() {
+    return this.catalogAdminService.findActiveVehicleMakes();
+  }
+
+  @Get('vehicle-models')
+  @ApiOperation({
+    summary: 'List active vehicle models for a make',
+  })
+  @ApiOkResponse()
+  findActiveVehicleModels(@Query() query: FindActiveVehicleModelsQueryDto) {
+    return this.catalogAdminService.findActiveVehicleModels(query.makeId);
+  }
+
+  @Get('vehicle-variants')
+  @ApiOperation({
+    summary: 'List active vehicle variants for a model',
+  })
+  @ApiOkResponse()
+  findActiveVehicleVariants(@Query() query: FindActiveVehicleVariantsQueryDto) {
+    return this.catalogAdminService.findActiveVehicleVariants(query.modelId);
   }
 
   @Get('products')

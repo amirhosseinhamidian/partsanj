@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { ProductCompatibilitySection } from '@/components/admin/catalog/products/product-compatibility-section';
 
 type ProductEditorPageClientProps = {
   productId?: string;
@@ -165,6 +166,13 @@ export function ProductEditorPageClient({ productId }: ProductEditorPageClientPr
           categories={categories}
           onSubmit={handleSave}
           onRequestArchive={isEditing ? () => setArchiveDialogOpen(true) : undefined}
+        />
+      ) : null}
+
+      {isEditing && product ? (
+        <ProductCompatibilitySection
+          productId={product.id}
+          disabled={product.status === 'ARCHIVED'}
         />
       ) : null}
 
