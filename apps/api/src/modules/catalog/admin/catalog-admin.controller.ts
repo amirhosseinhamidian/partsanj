@@ -71,31 +71,6 @@ export class CatalogAdminController {
     return this.catalogAdminService.findBrands();
   }
 
-  @Post('brands')
-  @ApiOperation({
-    summary: 'Create a brand',
-  })
-  @ApiCreatedResponse()
-  @ApiConflictResponse({
-    description: 'Brand name or slug already exists',
-  })
-  createBrand(@Body() dto: CreateBrandDto) {
-    return this.catalogAdminService.createBrand(dto);
-  }
-
-  @Patch('brands/:id')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Update a brand',
-  })
-  @ApiOkResponse()
-  @ApiConflictResponse({
-    description: 'Brand name or slug already exists',
-  })
-  updateBrand(@Param() params: EntityIdParamDto, @Body() dto: UpdateBrandDto) {
-    return this.catalogAdminService.updateBrand(params.id, dto);
-  }
-
   @Get('categories')
   @ApiOperation({
     summary: 'List all categories for administrators',
@@ -103,31 +78,6 @@ export class CatalogAdminController {
   @ApiOkResponse()
   findCategories() {
     return this.catalogAdminService.findCategories();
-  }
-
-  @Post('categories')
-  @ApiOperation({
-    summary: 'Create a category',
-  })
-  @ApiCreatedResponse()
-  @ApiConflictResponse({
-    description: 'Category slug already exists',
-  })
-  createCategory(@Body() dto: CreateCategoryDto) {
-    return this.catalogAdminService.createCategory(dto);
-  }
-
-  @Patch('categories/:id')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Update a category',
-  })
-  @ApiOkResponse()
-  @ApiConflictResponse({
-    description: 'Category slug already exists',
-  })
-  updateCategory(@Param() params: EntityIdParamDto, @Body() dto: UpdateCategoryDto) {
-    return this.catalogAdminService.updateCategory(params.id, dto);
   }
 
   @Delete('categories/:id')
@@ -179,31 +129,6 @@ export class CatalogAdminController {
     return this.catalogAdminService.findVehicleMakes();
   }
 
-  @Post('vehicles/makes')
-  @ApiOperation({
-    summary: 'Create a vehicle make',
-  })
-  @ApiCreatedResponse()
-  @ApiConflictResponse({
-    description: 'Vehicle make name or slug already exists',
-  })
-  createVehicleMake(@Body() dto: CreateVehicleMakeDto) {
-    return this.catalogAdminService.createVehicleMake(dto);
-  }
-
-  @Patch('vehicles/makes/:id')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Update a vehicle make',
-  })
-  @ApiOkResponse()
-  @ApiConflictResponse({
-    description: 'Vehicle make name or slug already exists',
-  })
-  updateVehicleMake(@Param() params: EntityIdParamDto, @Body() dto: UpdateVehicleMakeDto) {
-    return this.catalogAdminService.updateVehicleMake(params.id, dto);
-  }
-
   @Get('vehicles/models')
   @ApiOperation({
     summary: 'List all vehicle models for administration',
@@ -213,31 +138,6 @@ export class CatalogAdminController {
     return this.catalogAdminService.findVehicleModels();
   }
 
-  @Post('vehicles/models')
-  @ApiOperation({
-    summary: 'Create a vehicle model',
-  })
-  @ApiCreatedResponse()
-  @ApiConflictResponse({
-    description: 'Vehicle model slug already exists or the make already has this model name',
-  })
-  createVehicleModel(@Body() dto: CreateVehicleModelDto) {
-    return this.catalogAdminService.createVehicleModel(dto);
-  }
-
-  @Patch('vehicles/models/:id')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Update a vehicle model',
-  })
-  @ApiOkResponse()
-  @ApiConflictResponse({
-    description: 'Vehicle model slug already exists or the make already has this model name',
-  })
-  updateVehicleModel(@Param() params: EntityIdParamDto, @Body() dto: UpdateVehicleModelDto) {
-    return this.catalogAdminService.updateVehicleModel(params.id, dto);
-  }
-
   @Get('vehicles/variants')
   @ApiOperation({
     summary: 'List all vehicle variants for administration',
@@ -245,33 +145,6 @@ export class CatalogAdminController {
   @ApiOkResponse()
   findVehicleVariants() {
     return this.catalogAdminService.findVehicleVariants();
-  }
-
-  @Post('vehicles/variants')
-  @ApiOperation({
-    summary: 'Create a vehicle variant',
-  })
-  @ApiCreatedResponse()
-  @ApiConflictResponse({
-    description:
-      'Vehicle variant slug already exists or this model already has a variant with the same name',
-  })
-  createVehicleVariant(@Body() dto: CreateVehicleVariantDto) {
-    return this.catalogAdminService.createVehicleVariant(dto);
-  }
-
-  @Patch('vehicles/variants/:id')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Update a vehicle variant',
-  })
-  @ApiOkResponse()
-  @ApiConflictResponse({
-    description:
-      'Vehicle variant slug already exists or this model already has a variant with the same name',
-  })
-  updateVehicleVariant(@Param() params: EntityIdParamDto, @Body() dto: UpdateVehicleVariantDto) {
-    return this.catalogAdminService.updateVehicleVariant(params.id, dto);
   }
 
   @Get('products')
@@ -352,5 +225,111 @@ export class CatalogAdminController {
   @ApiOkResponse()
   archiveProduct(@Param() params: EntityIdParamDto, @CurrentUser() user: AuthenticatedUser) {
     return this.catalogAdminService.archiveProduct(params.id, user.id);
+  }
+
+  @Post('brands')
+  @ApiOperation({
+    summary: 'Create a brand',
+  })
+  @ApiCreatedResponse()
+  @ApiConflictResponse({
+    description: 'Brand name or slug already exists',
+  })
+  createBrand(@Body() dto: CreateBrandDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.catalogAdminService.createBrand(dto, user.id);
+  }
+
+  @Patch('brands/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update a brand',
+  })
+  @ApiOkResponse()
+  @ApiConflictResponse({
+    description: 'Brand name or slug already exists',
+  })
+  updateBrand(
+    @Param() params: EntityIdParamDto,
+    @Body() dto: UpdateBrandDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.catalogAdminService.updateBrand(params.id, dto, user.id);
+  }
+
+  @Post('categories')
+  @ApiOperation({
+    summary: 'Create a category',
+  })
+  @ApiCreatedResponse()
+  @ApiConflictResponse({
+    description: 'Category slug already exists',
+  })
+  createCategory(@Body() dto: CreateCategoryDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.catalogAdminService.createCategory(dto, user.id);
+  }
+
+  @Patch('categories/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update a category',
+  })
+  @ApiOkResponse()
+  @ApiConflictResponse({
+    description: 'Category slug already exists',
+  })
+  updateCategory(
+    @Param() params: EntityIdParamDto,
+    @Body() dto: UpdateCategoryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.catalogAdminService.updateCategory(params.id, dto, user.id);
+  }
+
+  @Post('vehicles/makes')
+  createVehicleMake(@Body() dto: CreateVehicleMakeDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.catalogAdminService.createVehicleMake(dto, user.id);
+  }
+
+  @Patch('vehicles/makes/:id')
+  @HttpCode(HttpStatus.OK)
+  updateVehicleMake(
+    @Param() params: EntityIdParamDto,
+    @Body() dto: UpdateVehicleMakeDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.catalogAdminService.updateVehicleMake(params.id, dto, user.id);
+  }
+
+  @Post('vehicles/models')
+  createVehicleModel(@Body() dto: CreateVehicleModelDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.catalogAdminService.createVehicleModel(dto, user.id);
+  }
+
+  @Patch('vehicles/models/:id')
+  @HttpCode(HttpStatus.OK)
+  updateVehicleModel(
+    @Param() params: EntityIdParamDto,
+    @Body() dto: UpdateVehicleModelDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.catalogAdminService.updateVehicleModel(params.id, dto, user.id);
+  }
+
+  @Post('vehicles/variants')
+  createVehicleVariant(
+    @Body() dto: CreateVehicleVariantDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.catalogAdminService.createVehicleVariant(dto, user.id);
+  }
+
+  @Patch('vehicles/variants/:id')
+  @HttpCode(HttpStatus.OK)
+  updateVehicleVariant(
+    @Param() params: EntityIdParamDto,
+    @Body() dto: UpdateVehicleVariantDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.catalogAdminService.updateVehicleVariant(params.id, dto, user.id);
   }
 }

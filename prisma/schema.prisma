@@ -48,6 +48,22 @@ enum VehicleYearCalendar {
   GREGORIAN
 }
 
+enum AdminAuditEntityType {
+  PRODUCT
+  BRAND
+  CATEGORY
+  VEHICLE_MAKE
+  VEHICLE_MODEL
+  VEHICLE_VARIANT
+}
+
+enum AdminAuditAction {
+  CREATED
+  UPDATED
+  ARCHIVED
+  COMPATIBILITIES_UPDATED
+}
+
 model User {
   id               String   @id @default(uuid())
   mobile           String   @unique
@@ -59,6 +75,7 @@ model User {
   lastLoginAt      DateTime?
 
   productAuditLogs ProductAuditLog[]
+  adminAuditLogs   AdminAuditLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -192,6 +209,23 @@ model ProductAuditLog {
 
   @@index([productId, createdAt])
   @@index([actorUserId, createdAt])
+}
+
+model AdminAuditLog {
+  id          String               @id @default(uuid())
+  actorUserId String
+  entityType  AdminAuditEntityType
+  entityId    String
+  entityLabel String?
+  action      AdminAuditAction
+  changes     Json
+  createdAt   DateTime             @default(now())
+
+  actorUser User @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
 }
 
 model VehicleMake {

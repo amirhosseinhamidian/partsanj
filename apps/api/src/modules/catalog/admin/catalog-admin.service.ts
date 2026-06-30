@@ -10,6 +10,9 @@ import {
   ProductCodeType,
   ProductStatus,
   StockStatus,
+  AdminAuditAction,
+  AdminAuditEntityType,
+  VehicleYearCalendar,
 } from '../../../generated/prisma/client.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateBrandDto } from './dto/create-brand.dto.js';
@@ -87,6 +90,15 @@ type ProductStateCandidate = {
   }>;
 };
 
+type WriteAdminAuditLogInput = {
+  actorUserId: string;
+  entityType: AdminAuditEntityType;
+  entityId: string;
+  entityLabel: string;
+  action: AdminAuditAction;
+  changes: unknown;
+};
+
 @Injectable()
 export class CatalogAdminService {
   constructor(private readonly prisma: PrismaService) {}
@@ -110,44 +122,80 @@ export class CatalogAdminService {
     };
   }
 
-  async createBrand(dto: CreateBrandDto) {
+  async createBrand(dto: CreateBrandDto, actorUserId: string) {
     try {
-      const brand = await this.prisma.brand.create({
-        data: {
-          name: dto.name,
-          slug: dto.slug,
-          logoUrl: dto.logoUrl ?? null,
-          isActive: dto.isActive,
-        },
-      });
+      return await this.prisma.$transaction(async (transaction) => {
+        const brand = await transaction.brand.create({
+          data: {
+            name: dto.name,
+            slug: dto.slug,
+            logoUrl: dto.logoUrl ?? null,
+            isActive: dto.isActive ?? true,
+          },
+        });
 
-      return {
-        data: brand,
-      };
+        await this.writeAdminAuditLog(transaction, {
+          actorUserId,
+          entityType: AdminAuditEntityType.BRAND,
+          entityId: brand.id,
+          entityLabel: brand.name,
+          action: AdminAuditAction.CREATED,
+          changes: {
+            event: 'admin_brand_created',
+            snapshot: {
+              name: brand.name,
+              slug: brand.slug,
+              logoUrl: brand.logoUrl,
+              isActive: brand.isActive,
+            },
+          },
+        });
+
+        return {
+          data: brand,
+        };
+      });
     } catch (error) {
       this.rethrowKnownDatabaseError(error);
     }
   }
 
-  async updateBrand(id: string, dto: UpdateBrandDto) {
+  async updateBrand(id: string, dto: UpdateBrandDto, actorUserId: string) {
     this.ensureUpdatePayload(dto);
 
-    const brand = await this.prisma.brand.findUnique({
-      where: {
-        id,
-      },
-    });
-
-    if (!brand) {
-      throw new NotFoundException('Brand not found');
-    }
-
     try {
-      const updatedBrand = await this.prisma.brand.update({
-        where: {
-          id,
-        },
-        data: {
+      return await this.prisma.$transaction(async (transaction) => {
+        const brand = await transaction.brand.findUnique({
+          where: {
+            id,
+          },
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logoUrl: true,
+            isActive: true,
+          },
+        });
+
+        if (!brand) {
+          throw new NotFoundException('Brand not found');
+        }
+
+        const changes: Record<string, unknown> = {};
+
+        this.addChange(changes, 'name', brand.name, dto.name);
+        this.addChange(changes, 'slug', brand.slug, dto.slug);
+        this.addChange(changes, 'logoUrl', brand.logoUrl, dto.logoUrl);
+        this.addChange(changes, 'isActive', brand.isActive, dto.isActive);
+
+        if (Object.keys(changes).length === 0) {
+          return {
+            data: brand,
+          };
+        }
+
+        const data: Prisma.BrandUpdateInput = {
           ...(dto.name !== undefined && {
             name: dto.name,
           }),
@@ -160,12 +208,31 @@ export class CatalogAdminService {
           ...(dto.isActive !== undefined && {
             isActive: dto.isActive,
           }),
-        },
-      });
+        };
 
-      return {
-        data: updatedBrand,
-      };
+        const updatedBrand = await transaction.brand.update({
+          where: {
+            id,
+          },
+          data,
+        });
+
+        await this.writeAdminAuditLog(transaction, {
+          actorUserId,
+          entityType: AdminAuditEntityType.BRAND,
+          entityId: updatedBrand.id,
+          entityLabel: updatedBrand.name,
+          action: AdminAuditAction.UPDATED,
+          changes: {
+            event: 'admin_brand_updated',
+            fields: changes,
+          },
+        });
+
+        return {
+          data: updatedBrand,
+        };
+      });
     } catch (error) {
       this.rethrowKnownDatabaseError(error);
     }
@@ -203,45 +270,52 @@ export class CatalogAdminService {
     };
   }
 
-  async createCategory(dto: CreateCategoryDto) {
+  async createCategory(dto: CreateCategoryDto, actorUserId: string) {
     if (dto.parentId) {
       await this.ensureCategoryExists(dto.parentId);
     }
 
     try {
-      const category = await this.prisma.category.create({
-        data: {
-          name: dto.name,
-          slug: dto.slug,
-          parentId: dto.parentId ?? null,
-          sortOrder: dto.sortOrder,
-          isActive: dto.isActive,
-        },
-      });
+      return await this.prisma.$transaction(async (transaction) => {
+        const category = await transaction.category.create({
+          data: {
+            name: dto.name,
+            slug: dto.slug,
+            parentId: dto.parentId ?? null,
+            sortOrder: dto.sortOrder ?? 0,
+            isActive: dto.isActive ?? true,
+          },
+        });
 
-      return {
-        data: category,
-      };
+        await this.writeAdminAuditLog(transaction, {
+          actorUserId,
+          entityType: AdminAuditEntityType.CATEGORY,
+          entityId: category.id,
+          entityLabel: category.name,
+          action: AdminAuditAction.CREATED,
+          changes: {
+            event: 'admin_category_created',
+            snapshot: {
+              name: category.name,
+              slug: category.slug,
+              parentId: category.parentId,
+              sortOrder: category.sortOrder,
+              isActive: category.isActive,
+            },
+          },
+        });
+
+        return {
+          data: category,
+        };
+      });
     } catch (error) {
       this.rethrowKnownDatabaseError(error);
     }
   }
 
-  async updateCategory(id: string, dto: UpdateCategoryDto) {
+  async updateCategory(id: string, dto: UpdateCategoryDto, actorUserId: string) {
     this.ensureUpdatePayload(dto);
-
-    const category = await this.prisma.category.findUnique({
-      where: {
-        id,
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    if (!category) {
-      throw new NotFoundException('Category not found');
-    }
 
     const hasParentIdUpdate = this.hasOwnProperty(dto, 'parentId');
 
@@ -249,35 +323,84 @@ export class CatalogAdminService {
       await this.ensureValidCategoryParent(id, dto.parentId);
     }
 
-    const data: Prisma.CategoryUncheckedUpdateInput = {
-      ...(dto.name !== undefined && {
-        name: dto.name,
-      }),
-      ...(dto.slug !== undefined && {
-        slug: dto.slug,
-      }),
-      ...(dto.sortOrder !== undefined && {
-        sortOrder: dto.sortOrder,
-      }),
-      ...(dto.isActive !== undefined && {
-        isActive: dto.isActive,
-      }),
-      ...(hasParentIdUpdate && {
-        parentId: dto.parentId ?? null,
-      }),
-    };
-
     try {
-      const updatedCategory = await this.prisma.category.update({
-        where: {
-          id,
-        },
-        data,
-      });
+      return await this.prisma.$transaction(async (transaction) => {
+        const category = await transaction.category.findUnique({
+          where: {
+            id,
+          },
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            parentId: true,
+            sortOrder: true,
+            isActive: true,
+          },
+        });
 
-      return {
-        data: updatedCategory,
-      };
+        if (!category) {
+          throw new NotFoundException('Category not found');
+        }
+
+        const changes: Record<string, unknown> = {};
+
+        this.addChange(changes, 'name', category.name, dto.name);
+        this.addChange(changes, 'slug', category.slug, dto.slug);
+        this.addChange(changes, 'sortOrder', category.sortOrder, dto.sortOrder);
+        this.addChange(changes, 'isActive', category.isActive, dto.isActive);
+
+        if (hasParentIdUpdate) {
+          this.addChange(changes, 'parentId', category.parentId, dto.parentId ?? null);
+        }
+
+        if (Object.keys(changes).length === 0) {
+          return {
+            data: category,
+          };
+        }
+
+        const data: Prisma.CategoryUncheckedUpdateInput = {
+          ...(dto.name !== undefined && {
+            name: dto.name,
+          }),
+          ...(dto.slug !== undefined && {
+            slug: dto.slug,
+          }),
+          ...(dto.sortOrder !== undefined && {
+            sortOrder: dto.sortOrder,
+          }),
+          ...(dto.isActive !== undefined && {
+            isActive: dto.isActive,
+          }),
+          ...(hasParentIdUpdate && {
+            parentId: dto.parentId ?? null,
+          }),
+        };
+
+        const updatedCategory = await transaction.category.update({
+          where: {
+            id,
+          },
+          data,
+        });
+
+        await this.writeAdminAuditLog(transaction, {
+          actorUserId,
+          entityType: AdminAuditEntityType.CATEGORY,
+          entityId: updatedCategory.id,
+          entityLabel: updatedCategory.name,
+          action: AdminAuditAction.UPDATED,
+          changes: {
+            event: 'admin_category_updated',
+            fields: changes,
+          },
+        });
+
+        return {
+          data: updatedCategory,
+        };
+      });
     } catch (error) {
       this.rethrowKnownDatabaseError(error);
     }
@@ -485,83 +608,135 @@ export class CatalogAdminService {
     };
   }
 
-  async createVehicleMake(dto: CreateVehicleMakeDto) {
+  async createVehicleMake(dto: CreateVehicleMakeDto, actorUserId: string) {
     try {
-      const make = await this.prisma.vehicleMake.create({
-        data: {
-          name: dto.name,
-          slug: dto.slug,
-          logoUrl: dto.logoUrl ?? null,
-          isActive: dto.isActive ?? true,
-          sortOrder: dto.sortOrder ?? 0,
-        },
-        include: {
-          _count: {
-            select: {
-              models: true,
+      return await this.prisma.$transaction(async (transaction) => {
+        const make = await transaction.vehicleMake.create({
+          data: {
+            name: dto.name,
+            slug: dto.slug,
+            logoUrl: dto.logoUrl ?? null,
+            isActive: dto.isActive ?? true,
+            sortOrder: dto.sortOrder ?? 0,
+          },
+          include: {
+            _count: {
+              select: {
+                models: true,
+              },
             },
           },
-        },
-      });
+        });
 
-      return {
-        data: make,
-      };
+        await this.writeAdminAuditLog(transaction, {
+          actorUserId,
+          entityType: AdminAuditEntityType.VEHICLE_MAKE,
+          entityId: make.id,
+          entityLabel: make.name,
+          action: AdminAuditAction.CREATED,
+          changes: {
+            event: 'admin_vehicle_make_created',
+            snapshot: {
+              name: make.name,
+              slug: make.slug,
+              logoUrl: make.logoUrl,
+              isActive: make.isActive,
+              sortOrder: make.sortOrder,
+            },
+          },
+        });
+
+        return {
+          data: make,
+        };
+      });
     } catch (error) {
       this.rethrowKnownDatabaseError(error);
     }
   }
 
-  async updateVehicleMake(id: string, dto: UpdateVehicleMakeDto) {
+  async updateVehicleMake(id: string, dto: UpdateVehicleMakeDto, actorUserId: string) {
     this.ensureUpdatePayload(dto);
 
-    const make = await this.prisma.vehicleMake.findUnique({
-      where: {
-        id,
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    if (!make) {
-      throw new NotFoundException('Vehicle make not found');
-    }
-
     try {
-      const updatedMake = await this.prisma.vehicleMake.update({
-        where: {
-          id,
-        },
-        data: {
-          ...(dto.name !== undefined && {
-            name: dto.name,
-          }),
-          ...(dto.slug !== undefined && {
-            slug: dto.slug,
-          }),
-          ...(dto.logoUrl !== undefined && {
-            logoUrl: dto.logoUrl,
-          }),
-          ...(dto.isActive !== undefined && {
-            isActive: dto.isActive,
-          }),
-          ...(dto.sortOrder !== undefined && {
-            sortOrder: dto.sortOrder,
-          }),
-        },
-        include: {
-          _count: {
-            select: {
-              models: true,
+      return await this.prisma.$transaction(async (transaction) => {
+        const make = await transaction.vehicleMake.findUnique({
+          where: {
+            id,
+          },
+          include: {
+            _count: {
+              select: {
+                models: true,
+              },
             },
           },
-        },
-      });
+        });
 
-      return {
-        data: updatedMake,
-      };
+        if (!make) {
+          throw new NotFoundException('Vehicle make not found');
+        }
+
+        const changes: Record<string, unknown> = {};
+
+        this.addChange(changes, 'name', make.name, dto.name);
+        this.addChange(changes, 'slug', make.slug, dto.slug);
+        this.addChange(changes, 'logoUrl', make.logoUrl, dto.logoUrl);
+        this.addChange(changes, 'isActive', make.isActive, dto.isActive);
+        this.addChange(changes, 'sortOrder', make.sortOrder, dto.sortOrder);
+
+        if (Object.keys(changes).length === 0) {
+          return {
+            data: make,
+          };
+        }
+
+        const updatedMake = await transaction.vehicleMake.update({
+          where: {
+            id,
+          },
+          data: {
+            ...(dto.name !== undefined && {
+              name: dto.name,
+            }),
+            ...(dto.slug !== undefined && {
+              slug: dto.slug,
+            }),
+            ...(dto.logoUrl !== undefined && {
+              logoUrl: dto.logoUrl,
+            }),
+            ...(dto.isActive !== undefined && {
+              isActive: dto.isActive,
+            }),
+            ...(dto.sortOrder !== undefined && {
+              sortOrder: dto.sortOrder,
+            }),
+          },
+          include: {
+            _count: {
+              select: {
+                models: true,
+              },
+            },
+          },
+        });
+
+        await this.writeAdminAuditLog(transaction, {
+          actorUserId,
+          entityType: AdminAuditEntityType.VEHICLE_MAKE,
+          entityId: updatedMake.id,
+          entityLabel: updatedMake.name,
+          action: AdminAuditAction.UPDATED,
+          changes: {
+            event: 'admin_vehicle_make_updated',
+            fields: changes,
+          },
+        });
+
+        return {
+          data: updatedMake,
+        };
+      });
     } catch (error) {
       this.rethrowKnownDatabaseError(error);
     }
@@ -606,133 +781,236 @@ export class CatalogAdminService {
     };
   }
 
-  async createVehicleModel(dto: CreateVehicleModelDto) {
-    await this.ensureVehicleMakeExists(dto.makeId);
-
+  async createVehicleModel(dto: CreateVehicleModelDto, actorUserId: string) {
     try {
-      const model = await this.prisma.vehicleModel.create({
-        data: {
-          makeId: dto.makeId,
-          name: dto.name,
-          slug: dto.slug,
-          imageUrl: dto.imageUrl ?? null,
-          isActive: dto.isActive ?? true,
-          sortOrder: dto.sortOrder ?? 0,
-        },
-        include: {
-          make: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              logoUrl: true,
-              isActive: true,
-              sortOrder: true,
-            },
+      return await this.prisma.$transaction(async (transaction) => {
+        const make = await transaction.vehicleMake.findUnique({
+          where: {
+            id: dto.makeId,
           },
-          _count: {
-            select: {
-              variants: true,
-            },
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logoUrl: true,
           },
-        },
-      });
+        });
 
-      return {
-        data: model,
-      };
+        if (!make) {
+          throw new NotFoundException('Vehicle make not found');
+        }
+
+        const model = await transaction.vehicleModel.create({
+          data: {
+            makeId: dto.makeId,
+            name: dto.name,
+            slug: dto.slug,
+            imageUrl: dto.imageUrl ?? null,
+            isActive: dto.isActive ?? true,
+            sortOrder: dto.sortOrder ?? 0,
+          },
+          include: {
+            make: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                logoUrl: true,
+                isActive: true,
+                sortOrder: true,
+              },
+            },
+            _count: {
+              select: {
+                variants: true,
+              },
+            },
+          },
+        });
+
+        await this.writeAdminAuditLog(transaction, {
+          actorUserId,
+          entityType: AdminAuditEntityType.VEHICLE_MODEL,
+          entityId: model.id,
+          entityLabel: `${model.make.name} · ${model.name}`,
+          action: AdminAuditAction.CREATED,
+          changes: {
+            event: 'admin_vehicle_model_created',
+            snapshot: {
+              make: {
+                id: model.make.id,
+                name: model.make.name,
+                slug: model.make.slug,
+              },
+              name: model.name,
+              slug: model.slug,
+              imageUrl: model.imageUrl,
+              isActive: model.isActive,
+              sortOrder: model.sortOrder,
+            },
+          },
+        });
+
+        return {
+          data: model,
+        };
+      });
     } catch (error) {
       this.rethrowKnownDatabaseError(error);
     }
   }
 
-  async updateVehicleModel(id: string, dto: UpdateVehicleModelDto) {
+  async updateVehicleModel(id: string, dto: UpdateVehicleModelDto, actorUserId: string) {
     this.ensureUpdatePayload(dto);
 
-    const model = await this.prisma.vehicleModel.findUnique({
-      where: {
-        id,
-      },
-      select: {
-        id: true,
-        makeId: true,
-        _count: {
-          select: {
-            variants: true,
-          },
-        },
-      },
-    });
-
-    if (!model) {
-      throw new NotFoundException('Vehicle model not found');
-    }
-
-    const requestedMakeId = dto.makeId;
-
-    const hasMakeIdUpdate = this.hasOwnProperty(dto, 'makeId');
-
-    const isMovingToAnotherMake = requestedMakeId !== undefined && requestedMakeId !== model.makeId;
-
-    if (isMovingToAnotherMake) {
-      await this.ensureVehicleMakeExists(requestedMakeId);
-
-      if (model._count.variants > 0) {
-        throw new BadRequestException(
-          'A vehicle model with variants cannot be moved to another make',
-        );
-      }
-    }
-
-    const data: Prisma.VehicleModelUncheckedUpdateInput = {
-      ...(dto.name !== undefined && {
-        name: dto.name,
-      }),
-      ...(dto.slug !== undefined && {
-        slug: dto.slug,
-      }),
-      ...(dto.isActive !== undefined && {
-        isActive: dto.isActive,
-      }),
-      ...(dto.imageUrl !== undefined && {
-        imageUrl: dto.imageUrl,
-      }),
-      ...(dto.sortOrder !== undefined && {
-        sortOrder: dto.sortOrder,
-      }),
-      ...(requestedMakeId !== undefined && {
-        makeId: requestedMakeId,
-      }),
-    };
-
     try {
-      const updatedModel = await this.prisma.vehicleModel.update({
-        where: {
-          id,
-        },
-        data,
-        include: {
-          make: {
+      return await this.prisma.$transaction(async (transaction) => {
+        const model = await transaction.vehicleModel.findUnique({
+          where: {
+            id,
+          },
+          include: {
+            make: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                logoUrl: true,
+              },
+            },
+            _count: {
+              select: {
+                variants: true,
+              },
+            },
+          },
+        });
+
+        if (!model) {
+          throw new NotFoundException('Vehicle model not found');
+        }
+
+        const requestedMakeId = dto.makeId;
+
+        const isMovingToAnotherMake =
+          requestedMakeId !== undefined && requestedMakeId !== model.makeId;
+
+        let targetMake = model.make;
+
+        if (isMovingToAnotherMake) {
+          if (model._count.variants > 0) {
+            throw new BadRequestException(
+              'A vehicle model with variants cannot be moved to another make',
+            );
+          }
+
+          const requestedMake = await transaction.vehicleMake.findUnique({
+            where: {
+              id: requestedMakeId,
+            },
             select: {
               id: true,
               name: true,
               slug: true,
               logoUrl: true,
-              isActive: true,
-              sortOrder: true,
             },
-          },
-          _count: {
-            select: {
-              variants: true,
-            },
-          },
-        },
-      });
+          });
 
-      return {
-        data: updatedModel,
-      };
+          if (!requestedMake) {
+            throw new NotFoundException('Vehicle make not found');
+          }
+
+          targetMake = requestedMake;
+        }
+
+        const changes: Record<string, unknown> = {};
+
+        this.addChange(changes, 'name', model.name, dto.name);
+        this.addChange(changes, 'slug', model.slug, dto.slug);
+        this.addChange(changes, 'imageUrl', model.imageUrl, dto.imageUrl);
+        this.addChange(changes, 'isActive', model.isActive, dto.isActive);
+        this.addChange(changes, 'sortOrder', model.sortOrder, dto.sortOrder);
+
+        if (isMovingToAnotherMake) {
+          changes.make = {
+            from: {
+              id: model.make.id,
+              name: model.make.name,
+              slug: model.make.slug,
+            },
+            to: {
+              id: targetMake.id,
+              name: targetMake.name,
+              slug: targetMake.slug,
+            },
+          };
+        }
+
+        if (Object.keys(changes).length === 0) {
+          return {
+            data: model,
+          };
+        }
+
+        const updatedModel = await transaction.vehicleModel.update({
+          where: {
+            id,
+          },
+          data: {
+            ...(dto.name !== undefined && {
+              name: dto.name,
+            }),
+            ...(dto.slug !== undefined && {
+              slug: dto.slug,
+            }),
+            ...(dto.imageUrl !== undefined && {
+              imageUrl: dto.imageUrl,
+            }),
+            ...(dto.isActive !== undefined && {
+              isActive: dto.isActive,
+            }),
+            ...(dto.sortOrder !== undefined && {
+              sortOrder: dto.sortOrder,
+            }),
+            ...(requestedMakeId !== undefined && {
+              makeId: requestedMakeId,
+            }),
+          },
+          include: {
+            make: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                logoUrl: true,
+                isActive: true,
+                sortOrder: true,
+              },
+            },
+            _count: {
+              select: {
+                variants: true,
+              },
+            },
+          },
+        });
+
+        await this.writeAdminAuditLog(transaction, {
+          actorUserId,
+          entityType: AdminAuditEntityType.VEHICLE_MODEL,
+          entityId: updatedModel.id,
+          entityLabel: `${updatedModel.make.name} · ${updatedModel.name}`,
+          action: AdminAuditAction.UPDATED,
+          changes: {
+            event: 'admin_vehicle_model_updated',
+            fields: changes,
+          },
+        });
+
+        return {
+          data: updatedModel,
+        };
+      });
     } catch (error) {
       this.rethrowKnownDatabaseError(error);
     }
@@ -794,186 +1072,338 @@ export class CatalogAdminService {
     };
   }
 
-  async createVehicleVariant(dto: CreateVehicleVariantDto) {
-    await this.ensureVehicleModelExists(dto.modelId);
-
+  async createVehicleVariant(dto: CreateVehicleVariantDto, actorUserId: string) {
     this.assertVehicleVariantYears(dto.yearFrom ?? null, dto.yearTo ?? null);
 
     try {
-      const variant = await this.prisma.vehicleVariant.create({
-        data: {
-          modelId: dto.modelId,
-          name: dto.name,
-          slug: dto.slug,
-          engineCode: dto.engineCode ?? null,
-          engineName: dto.engineName ?? null,
-          yearFrom: dto.yearFrom ?? null,
-          yearTo: dto.yearTo ?? null,
-          yearCalendar: dto.yearCalendar,
-          notes: dto.notes ?? null,
-          isActive: dto.isActive ?? true,
-          sortOrder: dto.sortOrder ?? 0,
-        },
-        include: {
-          model: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              imageUrl: true,
-              isActive: true,
-              sortOrder: true,
-              make: {
-                select: {
-                  id: true,
-                  name: true,
-                  slug: true,
-                  logoUrl: true,
-                  isActive: true,
-                  sortOrder: true,
-                },
+      return await this.prisma.$transaction(async (transaction) => {
+        const model = await transaction.vehicleModel.findUnique({
+          where: {
+            id: dto.modelId,
+          },
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            make: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
               },
             },
           },
-          _count: {
-            select: {
-              compatibilities: true,
+        });
+
+        if (!model) {
+          throw new NotFoundException('Vehicle model not found');
+        }
+
+        const variant = await transaction.vehicleVariant.create({
+          data: {
+            modelId: dto.modelId,
+            name: dto.name,
+            slug: dto.slug,
+            engineCode: dto.engineCode ?? null,
+            engineName: dto.engineName ?? null,
+            yearFrom: dto.yearFrom ?? null,
+            yearTo: dto.yearTo ?? null,
+            yearCalendar: dto.yearCalendar ?? VehicleYearCalendar.SHAMSI,
+            notes: dto.notes ?? null,
+            isActive: dto.isActive ?? true,
+            sortOrder: dto.sortOrder ?? 0,
+          },
+          include: {
+            model: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                imageUrl: true,
+                isActive: true,
+                sortOrder: true,
+                make: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    logoUrl: true,
+                    isActive: true,
+                    sortOrder: true,
+                  },
+                },
+              },
+            },
+            _count: {
+              select: {
+                compatibilities: true,
+              },
             },
           },
-        },
-      });
+        });
 
-      return {
-        data: variant,
-      };
+        await this.writeAdminAuditLog(transaction, {
+          actorUserId,
+          entityType: AdminAuditEntityType.VEHICLE_VARIANT,
+          entityId: variant.id,
+          entityLabel: `${variant.model.make.name} · ${variant.model.name} · ${variant.name}`,
+          action: AdminAuditAction.CREATED,
+          changes: {
+            event: 'admin_vehicle_variant_created',
+            snapshot: {
+              model: {
+                id: variant.model.id,
+                name: variant.model.name,
+                slug: variant.model.slug,
+                make: {
+                  id: variant.model.make.id,
+                  name: variant.model.make.name,
+                  slug: variant.model.make.slug,
+                },
+              },
+              name: variant.name,
+              slug: variant.slug,
+              engineCode: variant.engineCode,
+              engineName: variant.engineName,
+              yearFrom: variant.yearFrom,
+              yearTo: variant.yearTo,
+              yearCalendar: variant.yearCalendar,
+              notes: variant.notes,
+              isActive: variant.isActive,
+              sortOrder: variant.sortOrder,
+            },
+          },
+        });
+
+        return {
+          data: variant,
+        };
+      });
     } catch (error) {
       this.rethrowKnownDatabaseError(error);
     }
   }
 
-  async updateVehicleVariant(id: string, dto: UpdateVehicleVariantDto) {
+  async updateVehicleVariant(id: string, dto: UpdateVehicleVariantDto, actorUserId: string) {
     this.ensureUpdatePayload(dto);
 
-    const variant = await this.prisma.vehicleVariant.findUnique({
-      where: {
-        id,
-      },
-      select: {
-        id: true,
-        modelId: true,
-        yearFrom: true,
-        yearTo: true,
-        _count: {
-          select: {
-            compatibilities: true,
-          },
-        },
-      },
-    });
-
-    if (!variant) {
-      throw new NotFoundException('Vehicle variant not found');
-    }
-
-    const requestedModelId = dto.modelId;
-
-    const isMovingToAnotherModel =
-      requestedModelId !== undefined && requestedModelId !== variant.modelId;
-
-    if (isMovingToAnotherModel) {
-      await this.ensureVehicleModelExists(requestedModelId);
-
-      if (variant._count.compatibilities > 0) {
-        throw new BadRequestException(
-          'A vehicle variant used by product compatibilities cannot be moved to another model',
-        );
-      }
-    }
-
-    const hasYearFromUpdate = this.hasOwnProperty(dto, 'yearFrom');
-
-    const hasYearToUpdate = this.hasOwnProperty(dto, 'yearTo');
-
-    const finalYearFrom = hasYearFromUpdate ? (dto.yearFrom ?? null) : variant.yearFrom;
-
-    const finalYearTo = hasYearToUpdate ? (dto.yearTo ?? null) : variant.yearTo;
-
-    this.assertVehicleVariantYears(finalYearFrom, finalYearTo);
-
-    const data: Prisma.VehicleVariantUncheckedUpdateInput = {
-      ...(dto.name !== undefined && {
-        name: dto.name,
-      }),
-      ...(dto.slug !== undefined && {
-        slug: dto.slug,
-      }),
-      ...(dto.engineCode !== undefined && {
-        engineCode: dto.engineCode,
-      }),
-      ...(dto.engineName !== undefined && {
-        engineName: dto.engineName,
-      }),
-      ...(hasYearFromUpdate && {
-        yearFrom: finalYearFrom,
-      }),
-      ...(hasYearToUpdate && {
-        yearTo: finalYearTo,
-      }),
-      ...(dto.yearCalendar !== undefined && {
-        yearCalendar: dto.yearCalendar,
-      }),
-      ...(dto.notes !== undefined && {
-        notes: dto.notes,
-      }),
-      ...(dto.isActive !== undefined && {
-        isActive: dto.isActive,
-      }),
-      ...(dto.sortOrder !== undefined && {
-        sortOrder: dto.sortOrder,
-      }),
-      ...(requestedModelId !== undefined && {
-        modelId: requestedModelId,
-      }),
-    };
-
     try {
-      const updatedVariant = await this.prisma.vehicleVariant.update({
-        where: {
-          id,
-        },
-        data,
-        include: {
-          model: {
+      return await this.prisma.$transaction(async (transaction) => {
+        const variant = await transaction.vehicleVariant.findUnique({
+          where: {
+            id,
+          },
+          include: {
+            model: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                make: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                  },
+                },
+              },
+            },
+            _count: {
+              select: {
+                compatibilities: true,
+              },
+            },
+          },
+        });
+
+        if (!variant) {
+          throw new NotFoundException('Vehicle variant not found');
+        }
+
+        const requestedModelId = dto.modelId;
+
+        const isMovingToAnotherModel =
+          requestedModelId !== undefined && requestedModelId !== variant.modelId;
+
+        let targetModel = variant.model;
+
+        if (isMovingToAnotherModel) {
+          if (variant._count.compatibilities > 0) {
+            throw new BadRequestException(
+              'A vehicle variant used by product compatibilities cannot be moved to another model',
+            );
+          }
+
+          const requestedModel = await transaction.vehicleModel.findUnique({
+            where: {
+              id: requestedModelId,
+            },
             select: {
               id: true,
               name: true,
               slug: true,
-              imageUrl: true,
-              isActive: true,
-              sortOrder: true,
               make: {
                 select: {
                   id: true,
                   name: true,
                   slug: true,
-                  logoUrl: true,
-                  isActive: true,
-                  sortOrder: true,
                 },
               },
             },
+          });
+
+          if (!requestedModel) {
+            throw new NotFoundException('Vehicle model not found');
+          }
+
+          targetModel = requestedModel;
+        }
+
+        const hasYearFromUpdate = this.hasOwnProperty(dto, 'yearFrom');
+
+        const hasYearToUpdate = this.hasOwnProperty(dto, 'yearTo');
+
+        const finalYearFrom = hasYearFromUpdate ? (dto.yearFrom ?? null) : variant.yearFrom;
+
+        const finalYearTo = hasYearToUpdate ? (dto.yearTo ?? null) : variant.yearTo;
+
+        this.assertVehicleVariantYears(finalYearFrom, finalYearTo);
+
+        const changes: Record<string, unknown> = {};
+
+        this.addChange(changes, 'name', variant.name, dto.name);
+        this.addChange(changes, 'slug', variant.slug, dto.slug);
+        this.addChange(changes, 'engineCode', variant.engineCode, dto.engineCode);
+        this.addChange(changes, 'engineName', variant.engineName, dto.engineName);
+
+        if (hasYearFromUpdate) {
+          this.addChange(changes, 'yearFrom', variant.yearFrom, finalYearFrom);
+        }
+
+        if (hasYearToUpdate) {
+          this.addChange(changes, 'yearTo', variant.yearTo, finalYearTo);
+        }
+
+        this.addChange(changes, 'yearCalendar', variant.yearCalendar, dto.yearCalendar);
+        this.addChange(changes, 'notes', variant.notes, dto.notes);
+        this.addChange(changes, 'isActive', variant.isActive, dto.isActive);
+        this.addChange(changes, 'sortOrder', variant.sortOrder, dto.sortOrder);
+
+        if (isMovingToAnotherModel) {
+          changes.model = {
+            from: {
+              id: variant.model.id,
+              name: variant.model.name,
+              slug: variant.model.slug,
+              make: {
+                id: variant.model.make.id,
+                name: variant.model.make.name,
+                slug: variant.model.make.slug,
+              },
+            },
+            to: {
+              id: targetModel.id,
+              name: targetModel.name,
+              slug: targetModel.slug,
+              make: {
+                id: targetModel.make.id,
+                name: targetModel.make.name,
+                slug: targetModel.make.slug,
+              },
+            },
+          };
+        }
+
+        if (Object.keys(changes).length === 0) {
+          return {
+            data: variant,
+          };
+        }
+
+        const updatedVariant = await transaction.vehicleVariant.update({
+          where: {
+            id,
           },
-          _count: {
-            select: {
-              compatibilities: true,
+          data: {
+            ...(dto.name !== undefined && {
+              name: dto.name,
+            }),
+            ...(dto.slug !== undefined && {
+              slug: dto.slug,
+            }),
+            ...(dto.engineCode !== undefined && {
+              engineCode: dto.engineCode,
+            }),
+            ...(dto.engineName !== undefined && {
+              engineName: dto.engineName,
+            }),
+            ...(hasYearFromUpdate && {
+              yearFrom: finalYearFrom,
+            }),
+            ...(hasYearToUpdate && {
+              yearTo: finalYearTo,
+            }),
+            ...(dto.yearCalendar !== undefined && {
+              yearCalendar: dto.yearCalendar,
+            }),
+            ...(dto.notes !== undefined && {
+              notes: dto.notes,
+            }),
+            ...(dto.isActive !== undefined && {
+              isActive: dto.isActive,
+            }),
+            ...(dto.sortOrder !== undefined && {
+              sortOrder: dto.sortOrder,
+            }),
+            ...(requestedModelId !== undefined && {
+              modelId: requestedModelId,
+            }),
+          },
+          include: {
+            model: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                imageUrl: true,
+                isActive: true,
+                sortOrder: true,
+                make: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    logoUrl: true,
+                    isActive: true,
+                    sortOrder: true,
+                  },
+                },
+              },
+            },
+            _count: {
+              select: {
+                compatibilities: true,
+              },
             },
           },
-        },
-      });
+        });
 
-      return {
-        data: updatedVariant,
-      };
+        await this.writeAdminAuditLog(transaction, {
+          actorUserId,
+          entityType: AdminAuditEntityType.VEHICLE_VARIANT,
+          entityId: updatedVariant.id,
+          entityLabel: `${updatedVariant.model.make.name} · ${updatedVariant.model.name} · ${updatedVariant.name}`,
+          action: AdminAuditAction.UPDATED,
+          changes: {
+            event: 'admin_vehicle_variant_updated',
+            fields: changes,
+          },
+        });
+
+        return {
+          data: updatedVariant,
+        };
+      });
     } catch (error) {
       this.rethrowKnownDatabaseError(error);
     }
@@ -1149,27 +1579,6 @@ export class CatalogAdminService {
             sortOrder: 'asc',
           },
         },
-        auditLogs: {
-          take: 50,
-          orderBy: {
-            createdAt: 'desc',
-          },
-          select: {
-            id: true,
-            action: true,
-            changes: true,
-            createdAt: true,
-            actorUser: {
-              select: {
-                id: true,
-                mobile: true,
-                firstName: true,
-                lastName: true,
-                role: true,
-              },
-            },
-          },
-        },
         compatibilities: {
           orderBy: {
             createdAt: 'asc',
@@ -1220,8 +1629,37 @@ export class CatalogAdminService {
       throw new NotFoundException('Product not found');
     }
 
+    const auditLogs = await this.prisma.adminAuditLog.findMany({
+      where: {
+        entityType: AdminAuditEntityType.PRODUCT,
+        entityId: id,
+      },
+      take: 50,
+      orderBy: {
+        createdAt: 'desc',
+      },
+      select: {
+        id: true,
+        action: true,
+        changes: true,
+        createdAt: true,
+        actorUser: {
+          select: {
+            id: true,
+            mobile: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+          },
+        },
+      },
+    });
+
     return {
-      data: this.withComputedPricing(product),
+      data: {
+        ...this.withComputedPricing(product),
+        auditLogs,
+      },
     };
   }
 
@@ -1251,86 +1689,105 @@ export class CatalogAdminService {
 
     this.assertProductState(candidate);
 
+    const auditChanges = {
+      event: 'admin_product_created',
+      snapshot: {
+        sku: dto.sku,
+        slug: dto.slug,
+        name: dto.name,
+        brandId: dto.brandId,
+        categoryId: dto.categoryId,
+
+        priceToman: dto.priceToman ?? null,
+        salePriceToman: dto.salePriceToman ?? null,
+        saleStartsAt: dto.saleStartsAt ?? null,
+        saleEndsAt: dto.saleEndsAt ?? null,
+
+        stockStatus: dto.stockStatus ?? StockStatus.CHECK_AVAILABILITY,
+        status: dto.status ?? ProductStatus.DRAFT,
+        isPublished: dto.isPublished ?? false,
+        isTorobEnabled: dto.isTorobEnabled ?? false,
+
+        codes: dto.codes ?? [],
+        images: dto.images ?? [],
+      },
+    };
+
     try {
-      const product = await this.prisma.product.create({
-        data: {
-          sku: dto.sku,
-          slug: dto.slug,
-          name: dto.name,
-          shortDescription: dto.shortDescription,
-          description: dto.description,
-          ...(dto.specifications !== undefined && {
-            specifications: this.toJson(dto.specifications),
-          }),
-          priceToman: dto.priceToman,
-          salePriceToman: dto.salePriceToman ?? null,
-          saleStartsAt,
-          saleEndsAt,
-          stockStatus: dto.stockStatus ?? StockStatus.CHECK_AVAILABILITY,
-          status: dto.status ?? ProductStatus.DRAFT,
-          isPublished: dto.isPublished ?? false,
-          isTorobEnabled: dto.isTorobEnabled ?? false,
-          brand: {
-            connect: {
-              id: dto.brandId,
-            },
-          },
-          category: {
-            connect: {
-              id: dto.categoryId,
-            },
-          },
-          ...(dto.codes?.length && {
-            codes: {
-              create: dto.codes.map((code) => ({
-                type: code.type,
-                value: code.value,
-              })),
-            },
-          }),
-          ...(dto.images?.length && {
-            images: {
-              create: dto.images.map((image) => ({
-                url: image.url,
-                alt: image.alt,
-                sortOrder: image.sortOrder,
-              })),
-            },
-          }),
-          auditLogs: {
-            create: {
-              actorUser: {
-                connect: {
-                  id: actorUserId,
-                },
+      const product = await this.prisma.$transaction(async (transaction) => {
+        const createdProduct = await transaction.product.create({
+          data: {
+            sku: dto.sku,
+            slug: dto.slug,
+            name: dto.name,
+            shortDescription: dto.shortDescription,
+            description: dto.description,
+            ...(dto.specifications !== undefined && {
+              specifications: this.toJson(dto.specifications),
+            }),
+            priceToman: dto.priceToman,
+            salePriceToman: dto.salePriceToman ?? null,
+            saleStartsAt,
+            saleEndsAt,
+            stockStatus: dto.stockStatus ?? StockStatus.CHECK_AVAILABILITY,
+            status: dto.status ?? ProductStatus.DRAFT,
+            isPublished: dto.isPublished ?? false,
+            isTorobEnabled: dto.isTorobEnabled ?? false,
+            brand: {
+              connect: {
+                id: dto.brandId,
               },
-              action: ProductAuditAction.CREATED,
-              changes: this.toJson({
-                event: 'admin_product_created',
-                snapshot: {
-                  sku: dto.sku,
-                  slug: dto.slug,
-                  name: dto.name,
-                  brandId: dto.brandId,
-                  categoryId: dto.categoryId,
-                  priceToman: dto.priceToman ?? null,
-                  salePriceToman: dto.salePriceToman ?? null,
-                  saleStartsAt: saleStartsAt?.toISOString() ?? null,
-                  saleEndsAt: saleEndsAt?.toISOString() ?? null,
-                  stockStatus: dto.stockStatus ?? StockStatus.CHECK_AVAILABILITY,
-                  status: dto.status ?? ProductStatus.DRAFT,
-                  isPublished: dto.isPublished ?? false,
-                  isTorobEnabled: dto.isTorobEnabled ?? false,
-                  codes: dto.codes ?? [],
-                  images: dto.images ?? [],
+            },
+            category: {
+              connect: {
+                id: dto.categoryId,
+              },
+            },
+            ...(dto.codes?.length && {
+              codes: {
+                create: dto.codes.map((code) => ({
+                  type: code.type,
+                  value: code.value,
+                })),
+              },
+            }),
+            ...(dto.images?.length && {
+              images: {
+                create: dto.images.map((image) => ({
+                  url: image.url,
+                  alt: image.alt,
+                  sortOrder: image.sortOrder,
+                })),
+              },
+            }),
+            auditLogs: {
+              create: {
+                actorUser: {
+                  connect: {
+                    id: actorUserId,
+                  },
                 },
-              }),
+                action: ProductAuditAction.CREATED,
+                changes: this.toJson(auditChanges),
+              },
             },
           },
-        },
-        select: {
-          id: true,
-        },
+          select: {
+            id: true,
+            name: true,
+          },
+        });
+
+        await this.writeAdminAuditLog(transaction, {
+          actorUserId,
+          entityType: AdminAuditEntityType.PRODUCT,
+          entityId: createdProduct.id,
+          entityLabel: createdProduct.name,
+          action: AdminAuditAction.CREATED,
+          changes: auditChanges,
+        });
+
+        return createdProduct;
       });
 
       return this.findProductById(product.id);
@@ -1397,6 +1854,11 @@ export class CatalogAdminService {
     this.assertProductState(candidate);
 
     const changes = this.buildProductUpdateChanges(product, dto, hasCodesUpdate, hasImagesUpdate);
+
+    const auditChanges = {
+      event: 'admin_product_updated',
+      fields: changes,
+    };
 
     if (Object.keys(changes).length === 0) {
       return this.findProductById(id);
@@ -1486,20 +1948,32 @@ export class CatalogAdminService {
             },
           },
           action: ProductAuditAction.UPDATED,
-          changes: this.toJson({
-            event: 'admin_product_updated',
-            fields: changes,
-          }),
+          changes: this.toJson(auditChanges),
         },
       },
     };
 
     try {
-      await this.prisma.product.update({
-        where: {
-          id,
-        },
-        data,
+      await this.prisma.$transaction(async (transaction) => {
+        const updatedProduct = await transaction.product.update({
+          where: {
+            id,
+          },
+          data,
+          select: {
+            id: true,
+            name: true,
+          },
+        });
+
+        await this.writeAdminAuditLog(transaction, {
+          actorUserId,
+          entityType: AdminAuditEntityType.PRODUCT,
+          entityId: updatedProduct.id,
+          entityLabel: updatedProduct.name,
+          action: AdminAuditAction.UPDATED,
+          changes: auditChanges,
+        });
       });
 
       return this.findProductById(id);
@@ -1515,45 +1989,67 @@ export class CatalogAdminService {
       return this.findProductById(id);
     }
 
-    await this.prisma.product.update({
-      where: {
-        id,
-      },
-      data: {
-        status: ProductStatus.ARCHIVED,
-        isPublished: false,
-        isTorobEnabled: false,
-        auditLogs: {
-          create: {
-            actorUser: {
-              connect: {
-                id: actorUserId,
-              },
-            },
-            action: ProductAuditAction.ARCHIVED,
-            changes: this.toJson({
-              event: 'admin_product_archived',
-              fields: {
-                status: {
-                  before: product.status,
-                  after: ProductStatus.ARCHIVED,
-                },
-                isPublished: {
-                  before: product.isPublished,
-                  after: false,
-                },
-                isTorobEnabled: {
-                  before: product.isTorobEnabled,
-                  after: false,
-                },
-              },
-            }),
-          },
+    const auditChanges = {
+      event: 'admin_product_archived',
+      fields: {
+        status: {
+          before: product.status,
+          after: ProductStatus.ARCHIVED,
+        },
+        isPublished: {
+          before: product.isPublished,
+          after: false,
+        },
+        isTorobEnabled: {
+          before: product.isTorobEnabled,
+          after: false,
         },
       },
-    });
+    };
 
-    return this.findProductById(id);
+    try {
+      await this.prisma.$transaction(async (transaction) => {
+        const archivedProduct = await transaction.product.update({
+          where: {
+            id,
+          },
+          data: {
+            status: ProductStatus.ARCHIVED,
+            isPublished: false,
+            isTorobEnabled: false,
+
+            auditLogs: {
+              create: {
+                actorUser: {
+                  connect: {
+                    id: actorUserId,
+                  },
+                },
+                action: ProductAuditAction.ARCHIVED,
+                changes: this.toJson(auditChanges),
+              },
+            },
+          },
+          select: {
+            id: true,
+            name: true,
+          },
+        });
+
+        await this.writeAdminAuditLog(transaction, {
+          actorUserId,
+          entityType: AdminAuditEntityType.PRODUCT,
+          entityId: archivedProduct.id,
+          entityLabel: archivedProduct.name,
+          action: AdminAuditAction.ARCHIVED,
+          changes: auditChanges,
+        });
+      });
+
+      return this.findProductById(id);
+    } catch (error) {
+      this.rethrowKnownDatabaseError(error);
+    }
   }
 
   async findProductCompatibilities(productId: string) {
@@ -2083,6 +2579,22 @@ export class CatalogAdminService {
 
   private valuesEqual(left: unknown, right: unknown): boolean {
     return JSON.stringify(left) === JSON.stringify(right);
+  }
+
+  private async writeAdminAuditLog(
+    transaction: Prisma.TransactionClient,
+    input: WriteAdminAuditLogInput,
+  ): Promise<void> {
+    await transaction.adminAuditLog.create({
+      data: {
+        actorUserId: input.actorUserId,
+        entityType: input.entityType,
+        entityId: input.entityId,
+        entityLabel: input.entityLabel,
+        action: input.action,
+        changes: this.toJson(input.changes),
+      },
+    });
   }
 
   private toJson(value: unknown): Prisma.InputJsonValue {
