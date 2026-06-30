@@ -244,6 +244,7 @@ model VehicleVariant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([modelId, name])
   @@index([modelId, isActive])
   @@index([engineCode])
   @@index([yearFrom, yearTo])

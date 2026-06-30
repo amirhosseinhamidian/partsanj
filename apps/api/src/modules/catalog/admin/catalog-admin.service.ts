@@ -21,6 +21,12 @@ import { UpdateBrandDto } from './dto/update-brand.dto.js';
 import { UpdateCategoryDto } from './dto/update-category.dto.js';
 import { UpdateProductDto } from './dto/update-product.dto.js';
 import { ReplaceProductCompatibilitiesDto } from './dto/replace-product-compatibilities.dto.js';
+import { CreateVehicleMakeDto } from './dto/create-vehicle-make.dto.js';
+import { UpdateVehicleMakeDto } from './dto/update-vehicle-make.dto.js';
+import { CreateVehicleModelDto } from './dto/create-vehicle-model.dto.js';
+import { UpdateVehicleModelDto } from './dto/update-vehicle-model.dto.js';
+import { CreateVehicleVariantDto } from './dto/create-vehicle-variant.dto.js';
+import { UpdateVehicleVariantDto } from './dto/update-vehicle-variant.dto.js';
 
 type ProductCodeRecord = {
   type: ProductCodeType;
@@ -439,6 +445,507 @@ export class CatalogAdminService {
     return {
       data: variants,
     };
+  }
+
+  async findVehicleMakes() {
+    const makes = await this.prisma.vehicleMake.findMany({
+      orderBy: [
+        {
+          sortOrder: 'asc',
+        },
+        {
+          name: 'asc',
+        },
+      ],
+      include: {
+        _count: {
+          select: {
+            models: true,
+          },
+        },
+      },
+    });
+
+    return {
+      data: makes,
+    };
+  }
+
+  async createVehicleMake(dto: CreateVehicleMakeDto) {
+    try {
+      const make = await this.prisma.vehicleMake.create({
+        data: {
+          name: dto.name,
+          slug: dto.slug,
+          isActive: dto.isActive ?? true,
+          sortOrder: dto.sortOrder ?? 0,
+        },
+        include: {
+          _count: {
+            select: {
+              models: true,
+            },
+          },
+        },
+      });
+
+      return {
+        data: make,
+      };
+    } catch (error) {
+      this.rethrowKnownDatabaseError(error);
+    }
+  }
+
+  async updateVehicleMake(id: string, dto: UpdateVehicleMakeDto) {
+    this.ensureUpdatePayload(dto);
+
+    const make = await this.prisma.vehicleMake.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!make) {
+      throw new NotFoundException('Vehicle make not found');
+    }
+
+    try {
+      const updatedMake = await this.prisma.vehicleMake.update({
+        where: {
+          id,
+        },
+        data: {
+          ...(dto.name !== undefined && {
+            name: dto.name,
+          }),
+          ...(dto.slug !== undefined && {
+            slug: dto.slug,
+          }),
+          ...(dto.isActive !== undefined && {
+            isActive: dto.isActive,
+          }),
+          ...(dto.sortOrder !== undefined && {
+            sortOrder: dto.sortOrder,
+          }),
+        },
+        include: {
+          _count: {
+            select: {
+              models: true,
+            },
+          },
+        },
+      });
+
+      return {
+        data: updatedMake,
+      };
+    } catch (error) {
+      this.rethrowKnownDatabaseError(error);
+    }
+  }
+
+  async findVehicleModels() {
+    const models = await this.prisma.vehicleModel.findMany({
+      orderBy: [
+        {
+          make: {
+            sortOrder: 'asc',
+          },
+        },
+        {
+          sortOrder: 'asc',
+        },
+        {
+          name: 'asc',
+        },
+      ],
+      include: {
+        make: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            isActive: true,
+            sortOrder: true,
+          },
+        },
+        _count: {
+          select: {
+            variants: true,
+          },
+        },
+      },
+    });
+
+    return {
+      data: models,
+    };
+  }
+
+  async createVehicleModel(dto: CreateVehicleModelDto) {
+    await this.ensureVehicleMakeExists(dto.makeId);
+
+    try {
+      const model = await this.prisma.vehicleModel.create({
+        data: {
+          makeId: dto.makeId,
+          name: dto.name,
+          slug: dto.slug,
+          isActive: dto.isActive ?? true,
+          sortOrder: dto.sortOrder ?? 0,
+        },
+        include: {
+          make: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              isActive: true,
+              sortOrder: true,
+            },
+          },
+          _count: {
+            select: {
+              variants: true,
+            },
+          },
+        },
+      });
+
+      return {
+        data: model,
+      };
+    } catch (error) {
+      this.rethrowKnownDatabaseError(error);
+    }
+  }
+
+  async updateVehicleModel(id: string, dto: UpdateVehicleModelDto) {
+    this.ensureUpdatePayload(dto);
+
+    const model = await this.prisma.vehicleModel.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        id: true,
+        makeId: true,
+        _count: {
+          select: {
+            variants: true,
+          },
+        },
+      },
+    });
+
+    if (!model) {
+      throw new NotFoundException('Vehicle model not found');
+    }
+
+    const requestedMakeId = dto.makeId;
+
+    const hasMakeIdUpdate = this.hasOwnProperty(dto, 'makeId');
+
+    const isMovingToAnotherMake = requestedMakeId !== undefined && requestedMakeId !== model.makeId;
+
+    if (isMovingToAnotherMake) {
+      await this.ensureVehicleMakeExists(requestedMakeId);
+
+      if (model._count.variants > 0) {
+        throw new BadRequestException(
+          'A vehicle model with variants cannot be moved to another make',
+        );
+      }
+    }
+
+    const data: Prisma.VehicleModelUncheckedUpdateInput = {
+      ...(dto.name !== undefined && {
+        name: dto.name,
+      }),
+      ...(dto.slug !== undefined && {
+        slug: dto.slug,
+      }),
+      ...(dto.isActive !== undefined && {
+        isActive: dto.isActive,
+      }),
+      ...(dto.sortOrder !== undefined && {
+        sortOrder: dto.sortOrder,
+      }),
+      ...(requestedMakeId !== undefined && {
+        makeId: requestedMakeId,
+      }),
+    };
+
+    try {
+      const updatedModel = await this.prisma.vehicleModel.update({
+        where: {
+          id,
+        },
+        data,
+        include: {
+          make: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              isActive: true,
+              sortOrder: true,
+            },
+          },
+          _count: {
+            select: {
+              variants: true,
+            },
+          },
+        },
+      });
+
+      return {
+        data: updatedModel,
+      };
+    } catch (error) {
+      this.rethrowKnownDatabaseError(error);
+    }
+  }
+
+  async findVehicleVariants() {
+    const variants = await this.prisma.vehicleVariant.findMany({
+      orderBy: [
+        {
+          model: {
+            make: {
+              sortOrder: 'asc',
+            },
+          },
+        },
+        {
+          model: {
+            sortOrder: 'asc',
+          },
+        },
+        {
+          sortOrder: 'asc',
+        },
+        {
+          name: 'asc',
+        },
+      ],
+      include: {
+        model: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            isActive: true,
+            sortOrder: true,
+            make: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                isActive: true,
+                sortOrder: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            compatibilities: true,
+          },
+        },
+      },
+    });
+
+    return {
+      data: variants,
+    };
+  }
+
+  async createVehicleVariant(dto: CreateVehicleVariantDto) {
+    await this.ensureVehicleModelExists(dto.modelId);
+
+    this.assertVehicleVariantYears(dto.yearFrom ?? null, dto.yearTo ?? null);
+
+    try {
+      const variant = await this.prisma.vehicleVariant.create({
+        data: {
+          modelId: dto.modelId,
+          name: dto.name,
+          slug: dto.slug,
+          engineCode: dto.engineCode ?? null,
+          engineName: dto.engineName ?? null,
+          yearFrom: dto.yearFrom ?? null,
+          yearTo: dto.yearTo ?? null,
+          yearCalendar: dto.yearCalendar,
+          notes: dto.notes ?? null,
+          isActive: dto.isActive ?? true,
+          sortOrder: dto.sortOrder ?? 0,
+        },
+        include: {
+          model: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              isActive: true,
+              sortOrder: true,
+              make: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  isActive: true,
+                  sortOrder: true,
+                },
+              },
+            },
+          },
+          _count: {
+            select: {
+              compatibilities: true,
+            },
+          },
+        },
+      });
+
+      return {
+        data: variant,
+      };
+    } catch (error) {
+      this.rethrowKnownDatabaseError(error);
+    }
+  }
+
+  async updateVehicleVariant(id: string, dto: UpdateVehicleVariantDto) {
+    this.ensureUpdatePayload(dto);
+
+    const variant = await this.prisma.vehicleVariant.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        id: true,
+        modelId: true,
+        yearFrom: true,
+        yearTo: true,
+        _count: {
+          select: {
+            compatibilities: true,
+          },
+        },
+      },
+    });
+
+    if (!variant) {
+      throw new NotFoundException('Vehicle variant not found');
+    }
+
+    const requestedModelId = dto.modelId;
+
+    const isMovingToAnotherModel =
+      requestedModelId !== undefined && requestedModelId !== variant.modelId;
+
+    if (isMovingToAnotherModel) {
+      await this.ensureVehicleModelExists(requestedModelId);
+
+      if (variant._count.compatibilities > 0) {
+        throw new BadRequestException(
+          'A vehicle variant used by product compatibilities cannot be moved to another model',
+        );
+      }
+    }
+
+    const hasYearFromUpdate = this.hasOwnProperty(dto, 'yearFrom');
+
+    const hasYearToUpdate = this.hasOwnProperty(dto, 'yearTo');
+
+    const finalYearFrom = hasYearFromUpdate ? (dto.yearFrom ?? null) : variant.yearFrom;
+
+    const finalYearTo = hasYearToUpdate ? (dto.yearTo ?? null) : variant.yearTo;
+
+    this.assertVehicleVariantYears(finalYearFrom, finalYearTo);
+
+    const data: Prisma.VehicleVariantUncheckedUpdateInput = {
+      ...(dto.name !== undefined && {
+        name: dto.name,
+      }),
+      ...(dto.slug !== undefined && {
+        slug: dto.slug,
+      }),
+      ...(dto.engineCode !== undefined && {
+        engineCode: dto.engineCode,
+      }),
+      ...(dto.engineName !== undefined && {
+        engineName: dto.engineName,
+      }),
+      ...(hasYearFromUpdate && {
+        yearFrom: finalYearFrom,
+      }),
+      ...(hasYearToUpdate && {
+        yearTo: finalYearTo,
+      }),
+      ...(dto.yearCalendar !== undefined && {
+        yearCalendar: dto.yearCalendar,
+      }),
+      ...(dto.notes !== undefined && {
+        notes: dto.notes,
+      }),
+      ...(dto.isActive !== undefined && {
+        isActive: dto.isActive,
+      }),
+      ...(dto.sortOrder !== undefined && {
+        sortOrder: dto.sortOrder,
+      }),
+      ...(requestedModelId !== undefined && {
+        modelId: requestedModelId,
+      }),
+    };
+
+    try {
+      const updatedVariant = await this.prisma.vehicleVariant.update({
+        where: {
+          id,
+        },
+        data,
+        include: {
+          model: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              isActive: true,
+              sortOrder: true,
+              make: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  isActive: true,
+                  sortOrder: true,
+                },
+              },
+            },
+          },
+          _count: {
+            select: {
+              compatibilities: true,
+            },
+          },
+        },
+      });
+
+      return {
+        data: updatedVariant,
+      };
+    } catch (error) {
+      this.rethrowKnownDatabaseError(error);
+    }
   }
 
   async findProducts(query: FindAdminProductsQueryDto) {
@@ -1553,6 +2060,42 @@ export class CatalogAdminService {
     }
 
     return JSON.parse(serialized) as Prisma.InputJsonValue;
+  }
+
+  private async ensureVehicleMakeExists(id: string): Promise<void> {
+    const make = await this.prisma.vehicleMake.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!make) {
+      throw new NotFoundException('Vehicle make not found');
+    }
+  }
+
+  private async ensureVehicleModelExists(id: string): Promise<void> {
+    const model = await this.prisma.vehicleModel.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!model) {
+      throw new NotFoundException('Vehicle model not found');
+    }
+  }
+
+  private assertVehicleVariantYears(yearFrom: number | null, yearTo: number | null): void {
+    if (yearFrom !== null && yearTo !== null && yearFrom > yearTo) {
+      throw new BadRequestException('Vehicle variant yearFrom cannot be greater than yearTo');
+    }
   }
 
   private async ensureCategoryExists(id: string): Promise<void> {
