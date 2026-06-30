@@ -399,8 +399,8 @@ export const Combobox = forwardRef<HTMLButtonElement, ComboboxProps>(function Co
                 'group flex w-full items-center gap-3 rounded-control border bg-surface text-right text-foreground outline-none',
                 'transition-[background-color,border-color,box-shadow,color]',
                 'disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-foreground-muted',
-                'focus:border-brand focus:shadow-panel focus:ring-4 focus:ring-focus-ring',
-                'data-[state=open]:border-brand data-[state=open]:shadow-panel data-[state=open]:ring-4 data-[state=open]:ring-focus-ring',
+                'focus:border-brand focus:shadow-panel focus:ring-2 focus:ring-focus-ring',
+                'data-[state=open]:border-brand data-[state=open]:shadow-panel data-[state=open]:ring-2 data-[state=open]:ring-focus-ring',
                 error
                   ? 'border-danger bg-danger-soft focus:border-danger focus:ring-danger/20 data-[state=open]:border-danger data-[state=open]:ring-danger/20'
                   : 'border-border hover:border-border-strong',
@@ -443,7 +443,7 @@ export const Combobox = forwardRef<HTMLButtonElement, ComboboxProps>(function Co
               type='button'
               aria-label='پاک کردن انتخاب'
               onClick={handleClear}
-              className='absolute end-3 top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded-full text-foreground-muted transition-colors hover:bg-surface-muted hover:text-foreground focus-visible:ring-4 focus-visible:ring-focus-ring focus-visible:outline-none'
+              className='absolute inset-e-3 top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded-full text-foreground-muted transition-colors hover:bg-surface-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none'
             >
               <X className='size-3.5' />
             </button>
@@ -462,7 +462,7 @@ export const Combobox = forwardRef<HTMLButtonElement, ComboboxProps>(function Co
               event.preventDefault();
             }}
             className={cn(
-              'z-[90] max-h-80 min-w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-card border border-border bg-surface-elevated shadow-floating outline-none',
+              'z-90 max-h-80 min-w-(--radix-popover-trigger-width) overflow-hidden rounded-card border border-border bg-surface-elevated shadow-floating outline-none',
               contentClassName,
             )}
           >
@@ -470,7 +470,7 @@ export const Combobox = forwardRef<HTMLButtonElement, ComboboxProps>(function Co
               <div className='relative border-b border-border p-2.5'>
                 <Search
                   aria-hidden='true'
-                  className='pointer-events-none absolute start-5 top-1/2 size-4 -translate-y-1/2 text-foreground-muted'
+                  className='pointer-events-none absolute inset-s-5 top-1/2 size-4 -translate-y-1/2 text-foreground-muted'
                 />
 
                 <input
@@ -480,7 +480,7 @@ export const Combobox = forwardRef<HTMLButtonElement, ComboboxProps>(function Co
                   onKeyDown={handleSearchKeyDown}
                   placeholder={searchPlaceholder}
                   aria-label={searchPlaceholder}
-                  className='h-10 w-full rounded-[10px] border border-transparent bg-surface-muted ps-9 pe-3 text-sm text-foreground transition-[background-color,border-color,box-shadow] outline-none placeholder:text-foreground-muted focus:border-brand focus:bg-surface focus:ring-4 focus:ring-focus-ring'
+                  className='h-10 w-full rounded-[10px] border border-transparent bg-surface-muted ps-9 pe-3 text-sm text-foreground transition-[background-color,border-color,box-shadow] outline-none placeholder:text-foreground-muted focus:border-brand focus:bg-surface focus:ring-2 focus:ring-focus-ring'
                 />
               </div>
             ) : null}
@@ -516,7 +516,7 @@ export const Combobox = forwardRef<HTMLButtonElement, ComboboxProps>(function Co
                       className={cn(
                         'relative flex w-full cursor-pointer items-center gap-3 rounded-[10px] px-3 py-2.5 pe-10 text-right text-sm text-foreground outline-none select-none',
                         'transition-[background-color,border-color,box-shadow,color]',
-                        'focus-visible:ring-4 focus-visible:ring-focus-ring',
+                        'focus-visible:ring-2 focus-visible:ring-focus-ring',
                         'disabled:pointer-events-none disabled:opacity-45',
                         isActive && 'bg-surface-muted',
                         isSelected && 'bg-brand-soft text-brand',
@@ -559,7 +559,7 @@ export const Combobox = forwardRef<HTMLButtonElement, ComboboxProps>(function Co
                       )}
 
                       {isSelected ? (
-                        <span className='absolute end-3 grid size-5 place-items-center text-brand'>
+                        <span className='absolute inset-e-3 grid size-5 place-items-center text-brand'>
                           <Check className='size-4' />
                         </span>
                       ) : null}

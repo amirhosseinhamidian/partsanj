@@ -175,7 +175,7 @@ export const RadioGroup = forwardRef<
               className={cn(
                 'group inline-flex min-w-0 items-center text-right outline-none',
                 'transition-[background-color,border-color,box-shadow,color]',
-                'focus-visible:border-brand focus-visible:shadow-panel focus-visible:ring-4 focus-visible:ring-focus-ring',
+                'focus-visible:border-brand focus-visible:shadow-panel focus-visible:ring-2 focus-visible:ring-focus-ring',
                 'disabled:cursor-not-allowed disabled:opacity-50',
                 isVertical ? 'w-full' : 'min-w-40 flex-1',
                 radioVariantClasses[variant],

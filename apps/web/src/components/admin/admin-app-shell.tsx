@@ -69,6 +69,10 @@ const navigation: AdminNavigationGroup[] = [
         icon: Boxes,
         children: [
           {
+            label: 'محصولات',
+            href: '/admin/catalog/products',
+          },
+          {
             label: 'دسته‌بندی‌ها',
             href: '/admin/catalog/categories',
           },

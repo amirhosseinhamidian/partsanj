@@ -329,8 +329,8 @@ export function DataTable<TData>({
                         type='button'
                         onClick={() => updateSort(column)}
                         className={cn(
-                          'inline-flex items-center gap-1.5 rounded-[8px] text-xs font-bold transition-colors',
-                          'hover:text-foreground focus:ring-4 focus:ring-focus-ring focus:outline-none',
+                          'inline-flex items-center gap-1.5 rounded-lg text-xs font-bold transition-colors',
+                          'focus:ring-2focus:ring-focus-ring hover:text-foreground focus:outline-none',
                           isSorted ? 'text-brand' : 'text-foreground-muted',
                           column.align === 'center' && 'justify-center',
                         )}

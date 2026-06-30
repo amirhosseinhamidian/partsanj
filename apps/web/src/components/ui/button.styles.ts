@@ -2,7 +2,7 @@ export const buttonBaseClasses = [
   'inline-flex select-none items-center justify-center gap-2 whitespace-nowrap',
   'rounded-control font-semibold',
   'transition duration-200 ease-out cursor-pointer',
-  'focus-visible:outline-none focus-visible:ring-4',
+  'focus-visible:outline-none focus-visible:ring-2',
   'focus-visible:ring-focus-ring focus-visible:ring-offset-2',
   'focus-visible:ring-offset-background',
   'disabled:pointer-events-none disabled:opacity-50',

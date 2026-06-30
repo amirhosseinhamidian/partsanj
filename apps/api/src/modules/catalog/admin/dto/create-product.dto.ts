@@ -15,6 +15,7 @@ import {
   MaxLength,
   Min,
   ValidateNested,
+  IsDateString,
 } from 'class-validator';
 import { ProductStatus, StockStatus } from '../../../../generated/prisma/client.js';
 import { normalizeProductCode, normalizeSlug, trimText } from './catalog-admin.dto.utils.js';
@@ -98,6 +99,32 @@ export class CreateProductDto {
   @IsInt()
   @Min(1)
   priceToman?: number;
+
+  @ApiPropertyOptional({
+    example: 1090000,
+    description: 'Optional discounted price in toman',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  salePriceToman?: number;
+
+  @ApiPropertyOptional({
+    format: 'date-time',
+    example: '2026-07-01T00:00:00.000Z',
+  })
+  @IsOptional()
+  @IsDateString()
+  saleStartsAt?: string;
+
+  @ApiPropertyOptional({
+    format: 'date-time',
+    example: '2026-07-10T23:59:59.999Z',
+  })
+  @IsOptional()
+  @IsDateString()
+  saleEndsAt?: string;
 
   @ApiPropertyOptional({
     enum: StockStatus,

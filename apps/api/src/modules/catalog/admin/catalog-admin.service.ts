@@ -41,13 +41,20 @@ type ProductMutationRecord = {
   shortDescription: string | null;
   description: string | null;
   specifications: unknown;
+
   priceToman: number | null;
+  salePriceToman: number | null;
+  saleStartsAt: Date | null;
+  saleEndsAt: Date | null;
+
   stockStatus: StockStatus;
   status: ProductStatus;
   isPublished: boolean;
   isTorobEnabled: boolean;
+
   brandId: string;
   categoryId: string;
+
   codes: ProductCodeRecord[];
   images: ProductImageRecord[];
 };
@@ -56,10 +63,16 @@ type ProductStateCandidate = {
   status: ProductStatus;
   isPublished: boolean;
   isTorobEnabled: boolean;
-  priceToman: number | null | undefined;
+
+  priceToman: number | null;
+  salePriceToman: number | null;
+  saleStartsAt: Date | null;
+  saleEndsAt: Date | null;
+
   stockStatus: StockStatus;
   brandIsActive: boolean;
   categoryIsActive: boolean;
+
   codes: ProductCodeRecord[];
   images: Array<{
     url: string;
@@ -382,6 +395,9 @@ export class CatalogAdminService {
           slug: true,
           name: true,
           priceToman: true,
+          salePriceToman: true,
+          saleStartsAt: true,
+          saleEndsAt: true,
           stockStatus: true,
           status: true,
           isPublished: true,
@@ -435,7 +451,7 @@ export class CatalogAdminService {
     ]);
 
     return {
-      data: products,
+      data: products.map((product) => this.withComputedPricing(product)),
       meta: {
         page: query.page,
         limit: query.limit,
@@ -552,7 +568,7 @@ export class CatalogAdminService {
     }
 
     return {
-      data: product,
+      data: this.withComputedPricing(product),
     };
   }
 
@@ -560,12 +576,19 @@ export class CatalogAdminService {
     this.ensureProductCollections(dto.codes, dto.images);
 
     const { brand, category } = await this.getBrandAndCategory(dto.brandId, dto.categoryId);
+    const saleStartsAt = this.toNullableDate(dto.saleStartsAt);
+    const saleEndsAt = this.toNullableDate(dto.saleEndsAt);
 
     const candidate: ProductStateCandidate = {
       status: dto.status ?? ProductStatus.DRAFT,
       isPublished: dto.isPublished ?? false,
       isTorobEnabled: dto.isTorobEnabled ?? false,
-      priceToman: dto.priceToman,
+
+      priceToman: dto.priceToman ?? null,
+      salePriceToman: dto.salePriceToman ?? null,
+      saleStartsAt,
+      saleEndsAt,
+
       stockStatus: dto.stockStatus ?? StockStatus.CHECK_AVAILABILITY,
       brandIsActive: brand.isActive,
       categoryIsActive: category.isActive,
@@ -587,6 +610,9 @@ export class CatalogAdminService {
             specifications: this.toJson(dto.specifications),
           }),
           priceToman: dto.priceToman,
+          salePriceToman: dto.salePriceToman ?? null,
+          saleStartsAt,
+          saleEndsAt,
           stockStatus: dto.stockStatus ?? StockStatus.CHECK_AVAILABILITY,
           status: dto.status ?? ProductStatus.DRAFT,
           isPublished: dto.isPublished ?? false,
@@ -635,6 +661,9 @@ export class CatalogAdminService {
                   brandId: dto.brandId,
                   categoryId: dto.categoryId,
                   priceToman: dto.priceToman ?? null,
+                  salePriceToman: dto.salePriceToman ?? null,
+                  saleStartsAt: saleStartsAt?.toISOString() ?? null,
+                  saleEndsAt: saleEndsAt?.toISOString() ?? null,
                   stockStatus: dto.stockStatus ?? StockStatus.CHECK_AVAILABILITY,
                   status: dto.status ?? ProductStatus.DRAFT,
                   isPublished: dto.isPublished ?? false,
@@ -666,6 +695,12 @@ export class CatalogAdminService {
     const hasCodesUpdate = this.hasOwnProperty(dto, 'codes');
     const hasImagesUpdate = this.hasOwnProperty(dto, 'images');
 
+    const hasSalePriceTomanUpdate = this.hasOwnProperty(dto, 'salePriceToman');
+
+    const hasSaleStartsAtUpdate = this.hasOwnProperty(dto, 'saleStartsAt');
+
+    const hasSaleEndsAtUpdate = this.hasOwnProperty(dto, 'saleEndsAt');
+
     const finalBrandId = dto.brandId ?? product.brandId;
     const finalCategoryId = dto.categoryId ?? product.categoryId;
 
@@ -675,11 +710,30 @@ export class CatalogAdminService {
 
     const finalImages = hasImagesUpdate ? (dto.images ?? []) : product.images;
 
+    const finalSalePriceToman = hasSalePriceTomanUpdate
+      ? (dto.salePriceToman ?? null)
+      : product.salePriceToman;
+
+    const finalSaleStartsAt = hasSaleStartsAtUpdate
+      ? this.toNullableDate(dto.saleStartsAt)
+      : product.saleStartsAt;
+
+    const finalSaleEndsAt = hasSaleEndsAtUpdate
+      ? this.toNullableDate(dto.saleEndsAt)
+      : product.saleEndsAt;
+
+    const hasPriceTomanUpdate = this.hasOwnProperty(dto, 'priceToman');
+
+    const finalPriceToman = hasPriceTomanUpdate ? (dto.priceToman ?? null) : product.priceToman;
+
     const candidate: ProductStateCandidate = {
       status: dto.status ?? product.status,
       isPublished: dto.isPublished ?? product.isPublished,
       isTorobEnabled: dto.isTorobEnabled ?? product.isTorobEnabled,
-      priceToman: dto.priceToman ?? product.priceToman,
+      priceToman: finalPriceToman,
+      salePriceToman: finalSalePriceToman,
+      saleStartsAt: finalSaleStartsAt,
+      saleEndsAt: finalSaleEndsAt,
       stockStatus: dto.stockStatus ?? product.stockStatus,
       brandIsActive: brand.isActive,
       categoryIsActive: category.isActive,
@@ -714,8 +768,17 @@ export class CatalogAdminService {
       ...(dto.specifications !== undefined && {
         specifications: this.toJson(dto.specifications),
       }),
-      ...(dto.priceToman !== undefined && {
-        priceToman: dto.priceToman,
+      ...(hasPriceTomanUpdate && {
+        priceToman: finalPriceToman,
+      }),
+      ...(hasSalePriceTomanUpdate && {
+        salePriceToman: finalSalePriceToman,
+      }),
+      ...(hasSaleStartsAtUpdate && {
+        saleStartsAt: finalSaleStartsAt,
+      }),
+      ...(hasSaleEndsAtUpdate && {
+        saleEndsAt: finalSaleEndsAt,
       }),
       ...(dto.stockStatus !== undefined && {
         stockStatus: dto.stockStatus,
@@ -1008,6 +1071,9 @@ export class CatalogAdminService {
         description: true,
         specifications: true,
         priceToman: true,
+        salePriceToman: true,
+        saleStartsAt: true,
+        saleEndsAt: true,
         stockStatus: true,
         status: true,
         isPublished: true,
@@ -1123,6 +1189,9 @@ export class CatalogAdminService {
   }
 
   private assertProductState(candidate: ProductStateCandidate): void {
+    this.assertProductPricing(candidate);
+
+    const effectivePriceToman = this.getEffectivePriceToman(candidate);
     if (candidate.isPublished && candidate.status !== ProductStatus.ACTIVE) {
       throw new BadRequestException('A published product must have ACTIVE status');
     }
@@ -1147,12 +1216,8 @@ export class CatalogAdminService {
       throw new BadRequestException('Torob requires an active brand and category');
     }
 
-    if (
-      candidate.priceToman === null ||
-      candidate.priceToman === undefined ||
-      candidate.priceToman <= 0
-    ) {
-      throw new BadRequestException('Torob requires a valid product price');
+    if (effectivePriceToman === null || effectivePriceToman <= 0) {
+      throw new BadRequestException('Torob requires a valid effective product price');
     }
 
     if (candidate.stockStatus !== StockStatus.IN_STOCK) {
@@ -1166,6 +1231,112 @@ export class CatalogAdminService {
     if (candidate.images.length === 0) {
       throw new BadRequestException('Torob requires at least one product image');
     }
+  }
+
+  private assertProductPricing(candidate: ProductStateCandidate): void {
+    const salePriceToman = candidate.salePriceToman;
+    const priceToman = candidate.priceToman;
+    const saleStartsAt = candidate.saleStartsAt;
+    const saleEndsAt = candidate.saleEndsAt;
+
+    const hasSaleDate = saleStartsAt !== null || saleEndsAt !== null;
+
+    if (salePriceToman === null) {
+      if (hasSaleDate) {
+        throw new BadRequestException('Sale dates require a sale price');
+      }
+
+      return;
+    }
+
+    if (priceToman === null || priceToman <= 0) {
+      throw new BadRequestException('A sale price requires a valid base price');
+    }
+
+    if (salePriceToman <= 0 || salePriceToman >= priceToman) {
+      throw new BadRequestException('Sale price must be lower than the base price');
+    }
+
+    if (saleStartsAt && saleEndsAt && saleStartsAt >= saleEndsAt) {
+      throw new BadRequestException('Sale end date must be after sale start date');
+    }
+  }
+
+  private isSaleActive(
+    pricing: Pick<ProductStateCandidate, 'salePriceToman' | 'saleStartsAt' | 'saleEndsAt'>,
+    now = new Date(),
+  ): boolean {
+    if (pricing.salePriceToman === null) {
+      return false;
+    }
+
+    if (pricing.saleStartsAt && pricing.saleStartsAt > now) {
+      return false;
+    }
+
+    if (pricing.saleEndsAt && pricing.saleEndsAt < now) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private getEffectivePriceToman(
+    pricing: Pick<
+      ProductStateCandidate,
+      'priceToman' | 'salePriceToman' | 'saleStartsAt' | 'saleEndsAt'
+    >,
+  ): number | null {
+    if (this.isSaleActive(pricing)) {
+      return pricing.salePriceToman;
+    }
+
+    return pricing.priceToman;
+  }
+
+  private withComputedPricing<
+    T extends {
+      priceToman: number | null;
+      salePriceToman: number | null;
+      saleStartsAt: Date | null;
+      saleEndsAt: Date | null;
+    },
+  >(product: T) {
+    const isSaleActive = this.isSaleActive(product);
+
+    const effectivePriceToman = this.getEffectivePriceToman(product);
+
+    const discountAmountToman =
+      isSaleActive && product.priceToman !== null && product.salePriceToman !== null
+        ? product.priceToman - product.salePriceToman
+        : 0;
+
+    const discountPercent =
+      product.priceToman && discountAmountToman > 0
+        ? Math.round((discountAmountToman / product.priceToman) * 100)
+        : 0;
+
+    return {
+      ...product,
+      isSaleActive,
+      effectivePriceToman,
+      discountAmountToman,
+      discountPercent,
+    };
+  }
+
+  private toNullableDate(value: string | null | undefined): Date | null {
+    if (!value) {
+      return null;
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      throw new BadRequestException('Invalid sale date');
+    }
+
+    return date;
   }
 
   private ensureProductCollections(
@@ -1212,6 +1383,9 @@ export class CatalogAdminService {
     this.addChange(changes, 'name', product.name, dto.name);
     this.addChange(changes, 'shortDescription', product.shortDescription, dto.shortDescription);
     this.addChange(changes, 'priceToman', product.priceToman, dto.priceToman);
+    this.addChange(changes, 'salePriceToman', product.salePriceToman, dto.salePriceToman);
+    this.addChange(changes, 'saleStartsAt', product.saleStartsAt, dto.saleStartsAt);
+    this.addChange(changes, 'saleEndsAt', product.saleEndsAt, dto.saleEndsAt);
     this.addChange(changes, 'stockStatus', product.stockStatus, dto.stockStatus);
     this.addChange(changes, 'status', product.status, dto.status);
     this.addChange(changes, 'isPublished', product.isPublished, dto.isPublished);

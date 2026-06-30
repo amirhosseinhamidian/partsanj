@@ -120,7 +120,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
           'transition-[background-color,border-color,box-shadow,color]',
           'disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-foreground-muted',
           'read-only:bg-surface-muted',
-          'focus-visible:border-brand focus-visible:ring-4 focus-visible:ring-focus-ring',
+          'focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-focus-ring',
           error
             ? 'border-danger bg-danger-soft focus-visible:border-danger focus-visible:ring-danger/20'
             : 'border-border hover:border-border-strong',

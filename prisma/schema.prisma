@@ -121,6 +121,10 @@ model Product {
   specifications   Json?
 
   priceToman    Int?
+  salePriceToman    Int?
+  saleStartsAt      DateTime?
+  saleEndsAt        DateTime?
+  
   stockStatus   StockStatus   @default(CHECK_AVAILABILITY)
   status        ProductStatus @default(DRAFT)
   isPublished   Boolean       @default(false)

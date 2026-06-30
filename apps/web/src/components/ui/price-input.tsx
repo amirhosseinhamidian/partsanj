@@ -235,7 +235,7 @@ export const PriceInput = forwardRef<HTMLInputElement, PriceInputProps>(function
             'transition-[background-color,border-color,box-shadow,color]',
             'disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-foreground-muted',
             'read-only:bg-surface-muted',
-            'focus:border-brand focus:shadow-panel focus:ring-4 focus:ring-focus-ring',
+            'focus:border-brand focus:shadow-panel focus:ring-2 focus:ring-focus-ring',
             error
               ? 'border-danger bg-danger-soft focus:border-danger focus:ring-danger/20'
               : 'border-border hover:border-border-strong',

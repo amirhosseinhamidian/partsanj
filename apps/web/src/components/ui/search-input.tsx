@@ -244,7 +244,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(functi
             type='button'
             aria-label='پاک کردن عبارت جستجو'
             onClick={handleClear}
-            className='absolute inset-e-3 top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded-full text-foreground-muted transition-colors hover:bg-surface-muted hover:text-foreground focus:ring-4 focus:ring-focus-ring focus:outline-none'
+            className='absolute inset-e-3 top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded-full text-foreground-muted transition-colors hover:bg-surface-muted hover:text-foreground focus:ring-2 focus:ring-focus-ring focus:outline-none'
           >
             <X className='size-3.5' />
           </button>
