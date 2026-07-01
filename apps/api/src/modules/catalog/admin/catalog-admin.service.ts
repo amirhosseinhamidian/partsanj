@@ -30,6 +30,7 @@ import { CreateVehicleModelDto } from './dto/create-vehicle-model.dto.js';
 import { UpdateVehicleModelDto } from './dto/update-vehicle-model.dto.js';
 import { CreateVehicleVariantDto } from './dto/create-vehicle-variant.dto.js';
 import { UpdateVehicleVariantDto } from './dto/update-vehicle-variant.dto.js';
+import { FindAdminAuditLogsQueryDto } from './dto/find-admin-audit-logs.query.dto.js';
 
 type ProductCodeRecord = {
   type: ProductCodeType;
@@ -97,6 +98,26 @@ type WriteAdminAuditLogInput = {
   entityLabel: string;
   action: AdminAuditAction;
   changes: unknown;
+};
+
+type ProductCompatibilityAuditSource = {
+  vehicleVariantId: string;
+  notes: string | null;
+  requiresVerification: boolean;
+  vehicleVariant: {
+    name: string;
+    engineCode: string | null;
+    engineName: string | null;
+    yearFrom: number | null;
+    yearTo: number | null;
+    yearCalendar: VehicleYearCalendar;
+    model: {
+      name: string;
+      make: {
+        name: string;
+      };
+    };
+  };
 };
 
 @Injectable()
@@ -2129,6 +2150,7 @@ export class CatalogAdminService {
       },
       select: {
         id: true,
+        name: true,
         compatibilities: {
           orderBy: {
             createdAt: 'asc',
@@ -2137,6 +2159,26 @@ export class CatalogAdminService {
             vehicleVariantId: true,
             notes: true,
             requiresVerification: true,
+            vehicleVariant: {
+              select: {
+                name: true,
+                engineCode: true,
+                engineName: true,
+                yearFrom: true,
+                yearTo: true,
+                yearCalendar: true,
+                model: {
+                  select: {
+                    name: true,
+                    make: {
+                      select: {
+                        name: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -2150,17 +2192,9 @@ export class CatalogAdminService {
 
     await this.ensureVehicleVariantsAreActive(vehicleVariantIds);
 
-    const before = product.compatibilities.map((compatibility) => ({
-      vehicleVariantId: compatibility.vehicleVariantId,
-      notes: compatibility.notes,
-      requiresVerification: compatibility.requiresVerification,
-    }));
-
-    const after = dto.items.map((item) => ({
-      vehicleVariantId: item.vehicleVariantId,
-      notes: item.notes ?? null,
-      requiresVerification: item.requiresVerification ?? false,
-    }));
+    const before = product.compatibilities.map((compatibility) =>
+      this.toProductCompatibilityAuditItem(compatibility),
+    );
 
     await this.prisma.$transaction(async (transaction) => {
       await transaction.productVehicleCompatibility.deleteMany({
@@ -2180,17 +2214,66 @@ export class CatalogAdminService {
         });
       }
 
+      const updatedCompatibilities = await transaction.productVehicleCompatibility.findMany({
+        where: {
+          productId,
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+        select: {
+          vehicleVariantId: true,
+          notes: true,
+          requiresVerification: true,
+          vehicleVariant: {
+            select: {
+              name: true,
+              engineCode: true,
+              engineName: true,
+              yearFrom: true,
+              yearTo: true,
+              yearCalendar: true,
+              model: {
+                select: {
+                  name: true,
+                  make: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const after = updatedCompatibilities.map((compatibility) =>
+        this.toProductCompatibilityAuditItem(compatibility),
+      );
+
+      const auditChanges = {
+        event: 'admin_product_compatibilities_replaced',
+        before,
+        after,
+      };
+
       await transaction.productAuditLog.create({
         data: {
           productId,
           actorUserId,
           action: ProductAuditAction.COMPATIBILITIES_UPDATED,
-          changes: this.toJson({
-            event: 'admin_product_compatibilities_replaced',
-            before,
-            after,
-          }),
+          changes: this.toJson(auditChanges),
         },
+      });
+
+      await this.writeAdminAuditLog(transaction, {
+        actorUserId,
+        entityType: AdminAuditEntityType.PRODUCT,
+        entityId: product.id,
+        entityLabel: product.name,
+        action: AdminAuditAction.COMPATIBILITIES_UPDATED,
+        changes: auditChanges,
       });
 
       await transaction.product.update({
@@ -2714,5 +2797,112 @@ export class CatalogAdminService {
     }
 
     throw error;
+  }
+
+  async findAdminAuditLogs(query: FindAdminAuditLogsQueryDto) {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 25;
+    const skip = (page - 1) * pageSize;
+
+    const createdFrom = query.createdFrom ? new Date(query.createdFrom) : undefined;
+
+    const createdTo = query.createdTo ? new Date(query.createdTo) : undefined;
+
+    if (createdFrom && createdTo && createdFrom.getTime() > createdTo.getTime()) {
+      throw new BadRequestException('createdFrom cannot be greater than createdTo');
+    }
+
+    const where: Prisma.AdminAuditLogWhereInput = {
+      ...(query.entityType !== undefined && {
+        entityType: query.entityType,
+      }),
+      ...(query.action !== undefined && {
+        action: query.action,
+      }),
+      ...(query.actorUserId !== undefined && {
+        actorUserId: query.actorUserId,
+      }),
+      ...(query.search && {
+        entityLabel: {
+          contains: query.search,
+          mode: 'insensitive',
+        },
+      }),
+      ...((createdFrom || createdTo) && {
+        createdAt: {
+          ...(createdFrom !== undefined && {
+            gte: createdFrom,
+          }),
+          ...(createdTo !== undefined && {
+            lte: createdTo,
+          }),
+        },
+      }),
+    };
+
+    const [auditLogs, totalItems] = await this.prisma.$transaction([
+      this.prisma.adminAuditLog.findMany({
+        where,
+        skip,
+        take: pageSize,
+        orderBy: [
+          {
+            createdAt: 'desc',
+          },
+          {
+            id: 'desc',
+          },
+        ],
+        select: {
+          id: true,
+          entityType: true,
+          entityId: true,
+          entityLabel: true,
+          action: true,
+          changes: true,
+          createdAt: true,
+          actorUser: {
+            select: {
+              id: true,
+              mobile: true,
+              firstName: true,
+              lastName: true,
+              role: true,
+            },
+          },
+        },
+      }),
+      this.prisma.adminAuditLog.count({
+        where,
+      }),
+    ]);
+
+    return {
+      data: auditLogs,
+      meta: {
+        page,
+        pageSize,
+        totalItems,
+        totalPages: Math.ceil(totalItems / pageSize),
+      },
+    };
+  }
+
+  private toProductCompatibilityAuditItem(compatibility: ProductCompatibilityAuditSource) {
+    return {
+      vehicleVariantId: compatibility.vehicleVariantId,
+      vehicle: {
+        makeName: compatibility.vehicleVariant.model.make.name,
+        modelName: compatibility.vehicleVariant.model.name,
+        variantName: compatibility.vehicleVariant.name,
+        engineCode: compatibility.vehicleVariant.engineCode,
+        engineName: compatibility.vehicleVariant.engineName,
+        yearFrom: compatibility.vehicleVariant.yearFrom,
+        yearTo: compatibility.vehicleVariant.yearTo,
+        yearCalendar: compatibility.vehicleVariant.yearCalendar,
+      },
+      notes: compatibility.notes,
+      requiresVerification: compatibility.requiresVerification,
+    };
   }
 }

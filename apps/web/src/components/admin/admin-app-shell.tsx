@@ -6,6 +6,7 @@ import { IconButton } from '@/components/ui/icon-button';
 import { cn } from '@/lib/utils/cn';
 import {
   Boxes,
+  History,
   CarFront,
   ClipboardList,
   Gauge,
@@ -86,6 +87,11 @@ const navigation: AdminNavigationGroup[] = [
         label: 'خودروها و سازگاری',
         href: '/admin/vehicles',
         icon: CarFront,
+      },
+      {
+        label: 'گزارش تغییرات',
+        href: '/admin/audit-logs',
+        icon: History,
       },
     ],
   },

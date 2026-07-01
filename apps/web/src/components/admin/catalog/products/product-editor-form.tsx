@@ -1,8 +1,8 @@
 'use client';
 
+import type { AdminBrand } from '@/lib/admin/catalog/brand.types';
+import type { AdminCategory } from '@/lib/admin/catalog/category.types';
 import type {
-  AdminBrand,
-  AdminCategory,
   AdminProductDetail,
   CreateProductPayload,
   ProductCodeType,
@@ -112,6 +112,20 @@ function createLocalId(prefix: string): string {
   return `${prefix}-${Date.now()}-${localRowSequence}`;
 }
 
+function toDateOrNull(value: Date | string | null | undefined): Date | null {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (!value || typeof value !== 'string') {
+    return null;
+  }
+
+  const parsedDate = new Date(value);
+
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+}
+
 function normalizeSlug(value: string): string {
   return value
     .trim()
@@ -133,48 +147,6 @@ function getSpecificationRows(specifications: Record<string, unknown> | null): S
     value: typeof value === 'string' ? value : (JSON.stringify(value) ?? ''),
   }));
 }
-function toDateTimeLocalValue(value: string | null): string {
-  if (!value) {
-    return '';
-  }
-
-  const date = new Date(value);
-
-  const timezoneOffset = date.getTimezoneOffset() * 60_000;
-
-  return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 16);
-}
-
-function toIsoDateOrNull(value: string): string | null {
-  if (!value) {
-    return null;
-  }
-
-  return new Date(value).toISOString();
-}
-
-function isSaleActiveInForm(
-  saleEnabled: boolean,
-  salePriceToman: number | null,
-  saleStartsAt: string,
-  saleEndsAt: string,
-): boolean {
-  if (!saleEnabled || salePriceToman === null) {
-    return false;
-  }
-
-  const now = new Date();
-
-  if (saleStartsAt && new Date(saleStartsAt) > now) {
-    return false;
-  }
-
-  if (saleEndsAt && new Date(saleEndsAt) < now) {
-    return false;
-  }
-
-  return true;
-}
 
 function getInitialValues(product: AdminProductDetail | null): ProductFormValues {
   return {
@@ -186,9 +158,9 @@ function getInitialValues(product: AdminProductDetail | null): ProductFormValues
     priceToman: product?.priceToman ?? null,
     saleEnabled: product?.salePriceToman !== null,
     salePriceToman: product?.salePriceToman ?? null,
-    saleStartsAt: product?.saleStartsAt ? new Date(product.saleStartsAt) : null,
+    saleStartsAt: product?.saleStartsAt ? toDateOrNull(product.saleStartsAt) : null,
 
-    saleEndsAt: product?.saleEndsAt ? new Date(product.saleEndsAt) : null,
+    saleEndsAt: product?.saleEndsAt ? toDateOrNull(product.saleEndsAt) : null,
     stockStatus: product?.stockStatus ?? 'CHECK_AVAILABILITY',
     status: product?.status ?? 'DRAFT',
     isPublished: product?.isPublished ?? false,
@@ -1305,8 +1277,8 @@ export function ProductEditorForm({
                         ...current,
                         saleEnabled: checked,
                         salePriceToman: checked ? current.salePriceToman : null,
-                        saleStartsAt: checked ? current.saleStartsAt : '',
-                        saleEndsAt: checked ? current.saleEndsAt : '',
+                        saleStartsAt: checked ? toDateOrNull(current.saleStartsAt) : null,
+                        saleEndsAt: checked ? toDateOrNull(current.saleEndsAt) : null,
                       }));
                     }}
                   />

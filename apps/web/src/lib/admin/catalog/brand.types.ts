@@ -6,6 +6,7 @@ export type AdminBrand = {
   id: string;
   name: string;
   slug: string;
+  logoUrl: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -15,13 +16,12 @@ export type AdminBrand = {
 export type CreateBrandPayload = {
   name: string;
   slug: string;
+  logoUrl?: string;
   isActive: boolean;
 };
 
-export type UpdateBrandPayload = {
-  name?: string;
-  slug?: string;
-  isActive?: boolean;
+export type UpdateBrandPayload = Partial<Omit<CreateBrandPayload, 'logoUrl'>> & {
+  logoUrl?: string | null;
 };
 
 export type BrandListResponse = {

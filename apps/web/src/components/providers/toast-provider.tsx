@@ -1,7 +1,7 @@
 'use client';
 
-import { Toast, type ToastAction } from '@/components/ui/toast';
 import type { AlertVariant } from '@/components/ui/alert';
+import { Toast, type ToastAction } from '@/components/ui/toast';
 import { cn } from '@/lib/utils/cn';
 import {
   createContext,
@@ -16,6 +16,8 @@ import {
 } from 'react';
 
 const TOAST_EXIT_DURATION = 190;
+
+type BrowserTimeout = number;
 
 export type ToastPosition =
   | 'top-left'
@@ -133,7 +135,23 @@ export function ToastProvider({
 }: ToastProviderProps) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-  const exitTimeouts = useRef<Map<string, ReturnType<typeof window.setTimeout>>>(new Map());
+  const exitTimeouts = useRef<Map<string, BrowserTimeout>>(new Map());
+
+  const scheduleRemoval = useCallback((id: string) => {
+    if (exitTimeouts.current.has(id)) {
+      return;
+    }
+
+    const exitDuration = prefersReducedMotion() ? 1 : TOAST_EXIT_DURATION;
+
+    const timeoutId: BrowserTimeout = window.setTimeout(() => {
+      setToasts((currentToasts) => currentToasts.filter((toast) => toast.id !== id));
+
+      exitTimeouts.current.delete(id);
+    }, exitDuration);
+
+    exitTimeouts.current.set(id, timeoutId);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -145,40 +163,29 @@ export function ToastProvider({
     };
   }, []);
 
-  const dismiss = useCallback((id: string) => {
-    setToasts((currentToasts) =>
-      currentToasts.map((toast) =>
-        toast.id === id && !toast.isExiting
-          ? {
-              ...toast,
-              isExiting: true,
-            }
-          : toast,
-      ),
-    );
+  const dismiss = useCallback(
+    (id: string) => {
+      setToasts((currentToasts) =>
+        currentToasts.map((toast) =>
+          toast.id === id && !toast.isExiting
+            ? {
+                ...toast,
+                isExiting: true,
+              }
+            : toast,
+        ),
+      );
 
-    if (exitTimeouts.current.has(id)) {
-      return;
-    }
-
-    const exitDuration = prefersReducedMotion() ? 1 : TOAST_EXIT_DURATION;
-
-    const timeoutId = window.setTimeout(() => {
-      setToasts((currentToasts) => currentToasts.filter((toast) => toast.id !== id));
-
-      exitTimeouts.current.delete(id);
-    }, exitDuration);
-
-    exitTimeouts.current.set(id, timeoutId);
-  }, []);
+      scheduleRemoval(id);
+    },
+    [scheduleRemoval],
+  );
 
   const dismissAll = useCallback(() => {
     setToasts((currentToasts) => {
       currentToasts.forEach((toast) => {
         if (!toast.isExiting) {
-          window.setTimeout(() => {
-            setToasts((items) => items.filter((item) => item.id !== toast.id));
-          }, TOAST_EXIT_DURATION);
+          scheduleRemoval(toast.id);
         }
       });
 
@@ -187,7 +194,7 @@ export function ToastProvider({
         isExiting: true,
       }));
     });
-  }, []);
+  }, [scheduleRemoval]);
 
   const toast = useCallback(
     (input: ToastInput) => {

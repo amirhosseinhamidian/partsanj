@@ -48,6 +48,7 @@ import { CreateVehicleModelDto } from './dto/create-vehicle-model.dto.js';
 import { UpdateVehicleModelDto } from './dto/update-vehicle-model.dto.js';
 import { CreateVehicleVariantDto } from './dto/create-vehicle-variant.dto.js';
 import { UpdateVehicleVariantDto } from './dto/update-vehicle-variant.dto.js';
+import { FindAdminAuditLogsQueryDto } from './dto/find-admin-audit-logs.query.dto.js';
 
 @ApiTags('Admin Catalog')
 @ApiBearerAuth('access-token')
@@ -331,5 +332,14 @@ export class CatalogAdminController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.catalogAdminService.updateVehicleVariant(params.id, dto, user.id);
+  }
+
+  @Get('audit-logs')
+  @ApiOperation({
+    summary: 'List admin audit logs',
+  })
+  @ApiOkResponse()
+  findAdminAuditLogs(@Query() query: FindAdminAuditLogsQueryDto) {
+    return this.catalogAdminService.findAdminAuditLogs(query);
   }
 }

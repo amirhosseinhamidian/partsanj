@@ -1,8 +1,8 @@
 'use client';
 
+import type { AdminBrand } from '@/lib/admin/catalog/brand.types';
+import type { AdminCategory } from '@/lib/admin/catalog/category.types';
 import type {
-  AdminBrand,
-  AdminCategory,
   AdminProductDetail,
   CreateProductPayload,
   UpdateProductPayload,
