@@ -22,6 +22,7 @@ export class VehiclesService {
         id: true,
         name: true,
         slug: true,
+        logoUrl: true,
         sortOrder: true,
       },
     });
@@ -41,6 +42,7 @@ export class VehiclesService {
         id: true,
         name: true,
         slug: true,
+        logoUrl: true,
       },
     });
 
@@ -65,6 +67,7 @@ export class VehiclesService {
         id: true,
         name: true,
         slug: true,
+        imageUrl: true,
         sortOrder: true,
       },
     });
@@ -90,11 +93,13 @@ export class VehiclesService {
         id: true,
         name: true,
         slug: true,
+        imageUrl: true,
         make: {
           select: {
             id: true,
             name: true,
             slug: true,
+            logoUrl: true,
           },
         },
       },

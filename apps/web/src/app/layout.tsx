@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
-import { ThemeProvider } from '@/components/providers/theme-provider';
+
 import { ToastProvider } from '@/components/providers/toast-provider';
+import { ThemeProvider } from '@/components/providers/theme-provider';
 import { TooltipProvider } from '@/components/providers/tooltip-provider';
+import { StorefrontShell } from '@/components/storefront/layout/storefront-shell';
 import { vazirmatn } from './fonts';
 import './globals.css';
 
@@ -25,7 +27,9 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <ToastProvider defaultPosition='bottom-left'>
-            <TooltipProvider>{children}</TooltipProvider>
+            <TooltipProvider>
+              <StorefrontShell>{children}</StorefrontShell>
+            </TooltipProvider>
           </ToastProvider>
         </ThemeProvider>
       </body>

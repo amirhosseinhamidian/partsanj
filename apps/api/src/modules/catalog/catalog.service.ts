@@ -19,6 +19,7 @@ export class CatalogService {
         id: true,
         name: true,
         slug: true,
+        logoUrl: true,
       },
     });
 
@@ -57,7 +58,7 @@ export class CatalogService {
   async findProducts(query: FindProductsQueryDto) {
     const where = this.buildPublicProductWhere(query);
     const skip = (query.page - 1) * query.limit;
-
+    const now = new Date();
     const [products, total] = await this.prisma.$transaction([
       this.prisma.product.findMany({
         where,
@@ -73,6 +74,9 @@ export class CatalogService {
           name: true,
           shortDescription: true,
           priceToman: true,
+          salePriceToman: true,
+          saleStartsAt: true,
+          saleEndsAt: true,
           stockStatus: true,
           updatedAt: true,
           brand: {
@@ -80,6 +84,7 @@ export class CatalogService {
               id: true,
               name: true,
               slug: true,
+              logoUrl: true,
             },
           },
           category: {
@@ -121,7 +126,7 @@ export class CatalogService {
     ]);
 
     return {
-      data: products,
+      data: products.map((product) => this.withComputedPricing(product, now)),
       meta: {
         page: query.page,
         limit: query.limit,
@@ -146,6 +151,9 @@ export class CatalogService {
         description: true,
         specifications: true,
         priceToman: true,
+        salePriceToman: true,
+        saleStartsAt: true,
+        saleEndsAt: true,
         stockStatus: true,
         updatedAt: true,
         brand: {
@@ -153,6 +161,7 @@ export class CatalogService {
             id: true,
             name: true,
             slug: true,
+            logoUrl: true,
           },
         },
         category: {
@@ -241,7 +250,50 @@ export class CatalogService {
     }
 
     return {
-      data: product,
+      data: this.withComputedPricing(product),
+    };
+  }
+
+  private withComputedPricing<
+    T extends {
+      priceToman: number | null;
+      salePriceToman: number | null;
+      saleStartsAt: Date | null;
+      saleEndsAt: Date | null;
+    },
+  >(product: T, now = new Date()) {
+    const nowTime = now.getTime();
+
+    const saleHasStarted = !product.saleStartsAt || product.saleStartsAt.getTime() <= nowTime;
+
+    const saleHasNotEnded = !product.saleEndsAt || product.saleEndsAt.getTime() >= nowTime;
+
+    const hasValidSalePrice =
+      product.priceToman !== null &&
+      product.salePriceToman !== null &&
+      product.salePriceToman > 0 &&
+      product.salePriceToman < product.priceToman;
+
+    const isSaleActive = hasValidSalePrice && saleHasStarted && saleHasNotEnded;
+
+    const effectivePriceToman = isSaleActive ? product.salePriceToman : product.priceToman;
+
+    const discountAmountToman =
+      isSaleActive && product.priceToman !== null && product.salePriceToman !== null
+        ? product.priceToman - product.salePriceToman
+        : 0;
+
+    const discountPercent =
+      isSaleActive && product.priceToman !== null && product.priceToman > 0
+        ? Math.round((discountAmountToman / product.priceToman) * 100)
+        : 0;
+
+    return {
+      ...product,
+      effectivePriceToman,
+      discountAmountToman,
+      discountPercent,
+      isSaleActive,
     };
   }
 
