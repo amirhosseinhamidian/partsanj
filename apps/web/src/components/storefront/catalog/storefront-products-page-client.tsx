@@ -29,9 +29,18 @@ import type {
   StorefrontVehicleSelectionInput,
 } from '@/lib/storefront/vehicles/vehicle.types';
 import { cn } from '@/lib/utils/cn';
-import { ArchiveX, Boxes, CircleAlert, PackageSearch, RefreshCw, Tag } from 'lucide-react';
+import {
+  ArchiveX,
+  Boxes,
+  CircleAlert,
+  PackageSearch,
+  RefreshCw,
+  ChevronLeft,
+  Tag,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 const PRODUCTS_PAGE_SIZE = 24;
 const ALL_FILTER_VALUE = '__all__';
@@ -86,7 +95,41 @@ function getErrorMessage(error: unknown): string {
   return 'دریافت محصولات با خطا مواجه شد';
 }
 
-function ProductCard({ product }: { product: StorefrontProductListItem }) {
+type ProductVehicleContext = {
+  vehicleVariantId: string;
+  vehicleMake?: string;
+  vehicleModel?: string;
+};
+
+function buildProductHref(slug: string, vehicleContext: ProductVehicleContext | null): string {
+  const searchParams = new URLSearchParams();
+
+  if (vehicleContext?.vehicleVariantId) {
+    searchParams.set('vehicleVariantId', vehicleContext.vehicleVariantId);
+  }
+
+  if (vehicleContext?.vehicleMake) {
+    searchParams.set('vehicleMake', vehicleContext.vehicleMake);
+  }
+
+  if (vehicleContext?.vehicleModel) {
+    searchParams.set('vehicleModel', vehicleContext.vehicleModel);
+  }
+
+  const queryString = searchParams.toString();
+
+  return queryString
+    ? `/products/${encodeURIComponent(slug)}?${queryString}`
+    : `/products/${encodeURIComponent(slug)}`;
+}
+
+function ProductCard({
+  product,
+  vehicleContext,
+}: {
+  product: StorefrontProductListItem;
+  vehicleContext: ProductVehicleContext | null;
+}) {
   const primaryImage = product.images[0] ?? null;
 
   const hasPrice = typeof product.effectivePriceToman === 'number';
@@ -135,18 +178,17 @@ function ProductCard({ product }: { product: StorefrontProductListItem }) {
           <div className='min-h-10' />
         )}
 
-        <div className='mt-4 border-t border-border pt-4'>
+        <div className='mt-4 flex flex-1 flex-col border-t border-border pt-4'>
           {hasPrice ? (
             <>
+              <p className='numeric mt-1 text-lg font-extrabold text-foreground'>
+                {formatToman(product.effectivePriceToman)}
+              </p>
               {hasActiveSale ? (
                 <p className='numeric text-xs text-foreground-muted line-through'>
                   {formatToman(product.priceToman)}
                 </p>
               ) : null}
-
-              <p className='numeric mt-1 text-lg font-extrabold text-foreground'>
-                {formatToman(product.effectivePriceToman)}
-              </p>
             </>
           ) : (
             <p className='text-sm font-semibold text-foreground-secondary'>
@@ -154,13 +196,14 @@ function ProductCard({ product }: { product: StorefrontProductListItem }) {
             </p>
           )}
 
-          <div className='mt-3 flex items-center justify-between gap-2 text-xs text-foreground-muted'>
-            <span className='truncate'>دسته‌بندی: {product.category.name}</span>
-
-            <span dir='ltr' className='shrink-0 font-medium'>
-              {product.sku}
-            </span>
-          </div>
+          <Link
+            href={buildProductHref(product.slug, vehicleContext)}
+            className='mt-auto block pt-5'
+          >
+            <Button fullWidth iconEnd={<ChevronLeft />}>
+              مشاهده جزئیات قطعه
+            </Button>
+          </Link>
         </div>
       </div>
     </article>
@@ -438,6 +481,14 @@ export function StorefrontProductsPageClient() {
     });
   }
 
+  const productVehicleContext: ProductVehicleContext | null = vehicleVariantId
+    ? {
+        vehicleVariantId,
+        vehicleMake: vehicleMake || undefined,
+        vehicleModel: vehicleModel || undefined,
+      }
+    : null;
+
   return (
     <div className='mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8'>
       <div className='space-y-8'>
@@ -597,7 +648,11 @@ export function StorefrontProductsPageClient() {
             <>
               <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
                 {result.data.map((product) => (
-                  <ProductCard key={product.id} product={product} />
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    vehicleContext={productVehicleContext}
+                  />
                 ))}
               </div>
 

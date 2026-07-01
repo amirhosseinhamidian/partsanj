@@ -13,10 +13,11 @@ import type {
 import { cn } from '@/lib/utils/cn';
 import { CarFront, RotateCcw, TriangleAlert } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-
-const VEHICLE_SELECTION_STORAGE_KEY = 'partsanj:storefront:vehicle-selection:v1';
-
-type StoredVehicleSelection = StorefrontVehicleSelectionInput;
+import {
+  clearStorefrontVehicleSelection,
+  readStorefrontVehicleSelection,
+  saveStorefrontVehicleSelection,
+} from '@/lib/storefront/vehicles/vehicle-selection-storage';
 
 type StorefrontVehicleSelectorProps = {
   initialSelection?: StorefrontVehicleSelectionInput;
@@ -25,55 +26,6 @@ type StorefrontVehicleSelectorProps = {
   onVehicleChange?: (selection: StorefrontVehicleSelection | null) => void;
   className?: string;
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function readStoredVehicleSelection(): StoredVehicleSelection | null {
-  try {
-    const rawValue = window.localStorage.getItem(VEHICLE_SELECTION_STORAGE_KEY);
-
-    if (!rawValue) {
-      return null;
-    }
-
-    const parsedValue: unknown = JSON.parse(rawValue);
-
-    if (
-      !isRecord(parsedValue) ||
-      typeof parsedValue.makeSlug !== 'string' ||
-      typeof parsedValue.modelSlug !== 'string' ||
-      typeof parsedValue.variantId !== 'string'
-    ) {
-      return null;
-    }
-
-    if (
-      !parsedValue.makeSlug.trim() ||
-      !parsedValue.modelSlug.trim() ||
-      !parsedValue.variantId.trim()
-    ) {
-      return null;
-    }
-
-    return {
-      makeSlug: parsedValue.makeSlug,
-      modelSlug: parsedValue.modelSlug,
-      variantId: parsedValue.variantId,
-    };
-  } catch {
-    return null;
-  }
-}
-
-function clearStoredVehicleSelection() {
-  window.localStorage.removeItem(VEHICLE_SELECTION_STORAGE_KEY);
-}
-
-function saveVehicleSelection(selection: StoredVehicleSelection) {
-  window.localStorage.setItem(VEHICLE_SELECTION_STORAGE_KEY, JSON.stringify(selection));
-}
 
 function formatYear(value: number): string {
   return value.toLocaleString('fa-IR');
@@ -144,7 +96,7 @@ export function StorefrontVehicleSelector({
     setVariants([]);
     setLoadError(null);
 
-    clearStoredVehicleSelection();
+    clearStorefrontVehicleSelection();
   }, []);
 
   useEffect(() => {
@@ -160,7 +112,7 @@ export function StorefrontVehicleSelector({
             }
           : hasExternalVehicleFilter
             ? null
-            : readStoredVehicleSelection();
+            : readStorefrontVehicleSelection();
 
       if (!storedSelection) {
         return;
@@ -276,7 +228,7 @@ export function StorefrontVehicleSelector({
 
           setSelectedVariantId('');
           setVariants([]);
-          clearStoredVehicleSelection();
+          clearStorefrontVehicleSelection();
 
           return '';
         });
@@ -289,7 +241,7 @@ export function StorefrontVehicleSelector({
         setSelectedModelSlug('');
         setSelectedVariantId('');
         setVariants([]);
-        clearStoredVehicleSelection();
+        clearStorefrontVehicleSelection();
 
         setLoadError('دریافت مدل‌های خودرو با خطا مواجه شد');
       } finally {
@@ -338,7 +290,7 @@ export function StorefrontVehicleSelector({
             return currentVariantId;
           }
 
-          clearStoredVehicleSelection();
+          clearStorefrontVehicleSelection();
 
           return '';
         });
@@ -349,7 +301,7 @@ export function StorefrontVehicleSelector({
 
         setVariants([]);
         setSelectedVariantId('');
-        clearStoredVehicleSelection();
+        clearStorefrontVehicleSelection();
 
         setLoadError('دریافت تیپ‌های خودرو با خطا مواجه شد');
       } finally {
@@ -458,7 +410,7 @@ export function StorefrontVehicleSelector({
     setVariants([]);
     setLoadError(null);
 
-    clearStoredVehicleSelection();
+    clearStorefrontVehicleSelection();
   }
 
   function handleModelChange(nextModelSlug: string) {
@@ -467,19 +419,19 @@ export function StorefrontVehicleSelector({
     setVariants([]);
     setLoadError(null);
 
-    clearStoredVehicleSelection();
+    clearStorefrontVehicleSelection();
   }
 
   function handleVariantChange(nextVariantId: string) {
     setSelectedVariantId(nextVariantId);
 
     if (!nextVariantId || !selectedMakeSlug || !selectedModelSlug) {
-      clearStoredVehicleSelection();
+      clearStorefrontVehicleSelection();
 
       return;
     }
 
-    saveVehicleSelection({
+    saveStorefrontVehicleSelection({
       makeSlug: selectedMakeSlug,
       modelSlug: selectedModelSlug,
       variantId: nextVariantId,
