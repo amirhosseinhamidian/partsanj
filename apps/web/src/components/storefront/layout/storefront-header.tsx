@@ -44,12 +44,10 @@ function HeaderCartButton({ showLabel = false }: { showLabel?: boolean }) {
   const displayCount = itemCount > 99 ? '۹۹+' : itemCount.toLocaleString('fa-IR');
 
   return (
-    <button
-      type='button'
-      disabled
+    <Link
+      href='/cart'
       aria-label={itemCount > 0 ? `سبد خرید، ${displayCount} کالا` : 'سبد خرید'}
-      title='صفحه کامل سبد خرید در گام بعدی فعال می‌شود'
-      className='inline-flex h-10 items-center justify-center gap-2 rounded-control border border-border bg-surface px-3 text-sm font-semibold text-foreground-secondary opacity-75'
+      className='inline-flex h-10 items-center justify-center gap-2 rounded-control border border-border bg-surface px-3 text-sm font-semibold text-foreground-secondary transition-colors hover:border-brand/40 hover:bg-brand-soft hover:text-brand'
     >
       <span className='relative grid size-5 place-items-center'>
         <ShoppingCart className='size-5' />
@@ -62,7 +60,7 @@ function HeaderCartButton({ showLabel = false }: { showLabel?: boolean }) {
       </span>
 
       {showLabel ? 'سبد خرید' : null}
-    </button>
+    </Link>
   );
 }
 

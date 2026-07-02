@@ -5,6 +5,7 @@ import type {
   CartMergeApiResponse,
   StorefrontCart,
   UpdateCartItemQuantityInput,
+  UpdateCartItemVehicleInput,
 } from '@/lib/storefront/cart/cart.types';
 
 export const storefrontCartApi = {
@@ -42,5 +43,15 @@ export const storefrontCartApi = {
     return requestStorefrontApi<CartMergeApiResponse>('/api/cart/merge', {
       method: 'POST',
     });
+  },
+
+  updateItemVehicle(itemId: string, input: UpdateCartItemVehicleInput) {
+    return requestStorefrontApi<CartApiResponse<StorefrontCart>>(
+      `/api/cart/items/${encodeURIComponent(itemId)}/vehicle`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(input),
+      },
+    );
   },
 };

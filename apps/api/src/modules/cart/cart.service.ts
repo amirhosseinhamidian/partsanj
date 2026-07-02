@@ -19,6 +19,7 @@ import { createHmac, randomBytes } from 'node:crypto';
 import { MAX_CART_ITEM_QUANTITY } from './cart.constants.js';
 import type { AddCartItemDto } from './dto/add-cart-item.dto.js';
 import type { UpdateCartItemDto } from './dto/update-cart-item.dto.js';
+import type { UpdateCartItemVehicleDto } from './dto/update-cart-item-vehicle.dto.js';
 
 type CartItemFitmentStatus =
   | 'NOT_SELECTED'
@@ -158,6 +159,117 @@ export class CartService {
     });
 
     await this.touchCart(cart.id);
+
+    return {
+      cart: await this.serializeCart(cart.id),
+    };
+  }
+
+  async updateItemVehicle(
+    user: AuthenticatedUser | undefined,
+    guestToken: string | undefined,
+    itemId: string,
+    dto: UpdateCartItemVehicleDto,
+  ) {
+    const cart = await this.resolveExistingCart(user, guestToken);
+
+    const nextVehicleVariantId = dto.vehicleVariantId;
+    const nextFitmentKey = nextVehicleVariantId ?? '';
+
+    if (nextVehicleVariantId) {
+      await this.ensureActiveVehicleVariant(nextVehicleVariantId);
+    }
+
+    const now = new Date();
+
+    await this.prisma.$transaction(async (transaction) => {
+      const sourceItem = await transaction.cartItem.findFirst({
+        where: {
+          id: itemId,
+          cartId: cart.id,
+        },
+      });
+
+      if (!sourceItem) {
+        throw new NotFoundException('Cart item not found');
+      }
+
+      if (sourceItem.fitmentKey === nextFitmentKey) {
+        await transaction.cart.update({
+          where: {
+            id: cart.id,
+          },
+          data: {
+            lastActivityAt: now,
+          },
+        });
+
+        return;
+      }
+
+      const targetItem = await transaction.cartItem.findUnique({
+        where: {
+          cartId_productId_fitmentKey: {
+            cartId: cart.id,
+            productId: sourceItem.productId,
+            fitmentKey: nextFitmentKey,
+          },
+        },
+      });
+
+      if (targetItem) {
+        const mergedQuantity = sourceItem.quantity + targetItem.quantity;
+
+        if (mergedQuantity > MAX_CART_ITEM_QUANTITY) {
+          throw new BadRequestException(
+            `Maximum quantity per cart item is ${MAX_CART_ITEM_QUANTITY}`,
+          );
+        }
+
+        const sourceSnapshotIsNewer = sourceItem.priceSnapshotAt > targetItem.priceSnapshotAt;
+
+        await transaction.cartItem.update({
+          where: {
+            id: targetItem.id,
+          },
+          data: {
+            quantity: mergedQuantity,
+            ...(sourceSnapshotIsNewer
+              ? {
+                  unitBasePriceToman: sourceItem.unitBasePriceToman,
+                  unitEffectivePriceToman: sourceItem.unitEffectivePriceToman,
+                  priceSnapshotAt: sourceItem.priceSnapshotAt,
+                }
+              : {}),
+          },
+        });
+
+        await transaction.cartItem.delete({
+          where: {
+            id: sourceItem.id,
+          },
+        });
+      } else {
+        await transaction.cartItem.update({
+          where: {
+            id: sourceItem.id,
+          },
+          data: {
+            vehicleVariantId: nextVehicleVariantId,
+            fitmentKey: nextFitmentKey,
+          },
+        });
+      }
+
+      await transaction.cart.update({
+        where: {
+          id: cart.id,
+        },
+        data: {
+          lastActivityAt: now,
+        },
+      });
+    });
 
     return {
       cart: await this.serializeCart(cart.id),

@@ -7,6 +7,7 @@ import type {
   AddCartItemInput,
   StorefrontCart,
   UpdateCartItemQuantityInput,
+  UpdateCartItemVehicleInput,
 } from '@/lib/storefront/cart/cart.types';
 import {
   createContext,
@@ -23,6 +24,7 @@ type StorefrontCartContextValue = {
   itemCount: number;
   isLoading: boolean;
   isMutating: boolean;
+  cartLoadError: string | null;
   reloadCart: () => Promise<StorefrontCart | null>;
   addItem: (input: AddCartItemInput) => Promise<StorefrontCart>;
   updateItemQuantity: (
@@ -30,6 +32,7 @@ type StorefrontCartContextValue = {
     input: UpdateCartItemQuantityInput,
   ) => Promise<StorefrontCart>;
   removeItem: (itemId: string) => Promise<StorefrontCart>;
+  updateItemVehicle: (itemId: string, input: UpdateCartItemVehicleInput) => Promise<StorefrontCart>;
 };
 
 const StorefrontCartContext = createContext<StorefrontCartContextValue | null>(null);
@@ -52,9 +55,11 @@ export function StorefrontCartProvider({ children }: PropsWithChildren) {
   const [cart, setCart] = useState<StorefrontCart | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMutating, setIsMutating] = useState(false);
+  const [cartLoadError, setCartLoadError] = useState<string | null>(null);
 
   const reloadCart = useCallback(async () => {
     setIsLoading(true);
+    setCartLoadError(null);
 
     try {
       const response = await storefrontCartApi.getCart();
@@ -62,7 +67,9 @@ export function StorefrontCartProvider({ children }: PropsWithChildren) {
       setCart(response.data);
 
       return response.data;
-    } catch {
+    } catch (error) {
+      setCartLoadError(getCartErrorMessage(error));
+
       return null;
     } finally {
       setIsLoading(false);
@@ -132,6 +139,38 @@ export function StorefrontCartProvider({ children }: PropsWithChildren) {
     [toast],
   );
 
+  const updateItemVehicle = useCallback(
+    async (itemId: string, input: UpdateCartItemVehicleInput) => {
+      setIsMutating(true);
+
+      try {
+        const response = await storefrontCartApi.updateItemVehicle(itemId, input);
+
+        setCart(response.data);
+
+        toast({
+          position: 'top-left',
+          variant: 'success',
+          title: 'خودروی آیتم سبد خرید به‌روزرسانی شد',
+        });
+
+        return response.data;
+      } catch (error) {
+        toast({
+          position: 'top-left',
+          variant: 'danger',
+          title: 'ثبت خودرو برای آیتم انجام نشد',
+          description: getCartErrorMessage(error),
+        });
+
+        throw error;
+      } finally {
+        setIsMutating(false);
+      }
+    },
+    [toast],
+  );
+
   const removeItem = useCallback(
     async (itemId: string) => {
       setIsMutating(true);
@@ -176,8 +215,21 @@ export function StorefrontCartProvider({ children }: PropsWithChildren) {
       addItem,
       updateItemQuantity,
       removeItem,
+      cartLoadError,
+      updateItemVehicle,
     }),
-    [addItem, cart, isLoading, isMutating, itemCount, reloadCart, removeItem, updateItemQuantity],
+    [
+      addItem,
+      cart,
+      isLoading,
+      isMutating,
+      itemCount,
+      reloadCart,
+      removeItem,
+      updateItemQuantity,
+      cartLoadError,
+      updateItemVehicle,
+    ],
   );
 
   return <StorefrontCartContext.Provider value={value}>{children}</StorefrontCartContext.Provider>;

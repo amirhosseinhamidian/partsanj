@@ -133,3 +133,7 @@ export type CartMergeApiResponse = {
     merged: boolean;
   };
 };
+
+export type UpdateCartItemVehicleInput = {
+  vehicleVariantId: string | null;
+};

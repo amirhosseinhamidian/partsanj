@@ -22,6 +22,7 @@ import { CartService } from './cart.service.js';
 import { AddCartItemDto } from './dto/add-cart-item.dto.js';
 import { CartItemIdParamDto } from './dto/cart-item-id-param.dto.js';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto.js';
+import { UpdateCartItemVehicleDto } from './dto/update-cart-item-vehicle.dto.js';
 
 @ApiTags('Cart')
 @ApiBearerAuth('access-token')
@@ -77,6 +78,24 @@ export class CartController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const result = await this.cartService.updateItemQuantity(user, guestToken, params.itemId, dto);
+
+    this.writeNoCacheHeaders(response);
+
+    return {
+      data: result.cart,
+    };
+  }
+
+  @Patch('items/:itemId/vehicle')
+  async updateItemVehicle(
+    @Param() params: CartItemIdParamDto,
+    @Body() dto: UpdateCartItemVehicleDto,
+    @CurrentUser() user: AuthenticatedUser | undefined,
+    @Headers(GUEST_CART_TOKEN_HEADER)
+    guestToken: string | undefined,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const result = await this.cartService.updateItemVehicle(user, guestToken, params.itemId, dto);
 
     this.writeNoCacheHeaders(response);
 

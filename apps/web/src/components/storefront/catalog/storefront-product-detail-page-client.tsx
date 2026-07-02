@@ -393,6 +393,7 @@ export function StorefrontProductDetailPageClient({
   const router = useRouter();
   const pathname = usePathname();
   const { addItem, isMutating: isCartMutating } = useStorefrontCart();
+  const { cart, isLoading: isCartLoading, reloadCart, updateItemVehicle } = useStorefrontCart();
 
   const [isCompatibilityDialogOpen, setIsCompatibilityDialogOpen] = useState(false);
 
@@ -429,7 +430,7 @@ export function StorefrontProductDetailPageClient({
   }, [vehicleMake, vehicleModel, vehicleVariantId]);
 
   const handleVehicleConfirmed = useCallback(
-    (selection: StorefrontVehicleSelection) => {
+    async (selection: StorefrontVehicleSelection) => {
       saveStorefrontVehicleSelection({
         makeSlug: selection.make.slug,
         modelSlug: selection.model.slug,
@@ -441,6 +442,25 @@ export function StorefrontProductDetailPageClient({
         modelName: selection.model.name,
         variant: selection.variant,
       });
+
+      const cartSnapshot = cart ?? (isCartLoading ? await reloadCart() : null);
+
+      const unassignedCartItem = product
+        ? (cartSnapshot?.items.find(
+            (item) => item.product.id === product.id && item.vehicle === null,
+          ) ?? null)
+        : null;
+
+      if (unassignedCartItem) {
+        try {
+          await updateItemVehicle(unassignedCartItem.id, {
+            vehicleVariantId: selection.variant.id,
+          });
+        } catch {
+          // Toast در Cart Provider نمایش داده می‌شود
+          // انتخاب خودرو برای صفحه محصول همچنان حفظ می‌شود
+        }
+      }
 
       const nextSearchParams = new URLSearchParams(searchParams.toString());
 
@@ -464,7 +484,7 @@ export function StorefrontProductDetailPageClient({
         });
       }
     },
-    [pathname, router, searchParams],
+    [cart, isCartLoading, pathname, product, reloadCart, router, searchParams, updateItemVehicle],
   );
 
   const loadProduct = useCallback(async () => {
