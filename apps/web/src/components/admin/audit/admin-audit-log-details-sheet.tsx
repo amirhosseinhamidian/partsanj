@@ -8,6 +8,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { ImageUrlPreview } from '@/components/ui/image-url-preview';
+import { toPersianDigits } from '@/lib/utils/digits';
 
 type AdminAuditLogDetailsSheetProps = {
   auditLog: AdminAuditLog | null;
@@ -126,7 +127,7 @@ function AuditValue({ value }: { value: unknown }) {
   }
 
   if (typeof value === 'number') {
-    return <span className='numeric'>{value.toLocaleString('fa-IR')}</span>;
+    return <span className='numeric'>{toPersianDigits(value)}</span>;
   }
 
   if (typeof value === 'string') {
@@ -252,8 +253,7 @@ function ProductImagesAuditValue({ value }: { value: unknown }) {
               </p>
 
               <p className='text-xs text-foreground-muted'>
-                ترتیب نمایش:{' '}
-                <span className='numeric'>{(sortOrder ?? index).toLocaleString('fa-IR')}</span>
+                ترتیب نمایش: <span className='numeric'>{toPersianDigits(sortOrder ?? index)}</span>
               </p>
             </div>
           </div>
@@ -270,15 +270,15 @@ function formatCompatibilityYearRange(vehicle: Record<string, unknown>): string 
   const calendar = getRecordString(vehicle, 'yearCalendar') === 'GREGORIAN' ? 'میلادی' : 'شمسی';
 
   if (yearFrom !== null && yearTo !== null) {
-    return `${yearFrom.toLocaleString('fa-IR')} تا ${yearTo.toLocaleString('fa-IR')} · ${calendar}`;
+    return `${toPersianDigits(yearFrom)} تا ${toPersianDigits(yearTo)} · ${calendar}`;
   }
 
   if (yearFrom !== null) {
-    return `از ${yearFrom.toLocaleString('fa-IR')} · ${calendar}`;
+    return `از ${toPersianDigits(yearFrom)} · ${calendar}`;
   }
 
   if (yearTo !== null) {
-    return `تا ${yearTo.toLocaleString('fa-IR')} · ${calendar}`;
+    return `تا ${toPersianDigits(yearTo)} · ${calendar}`;
   }
 
   return null;

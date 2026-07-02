@@ -33,6 +33,16 @@ export async function POST(request: Request) {
       data: result,
     });
   } catch (error) {
+    if (error instanceof ApiRequestError) {
+      console.error('[auth/request-otp] upstream error', {
+        status: error.status,
+        code: error.code,
+        message: error.message,
+      });
+    } else {
+      console.error('[auth/request-otp] unexpected error', error);
+    }
+
     return apiErrorResponse(error);
   }
 }

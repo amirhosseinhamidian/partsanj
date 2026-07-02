@@ -30,6 +30,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toPersianDigits } from '@/lib/utils/digits';
 
 const MAX_COMPATIBILITIES = 100;
 
@@ -86,8 +87,8 @@ function formatVehicleYears(
 ): string | null {
   const calendarLabel = vehicle.yearCalendar === 'SHAMSI' ? 'شمسی' : 'میلادی';
 
-  const from = vehicle.yearFrom?.toLocaleString('fa-IR');
-  const to = vehicle.yearTo?.toLocaleString('fa-IR');
+  const from = toPersianDigits(vehicle.yearFrom ?? 0);
+  const to = toPersianDigits(vehicle.yearTo ?? 0);
 
   if (from && to) {
     return `مدل ${from} تا ${to} · ${calendarLabel}`;
@@ -443,7 +444,7 @@ export function ProductCompatibilitySection({
 
     if (compatibilities.length >= MAX_COMPATIBILITIES) {
       setSelectionError(
-        `برای هر محصول حداکثر ${MAX_COMPATIBILITIES.toLocaleString('fa-IR')} سازگاری قابل ثبت است`,
+        `برای هر محصول حداکثر ${toPersianDigits(MAX_COMPATIBILITIES)} سازگاری قابل ثبت است`,
       );
 
       return;
@@ -760,7 +761,7 @@ export function ProductCompatibilitySection({
                 <h3 className='font-bold text-foreground'>سازگاری‌های ثبت‌شده</h3>
 
                 <p className='mt-1 text-sm text-foreground-muted'>
-                  {compatibilities.length.toLocaleString('fa-IR')} مورد ثبت شده است
+                  {toPersianDigits(compatibilities.length)} مورد ثبت شده است
                 </p>
               </div>
 

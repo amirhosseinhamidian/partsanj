@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils/cn';
+import { toPersianDigits } from '@/lib/utils/digits';
 import { FileImage, LoaderCircle, UploadCloud } from 'lucide-react';
 import {
   useId,
@@ -150,7 +151,7 @@ export function FileUpload({
         rejections.push({
           file,
           reason: 'too-many-files',
-          message: `حداکثر ${effectiveMaxFiles.toLocaleString('fa-IR')} فایل قابل انتخاب است`,
+          message: `حداکثر ${toPersianDigits(effectiveMaxFiles)} فایل قابل انتخاب است`,
         });
       });
     }
@@ -291,7 +292,7 @@ export function FileUpload({
           <FileImage className='size-4' />
 
           <span>
-            {multiple ? `حداکثر ${effectiveMaxFiles.toLocaleString('fa-IR')} فایل` : 'یک فایل'}
+            {multiple ? `حداکثر ${toPersianDigits(effectiveMaxFiles)} فایل` : 'یک فایل'}
             {maxSize ? ` · حداکثر ${formatBytes(maxSize)}` : null}
           </span>
         </div>

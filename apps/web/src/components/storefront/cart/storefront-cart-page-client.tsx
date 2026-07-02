@@ -26,10 +26,7 @@ import {
 import Link from 'next/link';
 import { toPersianDigits } from '@/lib/utils/digits';
 import { Badge } from '@/components/ui/badge';
-
-function formatToman(value: number): string {
-  return `${value.toLocaleString('fa-IR')} تومان`;
-}
+import { formatPrice } from '@/lib/utils/price';
 
 function buildProductHref(item: StorefrontCartItem): string {
   const searchParams = new URLSearchParams();
@@ -152,7 +149,7 @@ function CartItemQuantityControl({ item }: { item: StorefrontCartItem }) {
         aria-live='polite'
         className='numeric grid min-w-11 place-items-center text-sm font-extrabold text-foreground'
       >
-        {item.quantity.toLocaleString('fa-IR')}
+        {toPersianDigits(item.quantity)}
       </output>
 
       <button
@@ -172,8 +169,9 @@ function CartItemQuantityControl({ item }: { item: StorefrontCartItem }) {
 function CartItemWarnings({ item }: { item: StorefrontCartItem }) {
   const hasAvailabilityWarning = !item.availability.canPurchase;
 
-  const hasPriceChanged =
-    item.price.hasPriceChanged && item.price.currentEffectivePriceToman !== null;
+  const currentEffectivePriceToman = item.price.currentEffectivePriceToman;
+
+  const hasPriceChanged = item.price.hasPriceChanged && currentEffectivePriceToman !== null;
 
   if (!hasAvailabilityWarning && !hasPriceChanged) {
     return null;
@@ -204,11 +202,13 @@ function CartItemWarnings({ item }: { item: StorefrontCartItem }) {
           <p className='text-xs leading-5 text-foreground-secondary'>
             قیمت این محصول به‌روزرسانی شده است؛ قیمت قبلی{' '}
             <span className='numeric font-bold text-foreground'>
-              {formatToman(item.price.snapshotEffectivePriceToman)}
+              {formatPrice(item.price.snapshotEffectivePriceToman)}
             </span>{' '}
             و قیمت فعلی{' '}
             <span className='numeric font-bold text-foreground'>
-              {formatToman(item.price.currentEffectivePriceToman)}
+              {currentEffectivePriceToman !== null
+                ? formatPrice(currentEffectivePriceToman)
+                : 'نامشخص'}
             </span>{' '}
             است
           </p>
@@ -292,7 +292,7 @@ function CartItemCard({ item }: { item: StorefrontCartItem }) {
 
             {item.price.discountPercent > 0 ? (
               <span className='rounded-full bg-danger-soft px-2.5 py-1 text-xs font-bold text-danger'>
-                {item.price.discountPercent.toLocaleString('fa-IR')}٪ تخفیف
+                {toPersianDigits(item.price.discountPercent)}٪ تخفیف
               </span>
             ) : null}
           </div>
@@ -336,6 +336,7 @@ function CartItemCard({ item }: { item: StorefrontCartItem }) {
 
 function CartSummary({ cart }: { cart: StorefrontCart }) {
   const hasUnavailableItems = cart.items.some((item) => !item.availability.canPurchase);
+  const canStartCheckout = !hasUnavailableItems;
 
   const hasFitmentRisks = cart.items.some(
     (item) =>
@@ -389,13 +390,19 @@ function CartSummary({ cart }: { cart: StorefrontCart }) {
           </div>
         ) : null}
 
-        <Button type='button' fullWidth disabled className='mt-5' iconEnd={<ChevronLeft />}>
-          ادامه ثبت سفارش
-        </Button>
-
-        <p className='mt-3 text-center text-xs leading-6 text-foreground-muted'>
-          ثبت مشخصات سفارش و پرداخت در مرحله بعدی فعال می‌شود
-        </p>
+        {canStartCheckout ? (
+          <Link
+            href='/checkout'
+            className='mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-control bg-brand px-4 text-sm font-bold text-brand-foreground transition-opacity hover:opacity-90'
+          >
+            ادامه ثبت سفارش
+            <ChevronLeft className='size-4' />
+          </Link>
+        ) : (
+          <Button type='button' fullWidth disabled className='mt-5' iconEnd={<ChevronLeft />}>
+            ادامه ثبت سفارش
+          </Button>
+        )}
       </aside>
 
       {/* Mobile bottom bar */}

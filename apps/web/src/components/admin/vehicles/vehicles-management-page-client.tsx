@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { VehicleMakesTab } from '@/components/admin/vehicles/vehicle-makes-tab';
 import { VehicleModelsTab } from '@/components/admin/vehicles/vehicle-models-tab';
 import { VehicleVariantsTab } from '@/components/admin/vehicles/vehicle-variants-tab';
+import { toPersianDigits } from '@/lib/utils/digits';
 
 type VehicleManagementTab = 'makes' | 'models' | 'variants';
 
@@ -69,7 +70,7 @@ function VehicleTabPlaceholder({
             <h2 className='type-section-title text-foreground'>{title}</h2>
 
             <Badge size='sm' variant='brand'>
-              {count.toLocaleString('fa-IR')} {entityLabel}
+              {toPersianDigits(count)} {entityLabel}
             </Badge>
           </div>
 
@@ -202,21 +203,21 @@ export function VehiclesManagementPageClient() {
           <TabsTrigger value='variants'>
             تیپ / موتور
             <span className='numeric text-xs text-foreground-muted'>
-              {variants.length.toLocaleString('fa-IR')}
+              {toPersianDigits(variants.length)}
             </span>
           </TabsTrigger>
 
           <TabsTrigger value='models'>
             مدل خودرو
             <span className='numeric text-xs text-foreground-muted'>
-              {models.length.toLocaleString('fa-IR')}
+              {toPersianDigits(models.length)}
             </span>
           </TabsTrigger>
 
           <TabsTrigger value='makes'>
             برند خودرو
             <span className='numeric text-xs text-foreground-muted'>
-              {makes.length.toLocaleString('fa-IR')}
+              {toPersianDigits(makes.length)}
             </span>
           </TabsTrigger>
         </TabsList>

@@ -8,6 +8,7 @@ import { IconButton } from '@/components/ui/icon-button';
 import { Tooltip } from '@/components/ui/tooltip';
 import { Edit, Plus, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
+import { toPersianDigits } from '@/lib/utils/digits';
 
 type CategoriesTableProps = {
   categories: AdminCategory[];
@@ -92,11 +93,11 @@ export function CategoriesTable({
         cell: (row) => (
           <div className='flex justify-center gap-1.5'>
             <Badge size='sm' variant='neutral'>
-              {row._count.children.toLocaleString('fa-IR')} زیر‌دسته
+              {toPersianDigits(row._count.children)} زیر‌دسته
             </Badge>
 
             <Badge size='sm' variant='info'>
-              {row._count.products.toLocaleString('fa-IR')} محصول
+              {toPersianDigits(row._count.products)} محصول
             </Badge>
           </div>
         ),
@@ -110,7 +111,7 @@ export function CategoriesTable({
         minWidth: '90px',
         cell: (row) => (
           <span className='numeric font-semibold text-foreground'>
-            {row.sortOrder.toLocaleString('fa-IR')}
+            {toPersianDigits(row.sortOrder)}
           </span>
         ),
       },

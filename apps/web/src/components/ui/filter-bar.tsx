@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button, type ButtonProps } from '@/components/ui/button';
 import { cn } from '@/lib/utils/cn';
+import { toPersianDigits } from '@/lib/utils/digits';
 import { RotateCcw } from 'lucide-react';
 import type { HTMLAttributes, ReactNode } from 'react';
 
@@ -133,7 +134,7 @@ export function FilterBarClearButton({
 
       {activeFilterCount > 0 ? (
         <Badge variant='brand' size='sm' className='ms-1 min-h-5 px-1.5'>
-          {activeFilterCount.toLocaleString('fa-IR')}
+          {toPersianDigits(activeFilterCount)}
         </Badge>
       ) : null}
     </Button>

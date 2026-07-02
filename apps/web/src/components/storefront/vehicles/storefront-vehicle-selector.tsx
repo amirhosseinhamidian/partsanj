@@ -18,6 +18,7 @@ import {
   readStorefrontVehicleSelection,
   saveStorefrontVehicleSelection,
 } from '@/lib/storefront/vehicles/vehicle-selection-storage';
+import { toPersianDigits } from '@/lib/utils/digits';
 
 type StorefrontVehicleSelectorProps = {
   initialSelection?: StorefrontVehicleSelectionInput;
@@ -28,7 +29,7 @@ type StorefrontVehicleSelectorProps = {
 };
 
 function formatYear(value: number): string {
-  return value.toLocaleString('fa-IR');
+  return toPersianDigits(value);
 }
 
 function getVariantDetails(variant: StorefrontVehicleVariant): string {

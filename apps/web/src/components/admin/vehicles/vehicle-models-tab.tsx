@@ -24,6 +24,7 @@ import { Edit3, Layers3, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { VehicleModelFormSheet } from './vehicle-model-form-sheet';
 import { ImageUrlPreview } from '@/components/ui/image-url-preview';
+import { toPersianDigits } from '@/lib/utils/digits';
 
 const PAGE_SIZE = 20;
 
@@ -139,7 +140,7 @@ export function VehicleModelsTab({ models, makes, loading, onDataChanged }: Vehi
         align: 'center',
         cell: (row) => (
           <span className='numeric font-bold text-foreground'>
-            {row._count.variants.toLocaleString('fa-IR')}
+            {toPersianDigits(row._count.variants)}
           </span>
         ),
       },
@@ -150,7 +151,7 @@ export function VehicleModelsTab({ models, makes, loading, onDataChanged }: Vehi
         align: 'center',
         cell: (row) => (
           <span className='numeric text-sm text-foreground-secondary'>
-            {row.sortOrder.toLocaleString('fa-IR')}
+            {toPersianDigits(row.sortOrder)}
           </span>
         ),
       },

@@ -41,6 +41,8 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { toPersianDigits } from '@/lib/utils/digits';
+import { formatPrice } from '@/lib/utils/price';
 
 const PRODUCTS_PAGE_SIZE = 24;
 const ALL_FILTER_VALUE = '__all__';
@@ -55,10 +57,6 @@ function getPositiveInteger(value: string | null, fallback: number): number {
   const parsedValue = Number.parseInt(value, 10);
 
   return Number.isInteger(parsedValue) && parsedValue > 0 ? parsedValue : fallback;
-}
-
-function formatToman(value: number): string {
-  return `${value.toLocaleString('fa-IR')} تومان`;
 }
 
 function getStockStatusLabel(stockStatus: StorefrontStockStatus): string {
@@ -132,12 +130,10 @@ function ProductCard({
 }) {
   const primaryImage = product.images[0] ?? null;
 
-  const hasPrice = typeof product.effectivePriceToman === 'number';
+  const displayedPrice = product.effectivePriceToman ?? product.priceToman;
 
   const hasActiveSale =
-    product.isSaleActive &&
-    typeof product.priceToman === 'number' &&
-    typeof product.salePriceToman === 'number';
+    product.isSaleActive && product.priceToman !== null && product.effectivePriceToman !== null;
 
   return (
     <article className='group flex min-w-0 flex-col overflow-hidden rounded-card border border-border bg-surface shadow-panel transition-shadow hover:shadow-floating'>
@@ -152,7 +148,7 @@ function ProductCard({
 
         {hasActiveSale ? (
           <Badge variant='danger' size='sm' className='absolute start-3 top-3'>
-            {product.discountPercent.toLocaleString('fa-IR')}٪ تخفیف
+            {toPersianDigits(product.discountPercent)}٪ تخفیف
           </Badge>
         ) : null}
       </div>
@@ -179,14 +175,15 @@ function ProductCard({
         )}
 
         <div className='mt-4 flex flex-1 flex-col border-t border-border pt-4'>
-          {hasPrice ? (
+          {displayedPrice !== null ? (
             <>
               <p className='numeric mt-1 text-lg font-extrabold text-foreground'>
-                {formatToman(product.effectivePriceToman)}
+                {formatPrice(displayedPrice)}
               </p>
-              {hasActiveSale ? (
+
+              {hasActiveSale && product.priceToman !== null ? (
                 <p className='numeric text-xs text-foreground-muted line-through'>
-                  {formatToman(product.priceToman)}
+                  {formatPrice(product.priceToman)}
                 </p>
               ) : null}
             </>
@@ -604,7 +601,7 @@ export function StorefrontProductsPageClient() {
 
                 <p className='mt-0.5 text-sm text-foreground-muted'>
                   {result
-                    ? `${result.meta.total.toLocaleString('fa-IR')} محصول پیدا شد`
+                    ? `${toPersianDigits(result.meta.total)} محصول پیدا شد`
                     : 'در حال دریافت محصولات'}
                 </p>
               </div>

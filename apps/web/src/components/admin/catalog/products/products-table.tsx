@@ -12,6 +12,8 @@ import { useMemo } from 'react';
 import { Edit } from 'lucide-react';
 import { IconButton } from '@/components/ui/icon-button';
 import { Tooltip } from '@/components/ui/tooltip';
+import { toPersianDigits } from '@/lib/utils/digits';
+import { formatPrice } from '@/lib/utils/price';
 
 type ProductsTableProps = {
   products: AdminProductListItem[];
@@ -31,14 +33,6 @@ function formatDate(value: string): string {
     month: 'short',
     day: 'numeric',
   }).format(new Date(value));
-}
-
-function formatPrice(priceToman: number | null): string {
-  if (!priceToman) {
-    return 'بدون قیمت';
-  }
-
-  return `${priceToman.toLocaleString('fa-IR')} تومان`;
 }
 
 function ProductStatusBadge({ status }: { status: ProductStatus }) {
@@ -202,7 +196,7 @@ export function ProductsTable({
 
                   {row.discountPercent > 0 ? (
                     <Badge size='sm' variant='brand'>
-                      {row.discountPercent.toLocaleString('fa-IR')}٪ تخفیف
+                      {toPersianDigits(row.discountPercent)}٪ تخفیف
                     </Badge>
                   ) : null}
                 </div>

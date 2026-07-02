@@ -3,6 +3,7 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import { IconButton } from '@/components/ui/icon-button';
 import { cn } from '@/lib/utils/cn';
+import { toPersianDigits } from '@/lib/utils/digits';
 import { ArrowDown, ArrowUp, ChevronsUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 
@@ -462,12 +463,10 @@ function DataTablePaginationControls({ pagination }: { pagination: DataTablePagi
   return (
     <div className='flex flex-col gap-3 border-t border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between'>
       <p className='text-sm text-foreground-muted'>
-        نمایش{' '}
-        <span className='font-semibold text-foreground'>{startItem.toLocaleString('fa-IR')}</span>{' '}
-        تا <span className='font-semibold text-foreground'>{endItem.toLocaleString('fa-IR')}</span>{' '}
-        از{' '}
+        نمایش <span className='font-semibold text-foreground'>{toPersianDigits(startItem)}</span> تا{' '}
+        <span className='font-semibold text-foreground'>{toPersianDigits(endItem)}</span> از{' '}
         <span className='font-semibold text-foreground'>
-          {pagination.totalItems.toLocaleString('fa-IR')}
+          {toPersianDigits(pagination.totalItems)}
         </span>{' '}
         مورد
       </p>
@@ -483,7 +482,7 @@ function DataTablePaginationControls({ pagination }: { pagination: DataTablePagi
         />
 
         <span className='min-w-24 text-center text-sm font-semibold text-foreground'>
-          صفحه {currentPage.toLocaleString('fa-IR')} از {totalPages.toLocaleString('fa-IR')}
+          صفحه {toPersianDigits(currentPage)} از {toPersianDigits(totalPages)}
         </span>
 
         <IconButton

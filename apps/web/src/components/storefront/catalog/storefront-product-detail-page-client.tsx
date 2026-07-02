@@ -38,6 +38,7 @@ import type {
 } from '@/lib/storefront/vehicles/vehicle.types';
 import { useStorefrontCart } from '@/components/storefront/cart/storefront-cart-provider';
 import { ProductPurchasePanel } from '@/components/storefront/catalog/product-purchase-panel';
+import { toPersianDigits } from '@/lib/utils/digits';
 
 type StorefrontProductDetailPageClientProps = {
   slug: string;
@@ -70,7 +71,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function formatYear(value: number): string {
-  return value.toLocaleString('fa-IR');
+  return toPersianDigits(value);
 }
 
 function getStockStatusLabel(stockStatus: StorefrontProductDetail['stockStatus']): string {
@@ -187,7 +188,7 @@ function formatSpecificationValue(value: unknown): string {
   }
 
   if (typeof value === 'number') {
-    return value.toLocaleString('fa-IR');
+    return toPersianDigits(value);
   }
 
   if (typeof value === 'string') {
@@ -298,10 +299,12 @@ function ProductCompatibilityStatus({
               این قطعه برای خودرو و تیپ انتخاب‌شده شما در فهرست سازگاری‌ها ثبت نشده است
             </p>
 
-            <p className='mt-2 text-sm font-semibold text-foreground'>
-              {selectedVehicle.makeName} · {selectedVehicle.modelName} ·{' '}
-              {selectedVehicle.variant.name}
-            </p>
+            {selectedVehicle ? (
+              <p className='mt-2 text-sm font-semibold text-foreground'>
+                {selectedVehicle.makeName} · {selectedVehicle.modelName} ·{' '}
+                {selectedVehicle.variant.name}
+              </p>
+            ) : null}
 
             <Button
               type='button'
@@ -515,26 +518,24 @@ export function StorefrontProductDetailPageClient({
   }, [loadProduct]);
 
   useEffect(() => {
-    let isCurrent = true;
-
     if (!selectionContext) {
       setSelectedVehicle(null);
       return;
     }
 
+    const { modelSlug, variantId } = selectionContext;
+
+    let isCurrent = true;
+
     async function resolveVehicle() {
       try {
-        const response = await storefrontVehiclesApi.listVariantsByModelSlug(
-          selectionContext.modelSlug,
-        );
+        const response = await storefrontVehiclesApi.listVariantsByModelSlug(modelSlug);
 
         if (!isCurrent) {
           return;
         }
 
-        const variant = response.data.variants.find(
-          (item) => item.id === selectionContext.variantId,
-        );
+        const variant = response.data.variants.find((item) => item.id === variantId);
 
         if (!variant) {
           setSelectedVehicle(null);
@@ -745,7 +746,7 @@ export function StorefrontProductDetailPageClient({
                 </div>
 
                 <span className='inline-flex w-fit items-center rounded-full border border-brand/20 bg-brand-soft px-3 py-1.5 text-xs font-bold text-brand'>
-                  {specificationEntries.length.toLocaleString('fa-IR')} ویژگی
+                  {toPersianDigits(specificationEntries.length)} ویژگی
                 </span>
               </div>
 
@@ -757,7 +758,7 @@ export function StorefrontProductDetailPageClient({
                   >
                     <div className='flex items-start gap-3'>
                       <span className='grid size-9 shrink-0 place-items-center rounded-control bg-surface-muted text-xs font-extrabold text-brand transition-colors group-hover:bg-brand group-hover:text-brand-foreground'>
-                        {(index + 1).toLocaleString('fa-IR')}
+                        {toPersianDigits(index + 1)}
                       </span>
 
                       <div className='min-w-0 flex-1'>

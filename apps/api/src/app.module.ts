@@ -8,6 +8,8 @@ import { CatalogAdminModule } from './modules/catalog/admin/catalog-admin.module
 import { VehicleAdminModule } from './modules/vehicles/admin/vehicle-admin.module.js';
 import { VehiclesModule } from './modules/vehicles/vehicles.module.js';
 import { CartModule } from './modules/cart/cart.module.js';
+import { CustomerAddressModule } from './modules/customer-address/customer-address.module.js';
+import { OrderModule } from './modules/order/order.module.js';
 
 @Module({
   imports: [
@@ -23,6 +25,8 @@ import { CartModule } from './modules/cart/cart.module.js';
     VehicleAdminModule,
     VehiclesModule,
     CartModule,
+    CustomerAddressModule,
+    OrderModule,
   ],
 })
 export class AppModule {}

@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils/cn';
+import { toPersianDigits } from '@/lib/utils/digits';
 import {
   forwardRef,
   useEffect,
@@ -145,7 +146,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
 
           {showCount && typeof maxLength === 'number' ? (
             <span id={countId} className='shrink-0 text-xs text-foreground-muted'>
-              {currentLength.toLocaleString('fa-IR')} / {maxLength.toLocaleString('fa-IR')}
+              {toPersianDigits(currentLength)} / {toPersianDigits(maxLength)}
             </span>
           ) : null}
         </div>

@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
 import { cn } from '@/lib/utils/cn';
+import { toPersianDigits } from '@/lib/utils/digits';
 import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
 import type { HTMLAttributes, ReactNode } from 'react';
 
@@ -107,7 +108,7 @@ function getPaginationItems(
 }
 
 function formatNumber(value: number): string {
-  return value.toLocaleString('fa-IR');
+  return toPersianDigits(value);
 }
 
 export function Pagination({

@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import { StorefrontFooter } from './storefront-footer';
 import { StorefrontHeader } from './storefront-header';
 import { StorefrontCartProvider } from '@/components/storefront/cart/storefront-cart-provider';
+import { StorefrontCustomerAuthProvider } from '@/components/storefront/customer-auth/storefront-customer-auth-provider';
 
 type StorefrontShellProps = {
   children: ReactNode;
@@ -22,13 +23,15 @@ export function StorefrontShell({ children }: StorefrontShellProps) {
 
   return (
     <StorefrontCartProvider>
-      <div className='flex min-h-screen flex-col'>
-        <StorefrontHeader />
+      <StorefrontCustomerAuthProvider>
+        <div className='flex min-h-screen flex-col'>
+          <StorefrontHeader />
 
-        <main className='flex-1'>{children}</main>
+          <main className='flex-1'>{children}</main>
 
-        <StorefrontFooter />
-      </div>
+          <StorefrontFooter />
+        </div>
+      </StorefrontCustomerAuthProvider>
     </StorefrontCartProvider>
   );
 }

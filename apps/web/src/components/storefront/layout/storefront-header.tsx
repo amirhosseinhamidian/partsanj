@@ -1,6 +1,6 @@
 'use client';
 
-import { Menu, Search, ShoppingCart, UserRound, X } from 'lucide-react';
+import { LogOut, Menu, Search, ShoppingCart, UserRound, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -9,8 +9,9 @@ import { cn } from '@/lib/utils/cn';
 import { PartSanjLogo } from '@/lib/storefront/shared/partsanj-logo';
 
 import { useStorefrontCart } from '@/components/storefront/cart/storefront-cart-provider';
-
-import { useEffect, useState, type ReactNode } from 'react';
+import { useStorefrontCustomerAuth } from '@/components/storefront/customer-auth/storefront-customer-auth-provider';
+import { useEffect, useState } from 'react';
+import { toPersianDigits } from '@/lib/utils/digits';
 
 function isNavItemActive(pathname: string, href: string): boolean {
   if (href === '/') {
@@ -24,16 +25,42 @@ function isNavItemActive(pathname: string, href: string): boolean {
   return false;
 }
 
-function HeaderActionButton({ children, label }: { children: ReactNode; label: string }) {
+function HeaderCustomerButton({ showLabel = false }: { showLabel?: boolean }) {
+  const { status, user, openLogin, logout, isLoggingOut } = useStorefrontCustomerAuth();
+
+  const isAuthenticated = status === 'authenticated';
+
+  const isLoading = status === 'loading';
+
+  const label = isAuthenticated
+    ? showLabel
+      ? 'خروج'
+      : user?.firstName
+        ? `خروج ${user.firstName}`
+        : 'خروج'
+    : showLabel
+      ? 'ورود'
+      : 'ورود / ثبت‌نام';
+
   return (
     <button
       type='button'
-      disabled
-      title='این بخش در فاز حساب کاربری و سبد خرید فعال می‌شود'
+      disabled={isLoading || isLoggingOut}
+      title={isAuthenticated ? 'خروج از حساب کاربری' : 'ورود یا ثبت‌نام'}
       aria-label={label}
-      className='inline-flex h-10 items-center justify-center gap-2 rounded-control border border-border bg-surface px-3 text-sm font-semibold text-foreground-secondary opacity-75'
+      onClick={() => {
+        if (isAuthenticated) {
+          void logout();
+          return;
+        }
+
+        openLogin();
+      }}
+      className='inline-flex h-10 items-center justify-center gap-2 rounded-control border border-border bg-surface px-3 text-sm font-semibold text-foreground-secondary transition-colors hover:border-brand/40 hover:bg-brand-soft hover:text-brand disabled:pointer-events-none disabled:opacity-60'
     >
-      {children}
+      {isAuthenticated ? <LogOut className='size-5' /> : <UserRound className='size-5' />}
+
+      {label}
     </button>
   );
 }
@@ -41,7 +68,7 @@ function HeaderActionButton({ children, label }: { children: ReactNode; label: s
 function HeaderCartButton({ showLabel = false }: { showLabel?: boolean }) {
   const { itemCount, isLoading } = useStorefrontCart();
 
-  const displayCount = itemCount > 99 ? '۹۹+' : itemCount.toLocaleString('fa-IR');
+  const displayCount = itemCount > 99 ? '۹۹+' : toPersianDigits(itemCount);
 
   return (
     <Link
@@ -114,10 +141,7 @@ export function StorefrontHeader() {
 
           <HeaderCartButton />
 
-          <HeaderActionButton label='ورود یا ثبت‌نام'>
-            <UserRound className='size-5' />
-            ورود / ثبت‌نام
-          </HeaderActionButton>
+          <HeaderCustomerButton />
         </div>
 
         <button
@@ -159,10 +183,7 @@ export function StorefrontHeader() {
             <div className='mt-4 grid grid-cols-2 gap-2 border-t border-border pt-4'>
               <HeaderCartButton showLabel />
 
-              <HeaderActionButton label='ورود یا ثبت‌نام'>
-                <UserRound className='size-5' />
-                ورود
-              </HeaderActionButton>
+              <HeaderCustomerButton showLabel />
             </div>
           </div>
         </div>

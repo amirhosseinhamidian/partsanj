@@ -3,9 +3,9 @@ import type { Metadata } from 'next';
 import { ToastProvider } from '@/components/providers/toast-provider';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { TooltipProvider } from '@/components/providers/tooltip-provider';
-import { StorefrontShell } from '@/components/storefront/layout/storefront-shell';
 import { vazirmatn } from './fonts';
 import './globals.css';
+import { StorefrontShell } from '@/components/storefront/layout/storefront-shell';
 
 export const metadata: Metadata = {
   title: {

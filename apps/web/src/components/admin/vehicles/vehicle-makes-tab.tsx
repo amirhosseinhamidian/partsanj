@@ -20,6 +20,7 @@ import { CarFront, Edit3, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { VehicleMakeFormSheet } from './vehicle-make-form-sheet';
 import { ImageUrlPreview } from '@/components/ui/image-url-preview';
+import { toPersianDigits } from '@/lib/utils/digits';
 
 const PAGE_SIZE = 20;
 
@@ -102,7 +103,7 @@ export function VehicleMakesTab({ makes, loading, onDataChanged }: VehicleMakesT
         align: 'center',
         cell: (row) => (
           <span className='numeric font-bold text-foreground'>
-            {row._count.models.toLocaleString('fa-IR')}
+            {toPersianDigits(row._count.models)}
           </span>
         ),
       },
@@ -113,7 +114,7 @@ export function VehicleMakesTab({ makes, loading, onDataChanged }: VehicleMakesT
         align: 'center',
         cell: (row) => (
           <span className='numeric text-sm text-foreground-secondary'>
-            {row.sortOrder.toLocaleString('fa-IR')}
+            {toPersianDigits(row.sortOrder)}
           </span>
         ),
       },

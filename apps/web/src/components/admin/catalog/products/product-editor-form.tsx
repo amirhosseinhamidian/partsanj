@@ -25,6 +25,7 @@ import { PriceInput } from '@/components/ui/price-input';
 import { FileUpload, type FileUploadRejection } from '@/components/ui/file-upload';
 import { SortableImageList, type SortableImageItem } from '@/components/ui/sortable-image-list';
 import { JalaliDatePicker } from '@/components/ui/jalali-date-picker';
+import { toPersianDigits } from '@/lib/utils/digits';
 
 const MAX_CODES = 20;
 const MAX_IMAGES = 10;
@@ -387,7 +388,7 @@ export function ProductEditorForm({
     if (values.images.length >= MAX_IMAGES) {
       setErrors((current) => ({
         ...current,
-        images: `حداکثر ${MAX_IMAGES.toLocaleString('fa-IR')} تصویر قابل ثبت است`,
+        images: `حداکثر ${toPersianDigits(MAX_IMAGES)} تصویر قابل ثبت است`,
       }));
 
       return;
@@ -1057,7 +1058,7 @@ export function ProductEditorForm({
             <div className='space-y-4'>
               <FormField
                 label='بارگذاری فایل تصویر'
-                helperText={`فرمت‌های مجاز JPG، PNG و WebP · حداکثر ${MAX_IMAGES.toLocaleString('fa-IR')} تصویر · هر فایل حداکثر ۵ مگابایت`}
+                helperText={`فرمت‌های مجاز JPG، PNG و WebP · حداکثر ${toPersianDigits(MAX_IMAGES)} تصویر · هر فایل حداکثر ۵ مگابایت`}
                 error={errors.images}
               >
                 {({ id, labelId, describedBy, invalid }) => (

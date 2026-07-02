@@ -55,7 +55,7 @@ export class AuthService {
 
       throw new HttpException(
         {
-          message: 'Please wait before requesting another code',
+          message: 'لطفا جهت درخواست کد دیگر کمی صبر کنید.',
           resendAvailableAt,
         },
         HttpStatus.TOO_MANY_REQUESTS,

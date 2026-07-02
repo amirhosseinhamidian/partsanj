@@ -24,6 +24,7 @@ import type {
 } from '@/lib/storefront/vehicles/vehicle.types';
 import { CarFront, CheckCircle2, CircleAlert, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { toPersianDigits } from '@/lib/utils/digits';
 
 type CompatibilityCheckResult = {
   vehicleVariantId: string;
@@ -40,7 +41,7 @@ type ProductCompatibilityDialogProps = {
 };
 
 function formatYear(value: number): string {
-  return value.toLocaleString('fa-IR');
+  return toPersianDigits(value);
 }
 
 function getVariantDetails(variant: StorefrontVehicleVariant): string {

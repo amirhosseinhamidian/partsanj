@@ -27,7 +27,7 @@ export type OtpInputProps = {
   value: string;
   onChange: (value: string) => void;
 
-  length?: 4;
+  length?: number;
   size?: OtpInputSize;
 
   disabled?: boolean;

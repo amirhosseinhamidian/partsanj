@@ -215,7 +215,7 @@ export function VehicleVariantsTab({
         align: 'center',
         cell: (row) => (
           <Badge size='sm' variant={row._count.compatibilities > 0 ? 'brand' : 'neutral'}>
-            {row._count.compatibilities.toLocaleString('fa-IR')} مورد
+            {toPersianDigits(row._count.compatibilities)} مورد
           </Badge>
         ),
       },
@@ -226,7 +226,7 @@ export function VehicleVariantsTab({
         align: 'center',
         cell: (row) => (
           <span className='numeric text-sm text-foreground-secondary'>
-            {row.sortOrder.toLocaleString('fa-IR')}
+            {toPersianDigits(row.sortOrder)}
           </span>
         ),
       },

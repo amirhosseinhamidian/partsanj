@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { AlertTriangle, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { toPersianDigits } from '@/lib/utils/digits';
 
 type DeleteCategoryDialogProps = {
   open: boolean;
@@ -129,13 +130,13 @@ export function DeleteCategoryDialog({
                   <div className='mt-3 flex flex-wrap gap-2'>
                     {dependencyState.childrenCount > 0 ? (
                       <Badge variant='danger'>
-                        {dependencyState.childrenCount.toLocaleString('fa-IR')} زیر‌دسته وابسته
+                        {toPersianDigits(dependencyState.childrenCount)} زیر‌دسته وابسته
                       </Badge>
                     ) : null}
 
                     {dependencyState.productsCount > 0 ? (
                       <Badge variant='danger'>
-                        {dependencyState.productsCount.toLocaleString('fa-IR')} محصول وابسته
+                        {toPersianDigits(dependencyState.productsCount)} محصول وابسته
                       </Badge>
                     ) : null}
                   </div>

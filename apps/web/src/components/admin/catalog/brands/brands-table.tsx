@@ -8,6 +8,7 @@ import { ImageUrlPreview } from '@/components/ui/image-url-preview';
 import { Tooltip } from '@/components/ui/tooltip';
 import { Edit } from 'lucide-react';
 import { useMemo } from 'react';
+import { toPersianDigits } from '@/lib/utils/digits';
 
 type BrandsTableProps = {
   brands: AdminBrand[];
@@ -80,7 +81,7 @@ export function BrandsTable({
         minWidth: '120px',
         cell: (row) => (
           <Badge size='sm' variant={row._count.products > 0 ? 'info' : 'neutral'}>
-            {row._count.products.toLocaleString('fa-IR')} محصول
+            {toPersianDigits(row._count.products)} محصول
           </Badge>
         ),
       },

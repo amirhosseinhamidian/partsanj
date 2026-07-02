@@ -7,6 +7,8 @@ import type { StorefrontVehicleVariant } from '@/lib/storefront/vehicles/vehicle
 import { CarFront, ChevronLeft, Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo } from 'react';
+import { toPersianDigits } from '@/lib/utils/digits';
+import { formatPrice } from '@/lib/utils/price';
 
 type SelectedVehicle = {
   makeName: string;
@@ -19,10 +21,6 @@ type ProductPurchasePanelProps = {
   selectedVehicle: SelectedVehicle | null;
   onSelectVehicle: () => void;
 };
-
-function formatToman(value: number): string {
-  return `${value.toLocaleString('fa-IR')} تومان`;
-}
 
 function CartQuantityControl({
   quantity,
@@ -58,7 +56,7 @@ function CartQuantityControl({
         aria-live='polite'
         className='numeric grid min-w-10 place-items-center text-sm font-extrabold text-foreground'
       >
-        {quantity.toLocaleString('fa-IR')}
+        {toPersianDigits(quantity)}
       </output>
 
       <button
@@ -98,7 +96,7 @@ export function ProductPurchasePanel({
   const isUnavailable = product.stockStatus === 'OUT_OF_STOCK' || displayedPrice === null;
 
   const canIncrease =
-    Boolean(cartItem) && !isMutating && cartItem.availability.canPurchase && cartItem.quantity < 99;
+    cartItem !== null && !isMutating && cartItem.availability.canPurchase && cartItem.quantity < 99;
 
   async function handleAddToCart() {
     if (isUnavailable) {
@@ -157,17 +155,17 @@ export function ProductPurchasePanel({
             {product.isSaleActive && product.priceToman !== null ? (
               <div className='flex flex-wrap items-center gap-3'>
                 <span className='numeric text-sm text-foreground-muted line-through'>
-                  {formatToman(product.priceToman)}
+                  {formatPrice(product.priceToman)}
                 </span>
 
                 <span className='rounded-full bg-danger-soft px-2.5 py-1 text-xs font-bold text-danger'>
-                  {product.discountPercent.toLocaleString('fa-IR')}٪ تخفیف
+                  {toPersianDigits(product.discountPercent)}٪ تخفیف
                 </span>
               </div>
             ) : null}
 
             <p className='numeric mt-2 text-2xl font-extrabold text-foreground'>
-              {formatToman(displayedPrice)}
+              {formatPrice(displayedPrice)}
             </p>
           </>
         ) : (
@@ -277,17 +275,17 @@ export function ProductPurchasePanel({
                   {product.isSaleActive && product.priceToman !== null ? (
                     <div className='flex flex-wrap items-center gap-3'>
                       <span className='numeric text-sm text-foreground-muted line-through'>
-                        {formatToman(product.priceToman)}
+                        {formatPrice(product.priceToman)}
                       </span>
 
                       <span className='rounded-full bg-danger-soft px-2.5 py-1 text-xs font-bold text-danger'>
-                        {product.discountPercent.toLocaleString('fa-IR')}٪
+                        {toPersianDigits(product.discountPercent)}٪
                       </span>
                     </div>
                   ) : null}
 
                   <p className='numeric mt-0.5 text-base font-extrabold text-foreground'>
-                    {formatToman(displayedPrice)}
+                    {formatPrice(displayedPrice)}
                   </p>
                 </>
               ) : (
