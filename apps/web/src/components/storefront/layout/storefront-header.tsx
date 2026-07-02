@@ -3,11 +3,14 @@
 import { Menu, Search, ShoppingCart, UserRound, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
 
 import { storefrontPrimaryNavigation } from '@/lib/storefront/site-config';
 import { cn } from '@/lib/utils/cn';
 import { PartSanjLogo } from '@/lib/storefront/shared/partsanj-logo';
+
+import { useStorefrontCart } from '@/components/storefront/cart/storefront-cart-provider';
+
+import { useEffect, useState, type ReactNode } from 'react';
 
 function isNavItemActive(pathname: string, href: string): boolean {
   if (href === '/') {
@@ -21,7 +24,7 @@ function isNavItemActive(pathname: string, href: string): boolean {
   return false;
 }
 
-function HeaderActionButton({ children, label }: { children: React.ReactNode; label: string }) {
+function HeaderActionButton({ children, label }: { children: ReactNode; label: string }) {
   return (
     <button
       type='button'
@@ -31,6 +34,34 @@ function HeaderActionButton({ children, label }: { children: React.ReactNode; la
       className='inline-flex h-10 items-center justify-center gap-2 rounded-control border border-border bg-surface px-3 text-sm font-semibold text-foreground-secondary opacity-75'
     >
       {children}
+    </button>
+  );
+}
+
+function HeaderCartButton({ showLabel = false }: { showLabel?: boolean }) {
+  const { itemCount, isLoading } = useStorefrontCart();
+
+  const displayCount = itemCount > 99 ? '۹۹+' : itemCount.toLocaleString('fa-IR');
+
+  return (
+    <button
+      type='button'
+      disabled
+      aria-label={itemCount > 0 ? `سبد خرید، ${displayCount} کالا` : 'سبد خرید'}
+      title='صفحه کامل سبد خرید در گام بعدی فعال می‌شود'
+      className='inline-flex h-10 items-center justify-center gap-2 rounded-control border border-border bg-surface px-3 text-sm font-semibold text-foreground-secondary opacity-75'
+    >
+      <span className='relative grid size-5 place-items-center'>
+        <ShoppingCart className='size-5' />
+
+        {!isLoading && itemCount > 0 ? (
+          <span className='numeric absolute -end-3 -top-3 inline-flex min-w-5 items-center justify-center rounded-full border-2 border-surface bg-brand px-1 text-[10px] leading-5 font-extrabold text-brand-foreground'>
+            {displayCount}
+          </span>
+        ) : null}
+      </span>
+
+      {showLabel ? 'سبد خرید' : null}
     </button>
   );
 }
@@ -83,9 +114,7 @@ export function StorefrontHeader() {
             <Search className='size-5' />
           </Link>
 
-          <HeaderActionButton label='سبد خرید'>
-            <ShoppingCart className='size-5' />
-          </HeaderActionButton>
+          <HeaderCartButton />
 
           <HeaderActionButton label='ورود یا ثبت‌نام'>
             <UserRound className='size-5' />
@@ -130,10 +159,7 @@ export function StorefrontHeader() {
             </nav>
 
             <div className='mt-4 grid grid-cols-2 gap-2 border-t border-border pt-4'>
-              <HeaderActionButton label='سبد خرید'>
-                <ShoppingCart className='size-5' />
-                سبد خرید
-              </HeaderActionButton>
+              <HeaderCartButton showLabel />
 
               <HeaderActionButton label='ورود یا ثبت‌نام'>
                 <UserRound className='size-5' />

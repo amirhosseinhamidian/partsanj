@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, ProductStatus } from '../../generated/prisma/client.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { FindProductsQueryDto } from './dto/find-products.query.dto.js';
+import { getComputedProductPricing, type ProductPricingFields } from './catalog-pricing.utils.js';
 
 @Injectable()
 export class CatalogService {
@@ -254,49 +255,9 @@ export class CatalogService {
     };
   }
 
-  private withComputedPricing<
-    T extends {
-      priceToman: number | null;
-      salePriceToman: number | null;
-      saleStartsAt: Date | null;
-      saleEndsAt: Date | null;
-    },
-  >(product: T, now = new Date()) {
-    const nowTime = now.getTime();
-
-    const saleHasStarted = !product.saleStartsAt || product.saleStartsAt.getTime() <= nowTime;
-
-    const saleHasNotEnded = !product.saleEndsAt || product.saleEndsAt.getTime() >= nowTime;
-
-    const hasValidSalePrice =
-      product.priceToman !== null &&
-      product.salePriceToman !== null &&
-      product.salePriceToman > 0 &&
-      product.salePriceToman < product.priceToman;
-
-    const isSaleActive = hasValidSalePrice && saleHasStarted && saleHasNotEnded;
-
-    const effectivePriceToman = isSaleActive ? product.salePriceToman : product.priceToman;
-
-    const discountAmountToman =
-      isSaleActive && product.priceToman !== null && product.salePriceToman !== null
-        ? product.priceToman - product.salePriceToman
-        : 0;
-
-    const discountPercent =
-      isSaleActive && product.priceToman !== null && product.priceToman > 0
-        ? Math.round((discountAmountToman / product.priceToman) * 100)
-        : 0;
-
-    return {
-      ...product,
-      effectivePriceToman,
-      discountAmountToman,
-      discountPercent,
-      isSaleActive,
-    };
+  private withComputedPricing<T extends ProductPricingFields>(product: T, now = new Date()) {
+    return getComputedProductPricing(product, now);
   }
-
   private buildPublicProductWhere(
     query: Pick<
       FindProductsQueryDto,

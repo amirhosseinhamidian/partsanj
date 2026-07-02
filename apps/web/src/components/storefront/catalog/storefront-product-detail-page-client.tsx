@@ -24,7 +24,6 @@ import {
   PackageOpen,
   RefreshCw,
   ShieldCheck,
-  ShoppingCart,
   SlidersHorizontal,
   Tag,
   TriangleAlert,
@@ -37,6 +36,8 @@ import type {
   StorefrontVehicleSelection,
   StorefrontVehicleVariant,
 } from '@/lib/storefront/vehicles/vehicle.types';
+import { useStorefrontCart } from '@/components/storefront/cart/storefront-cart-provider';
+import { ProductPurchasePanel } from '@/components/storefront/catalog/product-purchase-panel';
 
 type StorefrontProductDetailPageClientProps = {
   slug: string;
@@ -59,12 +60,13 @@ type SpecificationEntry = {
   value: unknown;
 };
 
+type ProductLoadError = {
+  message: string;
+  status?: number;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function formatToman(value: number): string {
-  return `${value.toLocaleString('fa-IR')} تومان`;
 }
 
 function formatYear(value: number): string {
@@ -210,7 +212,7 @@ function formatSpecificationValue(value: unknown): string {
 
 function ProductDetailSkeleton() {
   return (
-    <div className='mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8'>
+    <div className='mx-auto w-full max-w-7xl px-4 pt-8 pb-44 sm:px-6 lg:px-8 lg:pb-8'>
       <div className='grid gap-8 lg:grid-cols-2'>
         <div className='aspect-square animate-pulse rounded-card bg-surface-muted' />
 
@@ -390,6 +392,7 @@ export function StorefrontProductDetailPageClient({
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const { addItem, isMutating: isCartMutating } = useStorefrontCart();
 
   const [isCompatibilityDialogOpen, setIsCompatibilityDialogOpen] = useState(false);
 
@@ -397,7 +400,7 @@ export function StorefrontProductDetailPageClient({
 
   const [isLoading, setIsLoading] = useState(true);
 
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<ProductLoadError | null>(null);
 
   const [selectedVehicle, setSelectedVehicle] = useState<ResolvedVehicle | null>(null);
 
@@ -473,7 +476,14 @@ export function StorefrontProductDetailPageClient({
 
       setProduct(response.data);
     } catch (error) {
-      setLoadError(getErrorMessage(error));
+      setLoadError({
+        message: getErrorMessage(error),
+        ...(error instanceof ClientApiError
+          ? {
+              status: error.status,
+            }
+          : {}),
+      });
       setProduct(null);
     } finally {
       setIsLoading(false);
@@ -530,8 +540,6 @@ export function StorefrontProductDetailPageClient({
     };
   }, [selectionContext]);
 
-  const displayedPrice = product?.effectivePriceToman ?? product?.priceToman ?? null;
-
   const specificationEntries = useMemo(
     () => toSpecificationEntries(product?.specifications),
     [product?.specifications],
@@ -542,7 +550,7 @@ export function StorefrontProductDetailPageClient({
   }
 
   if (loadError || !product) {
-    const isNotFound = loadError instanceof ClientApiError && loadError.status === 404;
+    const isNotFound = loadError?.status === 404;
 
     return (
       <div className='mx-auto w-full max-w-7xl px-4 py-14 text-center sm:px-6 lg:px-8'>
@@ -553,7 +561,7 @@ export function StorefrontProductDetailPageClient({
         </h1>
 
         <p className='mx-auto mt-3 max-w-lg text-sm leading-7 text-foreground-secondary'>
-          {loadError ?? 'اطلاعات محصول در دسترس نیست'}
+          {loadError?.message ?? 'اطلاعات محصول در دسترس نیست'}
         </p>
 
         <div className='mt-6 flex flex-wrap justify-center gap-3'>
@@ -601,8 +609,12 @@ export function StorefrontProductDetailPageClient({
         </Link>
       </div>
 
-      <div className='grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.95fr)]'>
-        <StorefrontProductImageGallery images={product.images} productName={product.name} />
+      <div className='grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.95fr)]'>
+        <StorefrontProductImageGallery
+          images={product.images}
+          productName={product.name}
+          className='w-full max-w-full min-w-0'
+        />
 
         <section>
           <div className='flex flex-wrap items-center gap-2'>
@@ -645,37 +657,11 @@ export function StorefrontProductDetailPageClient({
             </div>
           </div>
 
-          <div className='mt-6 rounded-card border border-border bg-surface-muted p-5'>
-            {displayedPrice !== null ? (
-              <>
-                {product.isSaleActive && product.priceToman !== null ? (
-                  <div className='flex flex-wrap items-center gap-3'>
-                    <span className='numeric text-sm text-foreground-muted line-through'>
-                      {formatToman(product.priceToman)}
-                    </span>
-
-                    <Badge variant='danger'>
-                      {product.discountPercent.toLocaleString('fa-IR')}٪ تخفیف
-                    </Badge>
-                  </div>
-                ) : null}
-
-                <p className='numeric mt-2 text-2xl font-extrabold text-foreground'>
-                  {formatToman(displayedPrice)}
-                </p>
-              </>
-            ) : (
-              <p className='text-base font-bold text-foreground'>قیمت نیازمند استعلام است</p>
-            )}
-
-            <Button type='button' fullWidth disabled className='mt-5' iconStart={<ShoppingCart />}>
-              افزودن به سبد خرید · به‌زودی
-            </Button>
-
-            <p className='mt-3 text-center text-xs leading-6 text-foreground-muted'>
-              سبد خرید و ثبت سفارش در فاز بعدی فروشگاه فعال می‌شود
-            </p>
-          </div>
+          <ProductPurchasePanel
+            product={product}
+            selectedVehicle={selectedVehicle}
+            onSelectVehicle={() => setIsCompatibilityDialogOpen(true)}
+          />
         </section>
       </div>
 

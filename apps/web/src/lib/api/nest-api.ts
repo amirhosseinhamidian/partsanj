@@ -3,6 +3,12 @@ import { env } from '@/lib/server/env';
 
 type UnknownRecord = Record<string, unknown>;
 
+export type NestApiResponse<T> = {
+  payload: T;
+  headers: Headers;
+  status: number;
+};
+
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === 'object' && value !== null;
 }
@@ -49,7 +55,10 @@ function createUrl(path: string): string {
   return `${env.apiUrl}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
-export async function nestApi<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function requestNestApi<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<NestApiResponse<T>> {
   const headers = new Headers(init.headers);
 
   headers.set('Accept', 'application/json');
@@ -67,7 +76,10 @@ export async function nestApi<T>(path: string, init: RequestInit = {}): Promise<
       cache: 'no-store',
     });
   } catch (error) {
-    console.error('Nest API connection error:', { path, error });
+    console.error('Nest API connection error:', {
+      path,
+      error,
+    });
 
     throw new ApiRequestError('ارتباط با سرویس اصلی برقرار نشد', 503, 'API_UNAVAILABLE');
   }
@@ -79,5 +91,22 @@ export async function nestApi<T>(path: string, init: RequestInit = {}): Promise<
     throw new ApiRequestError(getErrorMessage(payload), response.status, getErrorCode(payload));
   }
 
-  return payload as T;
+  return {
+    payload: payload as T,
+    headers: response.headers,
+    status: response.status,
+  };
+}
+
+export async function nestApi<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const result = await requestNestApi<T>(path, init);
+
+  return result.payload;
+}
+
+export async function nestApiWithResponse<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<NestApiResponse<T>> {
+  return requestNestApi<T>(path, init);
 }

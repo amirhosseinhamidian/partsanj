@@ -20,6 +20,18 @@ enum StockStatus {
   CHECK_AVAILABILITY
 }
 
+enum CartOwnerType {
+  GUEST
+  CUSTOMER
+}
+
+enum CartStatus {
+  ACTIVE
+  MERGED
+  CHECKED_OUT
+  ABANDONED
+}
+
 enum ProductCodeType {
   OEM
   TECHNICAL
@@ -73,6 +85,7 @@ model User {
   isActive         Boolean  @default(true)
   mobileVerifiedAt DateTime?
   lastLoginAt      DateTime?
+  carts Cart[]
 
   productAuditLogs ProductAuditLog[]
   adminAuditLogs   AdminAuditLog[]
@@ -138,7 +151,7 @@ model Product {
   description      String?
   specifications   Json?
 
-  priceToman    Int?
+  priceToman        Int?
   salePriceToman    Int?
   saleStartsAt      DateTime?
   saleEndsAt        DateTime?
@@ -155,6 +168,7 @@ model Product {
   category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   codes    ProductCode[]
   images   ProductImage[]
+  cartItems CartItem[]
 
   auditLogs ProductAuditLog[]
   compatibilities ProductVehicleCompatibility[]
@@ -195,6 +209,63 @@ model ProductImage {
 
   @@unique([productId, sortOrder])
 }
+
+model Cart {
+  id             String        @id @default(uuid())
+  ownerType      CartOwnerType
+  status         CartStatus    @default(ACTIVE)
+
+  userId         String?
+  guestTokenHash String?
+
+  expiresAt      DateTime?
+  lastActivityAt DateTime      @default(now())
+  mergedAt       DateTime?
+
+  user           User?         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  items          CartItem[]
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([userId, status])
+  @@index([guestTokenHash, status])
+  @@index([status, lastActivityAt])
+}
+
+model CartItem {
+  id               String   @id @default(uuid())
+  cartId           String
+  productId        String
+
+  // خودرویی که کاربر هنگام افزودن قطعه انتخاب کرده است
+  vehicleVariantId String?
+
+  // برای جلوگیری از ثبت تکراری یک محصول با خودرو / بدون خودرو
+  // مقدار آن باید vehicleVariantId یا رشته خالی باشد
+  fitmentKey       String   @default("")
+
+  quantity         Int      @default(1)
+
+  // Snapshot قیمت در لحظه افزودن یا آخرین Sync سبد
+  // منبع حقیقت نیست؛ قیمت نهایی همیشه در Backend دوباره محاسبه می‌شود
+  unitBasePriceToman      Int
+  unitEffectivePriceToman Int
+  priceSnapshotAt         DateTime @default(now())
+
+  cart           Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  vehicleVariant VehicleVariant? @relation(fields: [vehicleVariantId], references: [id], onDelete: Restrict)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([cartId, productId, fitmentKey])
+  @@index([productId])
+  @@index([vehicleVariantId])
+}
+
+
 
 model ProductAuditLog {
   id          String             @id @default(uuid())
@@ -277,6 +348,7 @@ model VehicleVariant {
 
   model VehicleModel @relation(fields: [modelId], references: [id], onDelete: Restrict)
   compatibilities  ProductVehicleCompatibility[]
+  cartItems  CartItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

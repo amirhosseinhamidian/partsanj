@@ -173,8 +173,8 @@ export function StorefrontProductImageGallery({
   }
 
   return (
-    <section className={className} aria-label='گالری تصاویر محصول'>
-      <div className='overflow-hidden rounded-card border border-border bg-surface'>
+    <section className={cn('w-full max-w-full min-w-0', className)} aria-label='گالری تصاویر محصول'>
+      <div className='w-full max-w-full min-w-0 overflow-hidden rounded-card border border-border bg-surface'>
         <div
           role='region'
           aria-roledescription='carousel'
@@ -186,7 +186,7 @@ export function StorefrontProductImageGallery({
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerCancel}
           className={cn(
-            'relative aspect-square overflow-hidden outline-none',
+            'relative aspect-square w-full max-w-full min-w-0 overflow-hidden outline-none',
             hasMultipleImages &&
               'cursor-grab touch-pan-y select-none focus-visible:ring-2 focus-visible:ring-focus-ring active:cursor-grabbing',
           )}
@@ -194,7 +194,7 @@ export function StorefrontProductImageGallery({
           <div
             dir='ltr'
             className={cn(
-              'flex h-full flex-row-reverse',
+              'flex h-full w-full min-w-0 flex-row-reverse',
               !isDragging && 'transition-transform duration-300 ease-out',
             )}
             style={{
@@ -204,7 +204,7 @@ export function StorefrontProductImageGallery({
             {images.map((image, index) => (
               <div
                 key={image.id}
-                className='h-full w-full shrink-0'
+                className='h-full min-w-0 shrink-0 basis-full'
                 aria-hidden={index !== activeIndex}
               >
                 <div className='pointer-events-none h-full w-full'>
@@ -268,7 +268,7 @@ export function StorefrontProductImageGallery({
       </div>
 
       {hasMultipleImages ? (
-        <div className='mt-4 grid grid-cols-4 gap-3 sm:grid-cols-5'>
+        <div className='mt-4 grid w-full min-w-0 grid-cols-4 gap-3 sm:grid-cols-5'>
           {images.map((image, index) => {
             const isSelected = index === activeIndex;
 

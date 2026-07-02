@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 
 import { StorefrontFooter } from './storefront-footer';
 import { StorefrontHeader } from './storefront-header';
+import { StorefrontCartProvider } from '@/components/storefront/cart/storefront-cart-provider';
 
 type StorefrontShellProps = {
   children: ReactNode;
@@ -20,12 +21,14 @@ export function StorefrontShell({ children }: StorefrontShellProps) {
   }
 
   return (
-    <div className='flex min-h-screen flex-col'>
-      <StorefrontHeader />
+    <StorefrontCartProvider>
+      <div className='flex min-h-screen flex-col'>
+        <StorefrontHeader />
 
-      <main className='flex-1'>{children}</main>
+        <main className='flex-1'>{children}</main>
 
-      <StorefrontFooter />
-    </div>
+        <StorefrontFooter />
+      </div>
+    </StorefrontCartProvider>
   );
 }

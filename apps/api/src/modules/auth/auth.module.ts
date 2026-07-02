@@ -8,6 +8,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { RolesGuard } from './guards/roles.guard.js';
 import { KavenegarService } from './kavenegar.service.js';
 import { parseJwtTtlToSeconds } from './auth.utils.js';
+import { OptionalJwtAuthGuard } from './guards/optional-jwt-auth.guard.js';
 
 @Module({
   imports: [
@@ -32,7 +33,7 @@ import { parseJwtTtlToSeconds } from './auth.utils.js';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, KavenegarService, JwtAuthGuard, RolesGuard],
-  exports: [JwtModule, JwtAuthGuard, RolesGuard],
+  providers: [AuthService, KavenegarService, JwtAuthGuard, OptionalJwtAuthGuard, RolesGuard],
+  exports: [JwtModule, JwtAuthGuard, OptionalJwtAuthGuard, RolesGuard],
 })
 export class AuthModule {}
