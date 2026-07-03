@@ -315,7 +315,7 @@ function CartItemCard({ item }: { item: StorefrontCartItem }) {
         <div className='text-end'>
           {item.price.hasPriceChanged ? (
             <p className='numeric text-xs text-foreground-muted line-through'>
-              {formatToman(item.price.snapshotEffectivePriceToman)}
+              {formatPrice(item.price.snapshotEffectivePriceToman)}
             </p>
           ) : null}
 
@@ -323,9 +323,9 @@ function CartItemCard({ item }: { item: StorefrontCartItem }) {
 
           <p className='numeric mt-1 text-base font-extrabold text-foreground'>
             {item.lineTotalToman !== null
-              ? formatToman(item.lineTotalToman)
+              ? formatPrice(item.lineTotalToman)
               : currentPrice !== null
-                ? formatToman(currentPrice * item.quantity)
+                ? formatPrice(currentPrice * item.quantity)
                 : 'نیازمند استعلام'}
           </p>
         </div>
@@ -367,7 +367,7 @@ function CartSummary({ cart }: { cart: StorefrontCart }) {
               <dt className='text-sm font-extrabold text-foreground'>جمع کالاها</dt>
 
               <dd className='numeric text-xl font-extrabold text-foreground'>
-                {formatToman(cart.summary.subtotalToman)}
+                {formatPrice(cart.summary.subtotalToman)}
               </dd>
             </div>
           </div>
@@ -423,7 +423,7 @@ function CartSummary({ cart }: { cart: StorefrontCart }) {
               <p className='text-xs font-semibold text-foreground-muted'>جمع کالاها</p>
 
               <p className='numeric mt-1 text-lg font-extrabold text-foreground'>
-                {formatToman(cart.summary.subtotalToman)}
+                {formatPrice(cart.summary.subtotalToman)}
               </p>
             </div>
 

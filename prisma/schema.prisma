@@ -588,6 +588,15 @@ model PaymentAttempt {
   failureCode    String?
   failureMessage String?
 
+  providerReferenceId String?
+
+  callbackPayload    Json?
+
+  verificationPayload Json?
+
+  providerCardPan  String?
+  providerCardHash String?
+
   // فقط داده‌های Sanitized؛ هرگز API Key یا Secret را ذخیره نکن
   requestMetadata  Json?
   responseMetadata Json?
@@ -597,6 +606,7 @@ model PaymentAttempt {
   callbackReceivedAt DateTime?
   verifiedAt         DateTime?
   failedAt           DateTime?
+  cancelledAt        DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -606,4 +616,5 @@ model PaymentAttempt {
   @@index([orderId, status])
   @@index([status, createdAt])
   @@index([providerTransactionId])
+  @@index([status, callbackReceivedAt])
 }

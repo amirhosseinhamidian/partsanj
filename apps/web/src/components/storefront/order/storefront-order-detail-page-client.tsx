@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { StorefrontOrderPaymentCard } from '@/components/storefront/payment/storefront-order-payment-card';
 
 type Props = {
   orderId: string;
@@ -102,20 +103,12 @@ export function StorefrontOrderDetailPageClient({ orderId }: Props) {
           </p>
         </div>
 
-        <div className='mt-6 rounded-control border border-warning/30 bg-warning-soft p-4 text-start'>
-          <div className='flex gap-3'>
-            <CreditCard className='mt-0.5 size-5 shrink-0 text-warning' />
-
-            <div>
-              <p className='font-extrabold text-foreground'>پرداخت آنلاین هنوز فعال نشده است</p>
-
-              <p className='mt-1 text-sm leading-6 text-foreground-secondary'>
-                اتصال زرین‌پال در مرحله بعدی روی همین Order انجام می‌شود
-              </p>
-            </div>
-          </div>
-        </div>
-
+        <StorefrontOrderPaymentCard
+          orderId={order.id}
+          orderStatus={order.status}
+          paymentStatus={order.paymentStatus}
+          payableToman={order.payableToman}
+        />
         <div className='mt-6 flex flex-wrap justify-center gap-3'>
           <Link
             href='/products'

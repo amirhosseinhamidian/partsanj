@@ -547,7 +547,11 @@ export class CartService {
       return await this.prisma.cart.create({
         data: {
           ownerType: CartOwnerType.CUSTOMER,
+          status: CartStatus.ACTIVE,
           userId,
+
+          guestTokenHash: null,
+          expiresAt: null,
         },
       });
     } catch (error) {
@@ -577,8 +581,12 @@ export class CartService {
     const cart = await this.prisma.cart.create({
       data: {
         ownerType: CartOwnerType.GUEST,
+        status: CartStatus.ACTIVE,
+
+        userId: null,
         guestTokenHash: this.hashGuestToken(guestToken),
         expiresAt: this.getGuestCartExpiryDate(now),
+
         lastActivityAt: now,
       },
     });
@@ -612,6 +620,19 @@ export class CartService {
   }
 
   private async touchCart(cartId: string) {
+    const cart = await this.prisma.cart.findUnique({
+      where: {
+        id: cartId,
+      },
+      select: {
+        ownerType: true,
+      },
+    });
+
+    if (!cart) {
+      throw new NotFoundException('Cart not found');
+    }
+
     const now = new Date();
 
     await this.prisma.cart.update({
@@ -620,9 +641,13 @@ export class CartService {
       },
       data: {
         lastActivityAt: now,
-        expiresAt: {
-          set: this.getGuestCartExpiryDate(now),
-        },
+        ...(cart.ownerType === CartOwnerType.GUEST
+          ? {
+              expiresAt: this.getGuestCartExpiryDate(now),
+            }
+          : {
+              expiresAt: null,
+            }),
       },
     });
   }

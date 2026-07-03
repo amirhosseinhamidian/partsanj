@@ -12,6 +12,7 @@ import {
 import { getComputedProductPricing } from '../catalog/catalog-pricing.utils.js';
 import { PrismaService } from '../database/prisma.service.js';
 import type { CreateOrderFromCartDto } from './dto/create-order-from-cart.dto.js';
+import { ConfigService } from '@nestjs/config';
 
 type PreparedOrderItem = {
   productId: string;
@@ -39,7 +40,10 @@ type PreparedOrderItem = {
 
 @Injectable()
 export class OrderService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {}
 
   async createFromCart(userId: string, dto: CreateOrderFromCartDto) {
     let lastError: unknown;
@@ -359,6 +363,8 @@ export class OrderService {
 
     const now = new Date();
 
+    const expiresAt = new Date(now.getTime() + this.getPaymentOrderTtlMinutes() * 60_000);
+
     const order = await transaction.order.create({
       data: {
         customerUserId: userId,
@@ -394,6 +400,7 @@ export class OrderService {
         orderDiscountToman,
         shippingToman,
         payableToman,
+        expiresAt,
 
         customerNote: this.normalizeOptionalText(dto.customerNote),
 
@@ -445,5 +452,17 @@ export class OrderService {
     const normalized = value?.trim();
 
     return normalized || null;
+  }
+
+  private getPaymentOrderTtlMinutes() {
+    const rawValue = this.configService.get<string>('PAYMENT_ORDER_TTL_MINUTES') ?? '15';
+
+    const value = Number(rawValue);
+
+    if (!Number.isSafeInteger(value) || value < 1) {
+      return 15;
+    }
+
+    return value;
   }
 }
