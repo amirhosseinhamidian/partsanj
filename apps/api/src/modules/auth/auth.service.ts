@@ -258,6 +258,34 @@ export class AuthService {
     };
   }
 
+  async getAuthenticatedUser(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+        mobile: true,
+        role: true,
+        firstName: true,
+        lastName: true,
+        isActive: true,
+      },
+    });
+
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('Authentication is no longer valid');
+    }
+
+    return {
+      id: user.id,
+      mobile: user.mobile,
+      role: user.role,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    };
+  }
+
   private getPositiveInteger(key: string, fallbackValue: number): number {
     const rawValue = this.configService.get<string>(key);
     const parsedValue = Number(rawValue ?? fallbackValue);

@@ -78,9 +78,9 @@ export class AuthController {
   @ApiUnauthorizedResponse({
     description: 'Bearer token is missing, invalid, or expired',
   })
-  getMe(@CurrentUser() user: AuthenticatedUser) {
+  async getMe(@CurrentUser() user: AuthenticatedUser) {
     return {
-      data: user,
+      data: await this.authService.getAuthenticatedUser(user.id),
     };
   }
 }
