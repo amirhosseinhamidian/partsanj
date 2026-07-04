@@ -28,7 +28,7 @@ type OrderMutationRecord = {
 
   shippedAt: Date | null;
   deliveredAt: Date | null;
-
+  processingStartedAt: Date | null;
   cancelledAt: Date | null;
   cancellationReason: string | null;
 };
@@ -258,7 +258,7 @@ export class AdminOrderService {
 
           expiresAt: true,
           paidAt: true,
-
+          processingStartedAt: true,
           shippingCarrier: true,
           trackingCode: true,
           shipmentNote: true,
@@ -436,6 +436,8 @@ export class AdminOrderService {
 
       this.assertProcessingTransition(order);
 
+      const now = new Date();
+
       const result = await transaction.order.updateMany({
         where: {
           id: order.id,
@@ -444,6 +446,7 @@ export class AdminOrderService {
         },
         data: {
           status: OrderStatus.PROCESSING,
+          processingStartedAt: now,
         },
       });
 
@@ -459,6 +462,11 @@ export class AdminOrderService {
             status: {
               before: OrderStatus.PAID,
               after: OrderStatus.PROCESSING,
+            },
+
+            processingStartedAt: {
+              before: order.processingStartedAt,
+              after: now,
             },
           },
         },
@@ -648,6 +656,7 @@ export class AdminOrderService {
 
         status: true,
         paymentStatus: true,
+        processingStartedAt: true,
 
         shippingCarrier: true,
         trackingCode: true,

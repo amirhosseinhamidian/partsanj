@@ -12,6 +12,7 @@ import { CustomerAddressModule } from './modules/customer-address/customer-addre
 import { OrderModule } from './modules/order/order.module.js';
 import { PaymentModule } from './modules/payment/payment.module.js';
 import { AdminOrderModule } from './modules/admin-order/admin-order.module.js';
+import { CustomerOrderModule } from './modules/customer-order/customer-order.module.js';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { AdminOrderModule } from './modules/admin-order/admin-order.module.js';
     OrderModule,
     PaymentModule,
     AdminOrderModule,
+    CustomerOrderModule,
   ],
 })
 export class AppModule {}

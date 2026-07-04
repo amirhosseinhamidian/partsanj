@@ -1,8 +1,18 @@
 'use client';
 
-import { CheckCircle2, CircleAlert, Clock3, XCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  CheckCircle2,
+  CircleAlert,
+  Clock3,
+  HeartHandshake,
+  XCircle,
+  ClipboardList,
+  PackageSearch,
+  Store,
+} from 'lucide-react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 type PaymentResultState = 'paid' | 'cancelled' | 'failed' | 'pending' | 'invalid';
 
@@ -30,6 +40,7 @@ function isUuid(value: string | null) {
 
 export function StorefrontPaymentResultPageClient() {
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const state = getPaymentResultState(searchParams.get('state'));
 
@@ -51,8 +62,9 @@ export function StorefrontPaymentResultPageClient() {
       panelClass: 'border-warning/30 bg-warning-soft',
     },
     failed: {
-      title: 'تأیید پرداخت ناموفق بود',
-      description: 'پرداخت نهایی نشده است. در صورت کسر وجه، ابتدا با پشتیبانی تماس بگیرید',
+      title: 'پرداخت تأیید نشد',
+      description:
+        'درگاه پرداخت این تراکنش را تأیید نکرد. اگر مبلغی از حساب شما کسر شده است، فعلاً از پرداخت مجدد خودداری کنید، وضعیت سفارش را بررسی کنید و در صورت نیاز با پشتیبانی تماس بگیرید.',
       icon: CircleAlert,
       iconClass: 'text-danger',
       panelClass: 'border-danger/30 bg-danger-soft',
@@ -66,8 +78,9 @@ export function StorefrontPaymentResultPageClient() {
       panelClass: 'border-brand/30 bg-brand-soft',
     },
     invalid: {
-      title: 'نتیجه پرداخت معتبر نیست',
-      description: 'اطلاعات بازگشت از درگاه برای اتصال به سفارش معتبر نبود',
+      title: 'نتیجه پرداخت قابل تأیید نیست',
+      description:
+        'اطلاعات بازگشتی از درگاه برای تطبیق با سفارش کافی نبود. اگر مبلغی از حساب شما کسر شده است، فعلاً پرداخت را دوباره انجام ندهید. ابتدا وضعیت سفارش‌های خود را بررسی کنید و در صورت باقی ماندن ابهام با پشتیبانی تماس بگیرید.',
       icon: CircleAlert,
       iconClass: 'text-danger',
       panelClass: 'border-danger/30 bg-danger-soft',
@@ -87,22 +100,52 @@ export function StorefrontPaymentResultPageClient() {
 
         <p className='mt-3 text-sm leading-7 text-foreground-secondary'>{content.description}</p>
 
+        {state === 'paid' ? (
+          <section className='mt-5 flex items-start gap-3 rounded-card border border-brand/25 bg-brand-soft p-4 text-right'>
+            <HeartHandshake className='mt-0.5 size-6 shrink-0 text-brand' />
+
+            <div>
+              <p className='font-extrabold text-foreground'>از اعتماد شما صمیمانه سپاسگزاریم</p>
+
+              <p className='mt-1 text-sm leading-7 text-foreground-secondary'>
+                پرداخت شما با موفقیت ثبت شد. سفارش‌تان با دقت بررسی و آماده‌سازی می‌شود و می‌توانید
+                وضعیت آن را در هر مرحله پیگیری کنید.
+              </p>
+            </div>
+          </section>
+        ) : null}
+
         <div className='mt-7 flex flex-wrap justify-center gap-3'>
           {orderId ? (
-            <Link
-              href={`/orders/${encodeURIComponent(orderId)}`}
-              className='text-on-brand inline-flex h-10 items-center justify-center rounded-control bg-brand px-4 text-sm font-bold transition-opacity hover:opacity-90'
+            <Button
+              iconStart={<PackageSearch className='size-4' />}
+              onClick={() => {
+                router.push(`/account/orders/${encodeURIComponent(orderId)}`);
+              }}
             >
               مشاهده سفارش
-            </Link>
+            </Button>
           ) : null}
 
-          <Link
-            href='/products'
-            className='inline-flex h-10 items-center justify-center rounded-control border border-border bg-surface px-4 text-sm font-bold text-foreground transition-colors hover:bg-surface-muted'
+          <Button
+            variant='secondary'
+            iconStart={<ClipboardList className='size-4' />}
+            onClick={() => {
+              router.push('/account/orders');
+            }}
+          >
+            سفارش‌های من
+          </Button>
+
+          <Button
+            variant='secondary'
+            iconStart={<Store className='size-4' />}
+            onClick={() => {
+              router.push('/products');
+            }}
           >
             بازگشت به فروشگاه
-          </Link>
+          </Button>
         </div>
       </section>
     </div>

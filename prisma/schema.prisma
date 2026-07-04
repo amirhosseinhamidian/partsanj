@@ -513,6 +513,7 @@ model Order {
   expiresAt   DateTime?
   paidAt      DateTime?
   cancelledAt DateTime?
+  processingStartedAt DateTime?
 
   items           OrderItem[]
   paymentAttempts PaymentAttempt[]
