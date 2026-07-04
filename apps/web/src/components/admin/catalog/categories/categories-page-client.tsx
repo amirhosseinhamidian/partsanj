@@ -11,23 +11,19 @@ import { CategoryFormSheet } from '@/components/admin/catalog/categories/categor
 import { DeleteCategoryDialog } from '@/components/admin/catalog/categories/delete-category-dialog';
 import { CategoriesTable } from '@/components/admin/catalog/categories/categories-table';
 import { Button } from '@/components/ui/button';
-import {
-  FilterBar,
-  FilterBarActions,
-  FilterBarClearButton,
-  FilterBarField,
-  FilterBarFilters,
-  FilterBarSearch,
-} from '@/components/ui/filter-bar';
-import { SearchInput } from '@/components/ui/search-input';
-import { Select } from '@/components/ui/select';
 import type { DataTableSort } from '@/components/ui/data-table';
 import { Plus, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  CategoriesFilterBar,
+  type CategoryFiltersDraft,
+} from '@/components/admin/catalog/categories/categories-filter-bar';
 
 const PAGE_SIZE = 10;
-
-type StatusFilter = '' | 'ACTIVE' | 'INACTIVE';
+const EMPTY_CATEGORY_FILTERS: CategoryFiltersDraft = {
+  q: '',
+  status: '',
+};
 
 function normalizeSearch(value: string): string {
   return value
@@ -109,10 +105,13 @@ export function CategoriesPageClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<StatusFilter>('');
   const [sort, setSort] = useState<DataTableSort | null>(null);
   const [page, setPage] = useState(1);
+
+  const [draftFilters, setDraftFilters] = useState<CategoryFiltersDraft>(EMPTY_CATEGORY_FILTERS);
+
+  const [appliedFilters, setAppliedFilters] =
+    useState<CategoryFiltersDraft>(EMPTY_CATEGORY_FILTERS);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<AdminCategory | null>(null);
@@ -142,11 +141,15 @@ export function CategoriesPageClient() {
   }, [loadCategories]);
 
   const filteredCategories = useMemo(() => {
-    const normalizedQuery = normalizeSearch(search);
+    const normalizedQuery = normalizeSearch(appliedFilters.q);
 
     return categories.filter((category) => {
       const matchesStatus =
-        status === '' ? true : status === 'ACTIVE' ? category.isActive : !category.isActive;
+        appliedFilters.status === ''
+          ? true
+          : appliedFilters.status === 'ACTIVE'
+            ? category.isActive
+            : !category.isActive;
 
       if (!matchesStatus) {
         return false;
@@ -167,7 +170,7 @@ export function CategoriesPageClient() {
 
       return searchableText.includes(normalizedQuery);
     });
-  }, [categories, search, status]);
+  }, [appliedFilters, categories]);
 
   const sortedCategories = useMemo(
     () => sortCategories(filteredCategories, sort),
@@ -184,12 +187,18 @@ export function CategoriesPageClient() {
     return sortedCategories.slice(startIndex, startIndex + PAGE_SIZE);
   }, [currentPage, sortedCategories]);
 
-  const activeFilterCount = [search.trim(), status].filter(Boolean).length;
+  function applyFilters() {
+    setAppliedFilters({
+      ...draftFilters,
+      q: draftFilters.q.trim(),
+    });
+
+    setPage(1);
+  }
 
   function resetFilters() {
-    setSearch('');
-    setStatus('');
-    setSort(null);
+    setDraftFilters(EMPTY_CATEGORY_FILTERS);
+    setAppliedFilters(EMPTY_CATEGORY_FILTERS);
     setPage(1);
   }
 
@@ -271,55 +280,19 @@ export function CategoriesPageClient() {
         </div>
       ) : null}
 
-      <FilterBar>
-        <FilterBarSearch>
-          <SearchInput
-            value={search}
-            onValueChange={(value) => {
-              setSearch(value);
-              setPage(1);
-            }}
-            placeholder='نام دسته‌بندی یا Slug را جستجو کنید'
-          />
-        </FilterBarSearch>
-
-        <FilterBarFilters>
-          <FilterBarField width='md'>
-            <Select
-              value={status}
-              onValueChange={(value) => {
-                setStatus(value as StatusFilter);
-                setPage(1);
-              }}
-              placeholder='همه وضعیت‌ها'
-              options={[
-                {
-                  value: 'ACTIVE',
-                  label: 'فعال',
-                },
-                {
-                  value: 'INACTIVE',
-                  label: 'غیرفعال',
-                },
-              ]}
-            />
-          </FilterBarField>
-        </FilterBarFilters>
-
-        <FilterBarActions>
-          <FilterBarClearButton activeFilterCount={activeFilterCount} onClick={resetFilters} />
-
-          <Button
-            variant='outline'
-            size='sm'
-            iconStart={<RefreshCw />}
-            onClick={() => void loadCategories()}
-            disabled={isLoading}
-          >
-            بروزرسانی
-          </Button>
-        </FilterBarActions>
-      </FilterBar>
+      <CategoriesFilterBar
+        draft={draftFilters}
+        loading={isLoading}
+        onDraftChange={(patch) => {
+          setDraftFilters((current) => ({
+            ...current,
+            ...patch,
+          }));
+        }}
+        onApply={applyFilters}
+        onReset={resetFilters}
+        onRefresh={() => void loadCategories()}
+      />
 
       <CategoriesTable
         categories={paginatedCategories}

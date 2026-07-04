@@ -1,30 +1,19 @@
 'use client';
 
-import type {
-  AdminProductsListResponse,
-  ProductStatus,
-  StockStatus,
-} from '@/lib/admin/catalog/product.types';
 import { adminBrandsApi } from '@/lib/api/admin-brands-client';
 import { adminCategoriesApi } from '@/lib/api/admin-categories-client';
 import { adminProductsApi } from '@/lib/api/admin-products-client';
 import { ClientApiError } from '@/lib/api/web-client';
 import { ProductsTable } from '@/components/admin/catalog/products/products-table';
 import { Button } from '@/components/ui/button';
-import { Combobox } from '@/components/ui/combobox';
-import {
-  FilterBar,
-  FilterBarActions,
-  FilterBarClearButton,
-  FilterBarField,
-  FilterBarFilters,
-  FilterBarSearch,
-} from '@/components/ui/filter-bar';
-import { SearchInput } from '@/components/ui/search-input';
-import { Select } from '@/components/ui/select';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import type { AdminProductsListResponse } from '@/lib/admin/catalog/product.types';
+import {
+  ProductsFilterBar,
+  type ProductFiltersDraft,
+} from '@/components/admin/catalog/products/products-filter-bar';
 
 const PAGE_SIZE = 24;
 
@@ -37,10 +26,6 @@ const emptyResponse: AdminProductsListResponse = {
     totalPages: 0,
   },
 };
-
-type ProductStatusFilter = '' | ProductStatus;
-
-type StockStatusFilter = '' | StockStatus;
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim()) {
@@ -63,18 +48,20 @@ export function ProductsPageClient() {
     [],
   );
 
+  const emptyFilters: ProductFiltersDraft = {
+    q: '',
+    brandId: '',
+    categoryId: '',
+    status: '',
+    stockStatus: '',
+  };
+
+  const [draftFilters, setDraftFilters] = useState<ProductFiltersDraft>(emptyFilters);
+
+  const [appliedFilters, setAppliedFilters] = useState<ProductFiltersDraft>(emptyFilters);
+
   const [isOptionsLoading, setIsOptionsLoading] = useState(true);
   const [optionsError, setOptionsError] = useState<string | null>(null);
-
-  const [searchInput, setSearchInput] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const [status, setStatus] = useState<ProductStatusFilter>('');
-
-  const [stockStatus, setStockStatus] = useState<StockStatusFilter>('');
-
-  const [brandId, setBrandId] = useState('');
-  const [categoryId, setCategoryId] = useState('');
 
   const [page, setPage] = useState(1);
 
@@ -90,11 +77,11 @@ export function ProductsPageClient() {
 
     try {
       const result = await adminProductsApi.list({
-        q: searchQuery.trim() || undefined,
-        status: status || undefined,
-        stockStatus: stockStatus || undefined,
-        brandId: brandId || undefined,
-        categoryId: categoryId || undefined,
+        q: appliedFilters.q.trim() || undefined,
+        status: appliedFilters.status || undefined,
+        stockStatus: appliedFilters.stockStatus || undefined,
+        brandId: appliedFilters.brandId || undefined,
+        categoryId: appliedFilters.categoryId || undefined,
         page,
         limit: PAGE_SIZE,
       });
@@ -120,7 +107,7 @@ export function ProductsPageClient() {
         setIsLoading(false);
       }
     }
-  }, [brandId, categoryId, page, searchQuery, status, stockStatus]);
+  }, [appliedFilters, page]);
 
   const loadFilterOptions = useCallback(async () => {
     setIsOptionsLoading(true);
@@ -180,17 +167,18 @@ export function ProductsPageClient() {
     [categories],
   );
 
-  const activeFilterCount = [searchInput.trim(), status, stockStatus, brandId, categoryId].filter(
-    Boolean,
-  ).length;
+  function applyFilters(nextDraft = draftFilters) {
+    setAppliedFilters({
+      ...nextDraft,
+      q: nextDraft.q.trim(),
+    });
+
+    setPage(1);
+  }
 
   function resetFilters() {
-    setSearchInput('');
-    setSearchQuery('');
-    setStatus('');
-    setStockStatus('');
-    setBrandId('');
-    setCategoryId('');
+    setDraftFilters(emptyFilters);
+    setAppliedFilters(emptyFilters);
     setPage(1);
   }
 
@@ -257,118 +245,22 @@ export function ProductsPageClient() {
         </div>
       ) : null}
 
-      <FilterBar>
-        <FilterBarSearch>
-          <SearchInput
-            value={searchInput}
-            onValueChange={setSearchInput}
-            onSearch={(value) => {
-              setSearchQuery(value.trim());
-              setPage(1);
-            }}
-            placeholder='نام، SKU، Slug یا کد محصول'
-          />
-        </FilterBarSearch>
-
-        <FilterBarFilters>
-          <FilterBarField width='md'>
-            <Combobox
-              value={brandId}
-              onValueChange={(value) => {
-                setBrandId(value);
-                setPage(1);
-              }}
-              options={brandOptions}
-              clearable
-              loading={isOptionsLoading}
-              placeholder='همه برندها'
-              searchPlaceholder='جستجو در برندها'
-              emptyMessage='برندی پیدا نشد'
-            />
-          </FilterBarField>
-
-          <FilterBarField width='md'>
-            <Combobox
-              value={categoryId}
-              onValueChange={(value) => {
-                setCategoryId(value);
-                setPage(1);
-              }}
-              options={categoryOptions}
-              clearable
-              loading={isOptionsLoading}
-              placeholder='همه دسته‌بندی‌ها'
-              searchPlaceholder='جستجو در دسته‌بندی‌ها'
-              emptyMessage='دسته‌بندی پیدا نشد'
-            />
-          </FilterBarField>
-
-          <FilterBarField width='md'>
-            <Select
-              value={status}
-              onValueChange={(value) => {
-                setStatus(value as ProductStatusFilter);
-                setPage(1);
-              }}
-              placeholder='همه وضعیت‌ها'
-              options={[
-                {
-                  value: 'DRAFT',
-                  label: 'پیش‌نویس',
-                },
-                {
-                  value: 'ACTIVE',
-                  label: 'فعال',
-                },
-                {
-                  value: 'ARCHIVED',
-                  label: 'آرشیو',
-                },
-              ]}
-            />
-          </FilterBarField>
-
-          <FilterBarField width='md'>
-            <Select
-              value={stockStatus}
-              onValueChange={(value) => {
-                setStockStatus(value as StockStatusFilter);
-                setPage(1);
-              }}
-              placeholder='همه وضعیت‌های موجودی'
-              options={[
-                {
-                  value: 'IN_STOCK',
-                  label: 'موجود',
-                },
-                {
-                  value: 'OUT_OF_STOCK',
-                  label: 'ناموجود',
-                },
-                {
-                  value: 'CHECK_AVAILABILITY',
-                  label: 'نیازمند استعلام',
-                },
-              ]}
-            />
-          </FilterBarField>
-        </FilterBarFilters>
-
-        <FilterBarActions>
-          <FilterBarClearButton activeFilterCount={activeFilterCount} onClick={resetFilters} />
-
-          <Button
-            type='button'
-            variant='outline'
-            size='sm'
-            iconStart={<RefreshCw />}
-            disabled={isLoading || isOptionsLoading}
-            onClick={refreshAll}
-          >
-            بروزرسانی
-          </Button>
-        </FilterBarActions>
-      </FilterBar>
+      <ProductsFilterBar
+        draft={draftFilters}
+        brandOptions={brandOptions}
+        categoryOptions={categoryOptions}
+        loading={isLoading}
+        optionsLoading={isOptionsLoading}
+        onDraftChange={(patch) => {
+          setDraftFilters((current) => ({
+            ...current,
+            ...patch,
+          }));
+        }}
+        onApply={applyFilters}
+        onReset={resetFilters}
+        onRefresh={refreshAll}
+      />
 
       <ProductsTable
         products={response.data}

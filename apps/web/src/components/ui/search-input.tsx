@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils/cn';
 import { LoaderCircle, Search, X } from 'lucide-react';
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useId,
   useRef,
@@ -91,18 +92,24 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(functi
   const skipNextDebouncedSearchRef = useRef(false);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const onSearchRef = useRef(onSearch);
+
+  useEffect(() => {
+    onSearchRef.current = onSearch;
+  }, [onSearch]);
+
   const messageId = error || helperText ? `${inputId}-message` : undefined;
 
   const describedBy = [ariaDescribedBy, messageId].filter(Boolean).join(' ') || undefined;
 
   const canClear = clearable && Boolean(currentValue) && !disabled;
 
-  function clearSearchTimer() {
+  const clearSearchTimer = useCallback(() => {
     if (searchTimerRef.current) {
       clearTimeout(searchTimerRef.current);
       searchTimerRef.current = null;
     }
-  }
+  }, []);
 
   function canSearch(query: string): boolean {
     const normalizedQuery = query.trim();
@@ -119,12 +126,14 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(functi
   }
 
   function runSearchImmediately(query: string) {
-    if (!onSearch || !canSearch(query)) {
+    const searchHandler = onSearchRef.current;
+
+    if (!searchHandler || !canSearch(query)) {
       return;
     }
 
     clearSearchTimer();
-    onSearch(query.trim());
+    searchHandler(query.trim());
   }
 
   function handleClear() {
@@ -135,8 +144,10 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(functi
     runSearchImmediately('');
   }
 
+  const hasOnSearch = Boolean(onSearch);
+
   useEffect(() => {
-    if (!onSearch) {
+    if (!hasOnSearch) {
       return;
     }
 
@@ -150,22 +161,22 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(functi
       return;
     }
 
-    if (!canSearch(currentValue)) {
+    const normalizedQuery = currentValue.trim();
+
+    if (normalizedQuery.length > 0 && normalizedQuery.length < minLength) {
       clearSearchTimer();
       return;
     }
 
     clearSearchTimer();
 
-    searchTimerRef.current = setTimeout(() => {
-      onSearch(currentValue.trim());
+    searchTimerRef.current = window.setTimeout(() => {
+      onSearchRef.current?.(normalizedQuery);
       searchTimerRef.current = null;
     }, debounceMs);
 
-    return () => {
-      clearSearchTimer();
-    };
-  }, [canSearch, currentValue, debounceMs, minLength, onSearch]);
+    return clearSearchTimer;
+  }, [clearSearchTimer, currentValue, debounceMs, hasOnSearch, minLength]);
 
   return (
     <div className={cn('w-full space-y-1.5', wrapperClassName)}>

@@ -11,23 +11,19 @@ import { BrandFormSheet } from '@/components/admin/catalog/brands/brand-form-she
 import { BrandsTable } from '@/components/admin/catalog/brands/brands-table';
 import { Button } from '@/components/ui/button';
 import type { DataTableSort } from '@/components/ui/data-table';
-import {
-  FilterBar,
-  FilterBarActions,
-  FilterBarClearButton,
-  FilterBarField,
-  FilterBarFilters,
-  FilterBarSearch,
-} from '@/components/ui/filter-bar';
-import { SearchInput } from '@/components/ui/search-input';
-import { Select } from '@/components/ui/select';
 import { Plus, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  BrandsFilterBar,
+  type BrandFiltersDraft,
+} from '@/components/admin/catalog/brands/brands-filter-bar';
 
 const PAGE_SIZE = 10;
 
-type StatusFilter = '' | 'ACTIVE' | 'INACTIVE';
-
+const EMPTY_BRAND_FILTERS: BrandFiltersDraft = {
+  q: '',
+  status: '',
+};
 function normalizeSearch(value: string): string {
   return value
     .replace(/[يى]/g, 'ی')
@@ -104,8 +100,9 @@ export function BrandsPageClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<StatusFilter>('');
+  const [draftFilters, setDraftFilters] = useState<BrandFiltersDraft>(EMPTY_BRAND_FILTERS);
+
+  const [appliedFilters, setAppliedFilters] = useState<BrandFiltersDraft>(EMPTY_BRAND_FILTERS);
   const [sort, setSort] = useState<DataTableSort | null>(null);
   const [page, setPage] = useState(1);
 
@@ -136,11 +133,15 @@ export function BrandsPageClient() {
   }, [loadBrands]);
 
   const filteredBrands = useMemo(() => {
-    const normalizedQuery = normalizeSearch(search);
+    const normalizedQuery = normalizeSearch(appliedFilters.q);
 
     return brands.filter((brand) => {
       const matchesStatus =
-        status === '' ? true : status === 'ACTIVE' ? brand.isActive : !brand.isActive;
+        appliedFilters.status === ''
+          ? true
+          : appliedFilters.status === 'ACTIVE'
+            ? brand.isActive
+            : !brand.isActive;
 
       if (!matchesStatus) {
         return false;
@@ -154,7 +155,7 @@ export function BrandsPageClient() {
 
       return searchableText.includes(normalizedQuery);
     });
-  }, [brands, search, status]);
+  }, [appliedFilters, brands]);
 
   const sortedBrands = useMemo(() => sortBrands(filteredBrands, sort), [filteredBrands, sort]);
 
@@ -168,12 +169,18 @@ export function BrandsPageClient() {
     return sortedBrands.slice(startIndex, startIndex + PAGE_SIZE);
   }, [currentPage, sortedBrands]);
 
-  const activeFilterCount = [search.trim(), status].filter(Boolean).length;
+  function applyFilters() {
+    setAppliedFilters({
+      ...draftFilters,
+      q: draftFilters.q.trim(),
+    });
+
+    setPage(1);
+  }
 
   function resetFilters() {
-    setSearch('');
-    setStatus('');
-    setSort(null);
+    setDraftFilters(EMPTY_BRAND_FILTERS);
+    setAppliedFilters(EMPTY_BRAND_FILTERS);
     setPage(1);
   }
 
@@ -241,55 +248,19 @@ export function BrandsPageClient() {
         </div>
       ) : null}
 
-      <FilterBar>
-        <FilterBarSearch>
-          <SearchInput
-            value={search}
-            onValueChange={(value) => {
-              setSearch(value);
-              setPage(1);
-            }}
-            placeholder='نام برند یا Slug را جستجو کنید'
-          />
-        </FilterBarSearch>
-
-        <FilterBarFilters>
-          <FilterBarField width='md'>
-            <Select
-              value={status}
-              onValueChange={(value) => {
-                setStatus(value as StatusFilter);
-                setPage(1);
-              }}
-              placeholder='همه وضعیت‌ها'
-              options={[
-                {
-                  value: 'ACTIVE',
-                  label: 'فعال',
-                },
-                {
-                  value: 'INACTIVE',
-                  label: 'غیرفعال',
-                },
-              ]}
-            />
-          </FilterBarField>
-        </FilterBarFilters>
-
-        <FilterBarActions>
-          <FilterBarClearButton activeFilterCount={activeFilterCount} onClick={resetFilters} />
-
-          <Button
-            variant='outline'
-            size='sm'
-            iconStart={<RefreshCw />}
-            onClick={() => void loadBrands()}
-            disabled={isLoading}
-          >
-            بروزرسانی
-          </Button>
-        </FilterBarActions>
-      </FilterBar>
+      <BrandsFilterBar
+        draft={draftFilters}
+        loading={isLoading}
+        onDraftChange={(patch) => {
+          setDraftFilters((current) => ({
+            ...current,
+            ...patch,
+          }));
+        }}
+        onApply={applyFilters}
+        onReset={resetFilters}
+        onRefresh={() => void loadBrands()}
+      />
 
       <BrandsTable
         brands={paginatedBrands}

@@ -16,22 +16,76 @@ const filterFieldWidthClasses = {
 
 type FilterFieldWidth = keyof typeof filterFieldWidthClasses;
 
+type FilterBarLayout = 'inline' | 'stacked';
+
 export type FilterBarProps = HTMLAttributes<HTMLElement> & {
   children: ReactNode;
+
+  title?: ReactNode;
+  description?: ReactNode;
+  icon?: ReactNode;
+
+  layout?: FilterBarLayout;
 };
 
-export function FilterBar({ children, className, ...props }: FilterBarProps) {
+export function FilterBar({
+  children,
+  className,
+  title,
+  description,
+  icon,
+  layout = 'inline',
+  ...props
+}: FilterBarProps) {
+  const hasHeader = Boolean(title || description || icon);
+
   return (
     <section
       {...props}
       aria-label={props['aria-label'] ?? 'فیلترها'}
       className={cn(
-        'rounded-card border border-border bg-surface p-3 shadow-panel sm:p-4',
+        'rounded-card border border-border bg-surface p-4 shadow-panel sm:p-5',
         className,
       )}
     >
-      <div className='flex flex-col gap-3 xl:flex-row xl:items-end'>{children}</div>
+      {hasHeader ? (
+        <header className='mb-5 flex items-center gap-2'>
+          {icon ? (
+            <span className='grid size-5 shrink-0 place-items-center text-brand [&>svg]:size-4'>
+              {icon}
+            </span>
+          ) : null}
+
+          <div className='min-w-0'>
+            {title ? <h2 className='font-extrabold text-foreground'>{title}</h2> : null}
+
+            {description ? (
+              <p className='mt-1 text-sm text-foreground-secondary'>{description}</p>
+            ) : null}
+          </div>
+        </header>
+      ) : null}
+
+      <div
+        className={
+          layout === 'stacked' ? 'space-y-5' : 'flex flex-col gap-3 xl:flex-row xl:items-end'
+        }
+      >
+        {children}
+      </div>
     </section>
+  );
+}
+
+export type FilterBarContentProps = HTMLAttributes<HTMLDivElement> & {
+  children: ReactNode;
+};
+
+export function FilterBarContent({ children, className, ...props }: FilterBarContentProps) {
+  return (
+    <div {...props} className={cn('grid gap-4 lg:grid-cols-12', className)}>
+      {children}
+    </div>
   );
 }
 
@@ -85,14 +139,22 @@ export function FilterBarField({
 
 export type FilterBarActionsProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode;
+  position?: 'inline' | 'footer';
 };
 
-export function FilterBarActions({ children, className, ...props }: FilterBarActionsProps) {
+export function FilterBarActions({
+  children,
+  className,
+  position = 'inline',
+  ...props
+}: FilterBarActionsProps) {
   return (
     <div
       {...props}
       className={cn(
-        'flex w-full shrink-0 flex-wrap items-center gap-2 xl:w-auto xl:justify-end',
+        position === 'footer'
+          ? 'flex w-full flex-wrap items-center justify-end gap-3 border-t border-border pt-4'
+          : 'flex w-full shrink-0 flex-wrap items-center gap-2 xl:w-auto xl:justify-end',
         className,
       )}
     >
@@ -125,9 +187,8 @@ export function FilterBarClearButton({
     <Button
       {...props}
       type='button'
-      variant='ghost'
-      size='sm'
-      iconStart={<RotateCcw />}
+      variant='outline'
+      iconStart={<RotateCcw className='size-4' />}
       className={cn('shrink-0', className)}
     >
       <span>{label}</span>

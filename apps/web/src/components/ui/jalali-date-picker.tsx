@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils/cn';
 import { DayPicker, faIR } from '@daypicker/persian';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
-import { CalendarDays, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 type AriaInvalidValue = boolean | 'true' | 'false' | 'grammar' | 'spelling';
 
@@ -124,26 +124,29 @@ export function JalaliDatePicker({
 
   const [month, setMonth] = useState<Date>(() => selectedDate ?? defaultMonth ?? new Date());
 
-  const selectedTimestamp = selectedDate?.getTime();
-  const defaultMonthTimestamp = defaultMonth?.getTime();
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
+  function getInitialMonth() {
     if (selectedDate) {
-      setMonth(selectedDate);
-      return;
+      return new Date(selectedDate);
     }
 
     if (defaultMonth) {
-      setMonth(defaultMonth);
+      return new Date(defaultMonth);
+    }
+
+    return new Date();
+  }
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (disabled) {
       return;
     }
 
-    setMonth(new Date());
-  }, [defaultMonth, defaultMonthTimestamp, open, selectedDate, selectedTimestamp]);
+    if (nextOpen) {
+      setMonth(getInitialMonth());
+    }
+
+    setOpen(nextOpen);
+  }
 
   const displayValue = useMemo(() => {
     if (!selectedDate) {
@@ -151,7 +154,7 @@ export function JalaliDatePicker({
     }
 
     return formatJalaliDate(selectedDate, withTime, timeZone);
-  }, [placeholder, selectedDate, selectedTimestamp, timeZone, withTime]);
+  }, [placeholder, selectedDate, timeZone, withTime]);
 
   const disabledDays = useMemo(() => {
     if (minDate && maxDate) {
@@ -190,7 +193,7 @@ export function JalaliDatePicker({
 
       return;
     }
-
+    setMonth(new Date(nextDate));
     const nextValue = new Date(nextDate);
 
     if (withTime && selectedDate) {
@@ -242,14 +245,7 @@ export function JalaliDatePicker({
   }
 
   return (
-    <PopoverPrimitive.Root
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!disabled) {
-          setOpen(nextOpen);
-        }
-      }}
-    >
+    <PopoverPrimitive.Root open={open} onOpenChange={handleOpenChange}>
       <div className={cn('w-full', className)}>
         {name ? (
           <input type='hidden' name={name} value={selectedDate?.toISOString() ?? ''} />
@@ -322,24 +318,55 @@ export function JalaliDatePicker({
             locale={faIR}
             timeZone={timeZone}
             month={month}
-            onMonthChange={setMonth}
+            onMonthChange={(nextMonth) => {
+              setMonth(new Date(nextMonth));
+            }}
             selected={selectedDate ?? undefined}
             onSelect={handleDateSelect}
             required={required}
             disabled={disabledDays}
             showOutsideDays
             fixedWeeks
+            components={{
+              Chevron: ({ orientation, className, size }) => {
+                const iconProps = {
+                  className: cn('size-5', className),
+                  size: size ?? 20,
+                  'aria-hidden': true,
+                };
+
+                switch (orientation) {
+                  case 'left':
+                    return <ChevronRight {...iconProps} />;
+
+                  case 'right':
+                    return <ChevronLeft {...iconProps} />;
+
+                  case 'up':
+                    return <ChevronUp {...iconProps} />;
+
+                  default:
+                    return <ChevronDown {...iconProps} />;
+                }
+              },
+            }}
             classNames={{
               root: 'relative w-full',
               months: 'w-full',
               month: 'w-full',
+
               month_caption: 'relative flex h-10 items-center justify-center',
+
               caption_label: 'text-sm font-bold text-foreground',
-              nav: 'absolute inset-x-0 top-0 flex items-center justify-between',
+
+              nav: '!absolute !inset-x-0 !top-0 !z-10 !flex !h-10 !flex-row !items-center !justify-between !gap-0',
+
               button_previous:
-                'grid size-8 place-items-center rounded-control text-foreground-muted transition-colors hover:bg-surface-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+                '!static grid size-8 place-items-center rounded-control text-foreground-muted transition-colors hover:bg-surface-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+
               button_next:
-                'grid size-8 place-items-center rounded-control text-foreground-muted transition-colors hover:bg-surface-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+                '!static grid size-8 place-items-center rounded-control text-foreground-muted transition-colors hover:bg-surface-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+
               month_grid: 'mt-2 w-full border-collapse',
               weekdays: 'border-b border-border',
               weekday: 'h-9 text-center align-middle text-xs font-medium text-foreground-muted',

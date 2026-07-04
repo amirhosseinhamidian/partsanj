@@ -67,6 +67,7 @@ enum AdminAuditEntityType {
   VEHICLE_MAKE
   VEHICLE_MODEL
   VEHICLE_VARIANT
+  ORDER
 }
 
 enum AdminAuditAction {
@@ -74,6 +75,10 @@ enum AdminAuditAction {
   UPDATED
   ARCHIVED
   COMPATIBILITIES_UPDATED
+
+  ORDER_STATUS_UPDATED
+  ORDER_SHIPMENT_UPDATED
+  ORDER_CANCELLED
 }
 
 enum OrderStatus {
@@ -512,12 +517,22 @@ model Order {
   items           OrderItem[]
   paymentAttempts PaymentAttempt[]
 
+  shippingCarrier    String?
+  trackingCode       String?
+  shipmentNote       String?
+
+  shippedAt          DateTime?
+  deliveredAt        DateTime?
+
+  cancellationReason String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([customerUserId, createdAt])
   @@index([status, createdAt])
   @@index([paymentStatus, createdAt])
+  @@index([shippedAt])
 }
 
 model OrderItem {

@@ -101,8 +101,7 @@ const navigation: AdminNavigationGroup[] = [
       {
         label: 'سفارش‌ها',
         icon: ClipboardList,
-        disabled: true,
-        badge: 'به‌زودی',
+        href: '/admin/orders',
       },
       {
         label: 'مشتریان',
