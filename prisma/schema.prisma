@@ -68,6 +68,7 @@ enum AdminAuditEntityType {
   VEHICLE_MODEL
   VEHICLE_VARIANT
   ORDER
+  USER
 }
 
 enum AdminAuditAction {

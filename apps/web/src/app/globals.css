@@ -318,24 +318,24 @@
 
 /* تغییر ظاهر اسکرول‌بار برای مرورگرهای مدرن */
 ::-webkit-scrollbar {
-  width: 6px; /* عرض اسکرول‌بار */
-  height: 8px; /* برای اسکرول‌بار افقی */
+  width: 4px; /* عرض اسکرول‌بار */
+  height: 6px; /* برای اسکرول‌بار افقی */
 }
 
 /* رنگ پس‌زمینه اسکرول‌بار */
 ::-webkit-scrollbar-track {
-  background: #f2f5f9;
+  background: #f2f5f9dd;
 }
 
 /* رنگ و استایل دستگیره اسکرول */
 ::-webkit-scrollbar-thumb {
-  background: #ff5a00bb;
+  background: #ff590089;
   border-radius: 20px;
 }
 
 /* افکت هاور برای دستگیره اسکرول */
 ::-webkit-scrollbar-thumb:hover {
-  background: #ff5a00bb;
+  background: #ff590089;
 }
 
 /* دکمه بالا (▲) */

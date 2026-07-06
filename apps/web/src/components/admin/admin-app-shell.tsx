@@ -106,8 +106,7 @@ const navigation: AdminNavigationGroup[] = [
       {
         label: 'مشتریان',
         icon: UsersRound,
-        disabled: true,
-        badge: 'به‌زودی',
+        href: '/admin/users',
       },
       {
         label: 'تنظیمات',

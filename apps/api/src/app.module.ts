@@ -15,6 +15,7 @@ import { AdminOrderModule } from './modules/admin-order/admin-order.module.js';
 import { CustomerOrderModule } from './modules/customer-order/customer-order.module.js';
 import { CustomerProfileModule } from './modules/customer-profile/customer-profile.module.js';
 import { CustomerVehicleModule } from './modules/customer-vehicle/customer-vehicle.module.js';
+import { AdminUserModule } from './modules/admin-user/admin-user.module.js';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { CustomerVehicleModule } from './modules/customer-vehicle/customer-vehic
     CustomerOrderModule,
     CustomerProfileModule,
     CustomerVehicleModule,
+    AdminUserModule,
   ],
 })
 export class AppModule {}
