@@ -246,6 +246,7 @@ export function VehicleVariantFormSheet({
     }
 
     if (Object.keys(nextErrors).length > 0) {
+      console.log(nextErrors);
       setErrors(nextErrors);
       return;
     }
@@ -401,6 +402,46 @@ export function VehicleVariantFormSheet({
                 />
               )}
             </FormField>
+
+            <div className='grid gap-5 sm:grid-cols-2'>
+              <FormField
+                label='نام مدل'
+                helperText='دناپلاس توربو TU5'
+                error={errors.name}
+                required
+              >
+                {({ id, labelId, describedBy, invalid }) => (
+                  <Input
+                    id={id}
+                    dir='ltr'
+                    aria-labelledby={labelId}
+                    aria-describedby={describedBy}
+                    aria-invalid={invalid}
+                    disabled={isSaving}
+                    maxLength={100}
+                    value={values.name}
+                    onChange={(event) => setField('name', event.target.value)}
+                    placeholder='دنا پلاس توربو'
+                  />
+                )}
+              </FormField>
+              <FormField label='slug' helperText='TU5' error={errors.slug} required>
+                {({ id, labelId, describedBy, invalid }) => (
+                  <Input
+                    id={id}
+                    dir='ltr'
+                    aria-labelledby={labelId}
+                    aria-describedby={describedBy}
+                    aria-invalid={invalid}
+                    disabled={isSaving}
+                    maxLength={100}
+                    value={values.slug}
+                    onChange={(event) => setField('slug', event.target.value)}
+                    placeholder='TU5'
+                  />
+                )}
+              </FormField>
+            </div>
 
             <div className='grid gap-5 sm:grid-cols-2'>
               <FormField label='کد موتور' helperText='اختیاری، مثلاً TU5' error={errors.engineCode}>

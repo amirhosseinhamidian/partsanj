@@ -285,8 +285,8 @@ export function CustomerOrdersPageClient() {
       {isLoading && !result ? <OrdersLoadingState /> : null}
 
       {!isLoading && !loadError && orders.length === 0 ? (
-        <section className='rounded-card border border-dashed border-border bg-surface p-10 text-center'>
-          <PackageOpen className='mx-auto size-10 text-foreground-muted' />
+        <section className='bg-card mt-6 rounded-xl border border-dashed border-border px-6 py-12 text-center'>
+          <PackageOpen className='mx-auto size-9 text-foreground-muted' />
 
           <h2 className='mt-4 font-extrabold text-foreground'>هنوز سفارشی ثبت نکرده‌اید</h2>
 

@@ -14,6 +14,7 @@ import { PaymentModule } from './modules/payment/payment.module.js';
 import { AdminOrderModule } from './modules/admin-order/admin-order.module.js';
 import { CustomerOrderModule } from './modules/customer-order/customer-order.module.js';
 import { CustomerProfileModule } from './modules/customer-profile/customer-profile.module.js';
+import { CustomerVehicleModule } from './modules/customer-vehicle/customer-vehicle.module.js';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { CustomerProfileModule } from './modules/customer-profile/customer-profi
     AdminOrderModule,
     CustomerOrderModule,
     CustomerProfileModule,
+    CustomerVehicleModule,
   ],
 })
 export class AppModule {}

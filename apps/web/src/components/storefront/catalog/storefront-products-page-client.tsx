@@ -2,19 +2,9 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  FilterBar,
-  FilterBarActions,
-  FilterBarClearButton,
-  FilterBarField,
-  FilterBarFilters,
-  FilterBarSearch,
-} from '@/components/ui/filter-bar';
 import { ImageUrlPreview } from '@/components/ui/image-url-preview';
 import { Pagination } from '@/components/ui/pagination';
-import { SearchInput } from '@/components/ui/search-input';
-import { Select } from '@/components/ui/select';
-import { StorefrontVehicleSelector } from '@/components/storefront/vehicles/storefront-vehicle-selector';
+import { useCustomerVehiclesForCompatibility } from '@/lib/storefront/customer-vehicle/use-customer-vehicles-for-compatibility';
 import { storefrontCatalogApi } from '@/lib/api/storefront-catalog-client';
 import { ClientApiError } from '@/lib/api/web-client';
 import type {
@@ -28,26 +18,48 @@ import type {
   StorefrontVehicleSelection,
   StorefrontVehicleSelectionInput,
 } from '@/lib/storefront/vehicles/vehicle.types';
-import { cn } from '@/lib/utils/cn';
 import {
   ArchiveX,
   Boxes,
+  CarFront,
+  ChevronDown,
+  ChevronLeft,
   CircleAlert,
   PackageSearch,
   RefreshCw,
-  ChevronLeft,
+  SlidersHorizontal,
   Tag,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toPersianDigits } from '@/lib/utils/digits';
 import { formatPrice } from '@/lib/utils/price';
+import {
+  StorefrontProductsFilterBar,
+  type StorefrontProductsFilterDraft,
+} from '@/components/storefront/catalog/storefront-products-filter-bar';
+import { cn } from '@/lib/utils/cn';
+import { StorefrontVehicleCompatibilityFilter } from '../vehicles/storefront-vehicle-compatibility-filter';
 
 const PRODUCTS_PAGE_SIZE = 24;
-const ALL_FILTER_VALUE = '__all__';
 
 type UrlPatch = Record<string, string | null>;
+
+type ProductToolsPanel = 'vehicle' | 'filters' | null;
+
+type ProductToolsPanelName = Exclude<ProductToolsPanel, null>;
+
+type ProductVehicleContext = {
+  vehicleVariantId: string;
+  vehicleMake?: string;
+  vehicleModel?: string;
+};
+
+type ExpandableProductsToolsPanelProps = {
+  open: boolean;
+  children: ReactNode;
+};
 
 function getPositiveInteger(value: string | null, fallback: number): number {
   if (!value) {
@@ -93,12 +105,6 @@ function getErrorMessage(error: unknown): string {
   return 'دریافت محصولات با خطا مواجه شد';
 }
 
-type ProductVehicleContext = {
-  vehicleVariantId: string;
-  vehicleMake?: string;
-  vehicleModel?: string;
-};
-
 function buildProductHref(slug: string, vehicleContext: ProductVehicleContext | null): string {
   const searchParams = new URLSearchParams();
 
@@ -119,6 +125,27 @@ function buildProductHref(slug: string, vehicleContext: ProductVehicleContext | 
   return queryString
     ? `/products/${encodeURIComponent(slug)}?${queryString}`
     : `/products/${encodeURIComponent(slug)}`;
+}
+
+function ExpandableProductsToolsPanel({ open, children }: ExpandableProductsToolsPanelProps) {
+  const inertProps = !open ? ({ inert: '' } as { inert: '' }) : {};
+
+  return (
+    <div
+      aria-hidden={!open}
+      {...inertProps}
+      className={cn(
+        'grid transition-[grid-template-rows,opacity,margin] duration-300 ease-out',
+        open
+          ? 'mt-4 grid-rows-[1fr] opacity-100'
+          : 'pointer-events-none mt-0 grid-rows-[0fr] opacity-0',
+      )}
+    >
+      <div className='min-h-0 overflow-hidden'>
+        <div className='pb-1'>{children}</div>
+      </div>
+    </div>
+  );
 }
 
 function ProductCard({
@@ -237,29 +264,38 @@ export function StorefrontProductsPageClient() {
   const vehicleModel = searchParams.get('vehicleModel') ?? '';
   const page = getPositiveInteger(searchParams.get('page'), 1);
 
-  const [searchInput, setSearchInput] = useState(q);
-
   const [brands, setBrands] = useState<StorefrontBrand[]>([]);
-
   const [categories, setCategories] = useState<StorefrontCategory[]>([]);
-
   const [result, setResult] = useState<StorefrontProductsResponse | null>(null);
 
   const [isLoadingFilters, setIsLoadingFilters] = useState(true);
-
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
   const [filtersError, setFiltersError] = useState<string | null>(null);
-
   const [productsError, setProductsError] = useState<string | null>(null);
 
   const [vehicleResetKey, setVehicleResetKey] = useState(0);
 
-  const latestProductsRequestId = useRef(0);
+  const [openToolsPanel, setOpenToolsPanel] = useState<ProductToolsPanel>(null);
 
-  useEffect(() => {
-    setSearchInput(q);
-  }, [q]);
+  const [draftFilters, setDraftFilters] = useState<StorefrontProductsFilterDraft>(() => ({
+    q,
+    brand,
+    category,
+    stockStatus,
+  }));
+
+  const {
+    vehicles: customerVehicles,
+    isLoading: isLoadingCustomerVehicles,
+    error: customerVehiclesError,
+    isAuthenticated,
+    isSavingSelectedVehicle,
+    saveSelectedVehicleError,
+    saveSelectedVehicle,
+  } = useCustomerVehiclesForCompatibility();
+
+  const latestProductsRequestId = useRef(0);
 
   const replaceUrl = useCallback(
     (patch: UrlPatch) => {
@@ -268,7 +304,6 @@ export function StorefrontProductsPageClient() {
       Object.entries(patch).forEach(([key, value]) => {
         const normalizedValue = value?.trim() ?? '';
 
-        // صفحه اول نباید در URL ذخیره شود
         if (key === 'page' && normalizedValue === '1') {
           nextSearchParams.delete(key);
           return;
@@ -288,7 +323,6 @@ export function StorefrontProductsPageClient() {
 
       const currentUrl = searchParamsString ? `${pathname}?${searchParamsString}` : pathname;
 
-      // جلوگیری قطعی از navigation به همان URL
       if (nextUrl === currentUrl) {
         return;
       }
@@ -299,6 +333,61 @@ export function StorefrontProductsPageClient() {
     },
     [pathname, router, searchParamsString],
   );
+
+  useEffect(() => {
+    setDraftFilters({
+      q,
+      brand,
+      category,
+      stockStatus,
+    });
+  }, [q, brand, category, stockStatus]);
+
+  const applyFilters = useCallback(
+    (nextDraft: StorefrontProductsFilterDraft = draftFilters) => {
+      const normalizedDraft: StorefrontProductsFilterDraft = {
+        ...nextDraft,
+        q: nextDraft.q.trim(),
+      };
+
+      setDraftFilters(normalizedDraft);
+
+      replaceUrl({
+        q: normalizedDraft.q || null,
+        brand: normalizedDraft.brand || null,
+        category: normalizedDraft.category || null,
+        stockStatus: normalizedDraft.stockStatus || null,
+        page: '1',
+      });
+    },
+    [draftFilters, replaceUrl],
+  );
+
+  const clearAllFilters = useCallback(() => {
+    setDraftFilters({
+      q: '',
+      brand: '',
+      category: '',
+      stockStatus: '',
+    });
+
+    setVehicleResetKey((currentValue) => currentValue + 1);
+
+    replaceUrl({
+      q: null,
+      brand: null,
+      category: null,
+      stockStatus: null,
+      vehicleVariantId: null,
+      vehicleMake: null,
+      vehicleModel: null,
+      page: null,
+    });
+  }, [replaceUrl]);
+
+  const toggleToolsPanel = useCallback((panel: ProductToolsPanelName) => {
+    setOpenToolsPanel((current) => (current === panel ? null : panel));
+  }, []);
 
   const loadFilters = useCallback(async () => {
     setIsLoadingFilters(true);
@@ -371,39 +460,25 @@ export function StorefrontProductsPageClient() {
   }, [loadProducts]);
 
   const brandOptions = useMemo(
-    () => [
-      {
-        value: ALL_FILTER_VALUE,
-        label: 'همه برندها',
-      },
-      ...brands.map((item) => ({
+    () =>
+      brands.map((item) => ({
         value: item.slug,
         label: item.name,
       })),
-    ],
     [brands],
   );
 
   const categoryOptions = useMemo(
-    () => [
-      {
-        value: ALL_FILTER_VALUE,
-        label: 'همه دسته‌بندی‌ها',
-      },
-      ...categories.map((item) => ({
+    () =>
+      categories.map((item) => ({
         value: item.slug,
         label: item.name,
       })),
-    ],
     [categories],
   );
 
   const stockStatusOptions = useMemo(
     () => [
-      {
-        value: ALL_FILTER_VALUE,
-        label: 'همه وضعیت‌های موجودی',
-      },
       {
         value: 'IN_STOCK',
         label: 'موجود',
@@ -420,25 +495,17 @@ export function StorefrontProductsPageClient() {
     [],
   );
 
-  const initialVehicleSelection =
-    vehicleMake && vehicleModel && vehicleVariantId
-      ? ({
-          makeSlug: vehicleMake,
-          modelSlug: vehicleModel,
-          variantId: vehicleVariantId,
-        } satisfies StorefrontVehicleSelectionInput)
-      : undefined;
+  const initialVehicleSelection = useMemo<StorefrontVehicleSelectionInput | undefined>(() => {
+    if (!vehicleMake || !vehicleModel || !vehicleVariantId) {
+      return undefined;
+    }
 
-  const activeFilterCount = [q, brand, category, stockStatus, vehicleVariantId].filter(
-    Boolean,
-  ).length;
-
-  function handleSearch(nextQuery: string) {
-    replaceUrl({
-      q: nextQuery.trim() || null,
-      page: '1',
-    });
-  }
+    return {
+      makeSlug: vehicleMake,
+      modelSlug: vehicleModel,
+      variantId: vehicleVariantId,
+    };
+  }, [vehicleMake, vehicleModel, vehicleVariantId]);
 
   const handleVehicleChange = useCallback(
     (selection: StorefrontVehicleSelection | null) => {
@@ -462,33 +529,26 @@ export function StorefrontProductsPageClient() {
     },
     [replaceUrl],
   );
-  function clearAllFilters() {
-    setSearchInput('');
-    setVehicleResetKey((currentValue) => currentValue + 1);
 
-    replaceUrl({
-      q: null,
-      brand: null,
-      category: null,
-      stockStatus: null,
-      vehicleVariantId: null,
-      vehicleMake: null,
-      vehicleModel: null,
-      page: null,
-    });
-  }
+  const catalogAppliedFilterCount = [q, brand, category, stockStatus].filter(Boolean).length;
 
-  const productVehicleContext: ProductVehicleContext | null = vehicleVariantId
-    ? {
-        vehicleVariantId,
-        vehicleMake: vehicleMake || undefined,
-        vehicleModel: vehicleModel || undefined,
-      }
-    : null;
+  const totalAppliedFilterCount = catalogAppliedFilterCount + (vehicleVariantId ? 1 : 0);
+
+  const productVehicleContext = useMemo<ProductVehicleContext | null>(() => {
+    if (!vehicleVariantId) {
+      return null;
+    }
+
+    return {
+      vehicleVariantId,
+      vehicleMake: vehicleMake || undefined,
+      vehicleModel: vehicleModel || undefined,
+    };
+  }, [vehicleMake, vehicleModel, vehicleVariantId]);
 
   return (
     <div className='mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8'>
-      <div className='space-y-8'>
+      <div className='space-y-4'>
         <header>
           <p className='text-sm font-semibold text-brand'>فروشگاه پارت‌سنج</p>
 
@@ -501,93 +561,132 @@ export function StorefrontProductsPageClient() {
           </p>
         </header>
 
-        <StorefrontVehicleSelector
-          initialSelection={initialVehicleSelection}
-          hasExternalVehicleFilter={Boolean(vehicleVariantId)}
-          resetKey={vehicleResetKey}
-          onVehicleChange={handleVehicleChange}
-        />
-
-        {filtersError ? (
-          <div
-            role='alert'
-            className='flex flex-col gap-3 rounded-card border border-warning/30 bg-warning-soft p-4 sm:flex-row sm:items-center sm:justify-between'
-          >
-            <div className='flex items-start gap-2 text-warning'>
-              <CircleAlert className='mt-0.5 size-5 shrink-0' />
-              <p className='text-sm font-semibold'>فیلترهای برند و دسته‌بندی بارگذاری نشدند</p>
-            </div>
+        <div className='sticky top-3 z-30'>
+          <div className='flex flex-wrap gap-2'>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                toggleToolsPanel('vehicle');
+              }}
+              iconStart={<CarFront className='size-4' />}
+              iconEnd={
+                <ChevronDown
+                  className={cn(
+                    'size-4 transition-transform',
+                    openToolsPanel === 'vehicle' && 'rotate-180',
+                  )}
+                />
+              }
+            >
+              <span>انتخاب خودرو</span>
+              {vehicleVariantId ? (
+                // <span className='rounded-full bg-white/20 px-1.5 py-0.5 text-[11px]'>فعال</span>
+                <Badge variant='danger' size='sm' dot className='mr-3'>
+                  فعال
+                </Badge>
+              ) : null}
+            </Button>
 
             <Button
               type='button'
-              size='sm'
               variant='outline'
-              iconStart={<RefreshCw />}
-              onClick={() => void loadFilters()}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                toggleToolsPanel('filters');
+              }}
+              iconStart={<SlidersHorizontal className='size-4' />}
+              iconEnd={
+                <ChevronDown
+                  className={cn(
+                    'size-4 transition-transform',
+                    openToolsPanel === 'filters' && 'rotate-180',
+                  )}
+                />
+              }
             >
-              تلاش مجدد
+              <span>فیلترها</span>
+
+              {catalogAppliedFilterCount > 0 ? (
+                <span>
+                  {openToolsPanel ? (
+                    <Badge size='sm' className='mr-3'>
+                      {toPersianDigits(catalogAppliedFilterCount)}
+                    </Badge>
+                  ) : (
+                    <Badge size='sm' className='mr-3' variant='danger'>
+                      {toPersianDigits(catalogAppliedFilterCount)}
+                    </Badge>
+                  )}
+                </span>
+              ) : null}
             </Button>
           </div>
-        ) : null}
+        </div>
 
-        <FilterBar id='catalog-filters'>
-          <FilterBarSearch>
-            <SearchInput
-              value={searchInput}
-              onValueChange={setSearchInput}
-              onSearch={handleSearch}
+        <ExpandableProductsToolsPanel open={openToolsPanel === 'vehicle'}>
+          <StorefrontVehicleCompatibilityFilter
+            initialSelection={initialVehicleSelection}
+            hasExternalVehicleFilter={Boolean(vehicleVariantId)}
+            resetKey={vehicleResetKey}
+            savedVehicles={customerVehicles}
+            savedVehiclesLoading={isLoadingCustomerVehicles}
+            savedVehiclesError={customerVehiclesError}
+            isAuthenticated={isAuthenticated}
+            isSavingSelectedVehicle={isSavingSelectedVehicle}
+            saveSelectedVehicleError={saveSelectedVehicleError}
+            onSaveSelectedVehicle={saveSelectedVehicle}
+            onVehicleChange={handleVehicleChange}
+          />
+        </ExpandableProductsToolsPanel>
+
+        <ExpandableProductsToolsPanel open={openToolsPanel === 'filters'}>
+          <>
+            {filtersError ? (
+              <div
+                role='alert'
+                className='mb-4 flex flex-col gap-3 rounded-card border border-warning/30 bg-warning-soft p-4 sm:flex-row sm:items-center sm:justify-between'
+              >
+                <div className='flex items-start gap-2 text-warning'>
+                  <CircleAlert className='mt-0.5 size-5 shrink-0' />
+
+                  <p className='text-sm font-semibold'>فیلترهای برند و دسته‌بندی بارگذاری نشدند</p>
+                </div>
+
+                <Button
+                  type='button'
+                  size='sm'
+                  variant='outline'
+                  iconStart={<RefreshCw />}
+                  onClick={() => void loadFilters()}
+                >
+                  تلاش مجدد
+                </Button>
+              </div>
+            ) : null}
+
+            <StorefrontProductsFilterBar
+              draft={draftFilters}
+              brandOptions={brandOptions}
+              categoryOptions={categoryOptions}
+              stockStatusOptions={stockStatusOptions}
               loading={isLoadingProducts}
-              placeholder='جستجو در نام، کد کالا یا توضیحات'
+              optionsLoading={isLoadingFilters}
+              externalActiveFilterCount={vehicleVariantId ? 1 : 0}
+              onDraftChange={(patch) => {
+                setDraftFilters((current) => ({
+                  ...current,
+                  ...patch,
+                }));
+              }}
+              onApply={applyFilters}
+              onReset={clearAllFilters}
             />
-          </FilterBarSearch>
-
-          <FilterBarFilters>
-            <FilterBarField width='md'>
-              <Select
-                value={brand || ALL_FILTER_VALUE}
-                onValueChange={(value) => {
-                  replaceUrl({
-                    brand: value === ALL_FILTER_VALUE ? null : value,
-                    page: '1',
-                  });
-                }}
-                disabled={isLoadingFilters}
-                options={brandOptions}
-              />
-            </FilterBarField>
-
-            <FilterBarField width='md'>
-              <Select
-                value={category || ALL_FILTER_VALUE}
-                onValueChange={(value) => {
-                  replaceUrl({
-                    category: value === ALL_FILTER_VALUE ? null : value,
-                    page: '1',
-                  });
-                }}
-                disabled={isLoadingFilters}
-                options={categoryOptions}
-              />
-            </FilterBarField>
-
-            <FilterBarField width='md'>
-              <Select
-                value={stockStatus || ALL_FILTER_VALUE}
-                onValueChange={(value) => {
-                  replaceUrl({
-                    stockStatus: value === ALL_FILTER_VALUE ? null : value,
-                    page: '1',
-                  });
-                }}
-                options={stockStatusOptions}
-              />
-            </FilterBarField>
-          </FilterBarFilters>
-
-          <FilterBarActions>
-            <FilterBarClearButton activeFilterCount={activeFilterCount} onClick={clearAllFilters} />
-          </FilterBarActions>
-        </FilterBar>
+          </>
+        </ExpandableProductsToolsPanel>
 
         <section>
           <div className='mb-5 flex flex-wrap items-center justify-between gap-3'>
@@ -677,14 +776,16 @@ export function StorefrontProductsPageClient() {
                 فیلترها را تغییر دهید یا انتخاب خودرو را پاک کنید
               </p>
 
-              {activeFilterCount > 0 ? (
+              {totalAppliedFilterCount > 0 ? (
                 <Button
                   type='button'
                   variant='outline'
                   size='sm'
                   className='mt-5'
                   iconStart={<ArchiveX />}
-                  onClick={clearAllFilters}
+                  onClick={() => {
+                    clearAllFilters();
+                  }}
                 >
                   پاک‌سازی فیلترها
                 </Button>

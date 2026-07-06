@@ -1,6 +1,14 @@
 'use client';
 
-import { House, MapPinned, Package, Store, UserRound, type LucideIcon } from 'lucide-react';
+import {
+  House,
+  MapPinned,
+  Package,
+  Store,
+  UserRound,
+  CarFront,
+  type LucideIcon,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -26,6 +34,11 @@ const navigationItems: AccountNavigationItem[] = [
     href: '/account/orders',
     label: 'سفارش‌های من',
     icon: Package,
+  },
+  {
+    href: '/account/vehicles',
+    label: 'خودروهای من',
+    icon: CarFront,
   },
   {
     href: '/account/addresses',

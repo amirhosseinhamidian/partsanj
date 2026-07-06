@@ -43,10 +43,7 @@ export function FilterBar({
     <section
       {...props}
       aria-label={props['aria-label'] ?? 'فیلترها'}
-      className={cn(
-        'rounded-card border border-border bg-surface p-4 shadow-panel sm:p-5',
-        className,
-      )}
+      className={cn('rounded-card border border-border bg-surface p-4 shadow sm:p-5', className)}
     >
       {hasHeader ? (
         <header className='mb-5 flex items-center gap-2'>
@@ -188,6 +185,7 @@ export function FilterBarClearButton({
       {...props}
       type='button'
       variant='outline'
+      size='sm'
       iconStart={<RotateCcw className='size-4' />}
       className={cn('shrink-0', className)}
     >

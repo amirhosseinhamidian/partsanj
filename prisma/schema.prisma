@@ -118,18 +118,20 @@ enum OrderItemFitmentStatus {
 }
 
 model User {
-  id               String    @id @default(uuid())
-  mobile           String    @unique
+  id               String   @id @default(uuid())
+  mobile           String   @unique
   firstName        String?
   lastName         String?
-  role             UserRole  @default(CUSTOMER)
-  isActive         Boolean   @default(true)
+  role             UserRole @default(CUSTOMER)
+  isActive         Boolean  @default(true)
   mobileVerifiedAt DateTime?
   lastLoginAt      DateTime?
-  carts            Cart[]
 
-  addresses CustomerAddress[] @relation("CustomerAddresses")
-  orders    Order[]           @relation("CustomerOrders")
+  carts Cart[]
+
+  addresses        CustomerAddress[] @relation("CustomerAddresses")
+  orders           Order[]           @relation("CustomerOrders")
+  customerVehicles CustomerVehicle[] @relation("UserCustomerVehicles")
 
   productAuditLogs ProductAuditLog[]
   adminAuditLogs   AdminAuditLog[]
@@ -158,14 +160,16 @@ model OtpChallenge {
 }
 
 model Brand {
-  id        String    @id @default(uuid())
-  name      String    @unique
-  slug      String    @unique
-  isActive  Boolean   @default(true)
-  logoUrl   String?
-  products  Product[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id       String  @id @default(uuid())
+  name     String  @unique
+  slug     String  @unique
+  isActive Boolean @default(true)
+  logoUrl  String?
+
+  products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Category {
@@ -242,10 +246,10 @@ model ProductCode {
 }
 
 model ProductImage {
-  id        String  @id @default(uuid())
+  id        String @id @default(uuid())
   url       String
   alt       String?
-  sortOrder Int     @default(0)
+  sortOrder Int    @default(0)
   productId String
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -264,7 +268,7 @@ model Cart {
   guestTokenHash String?
 
   expiresAt      DateTime?
-  lastActivityAt DateTime  @default(now())
+  lastActivityAt DateTime @default(now())
   mergedAt       DateTime?
 
   user            User?      @relation(fields: [userId], references: [id], onDelete: Restrict)
@@ -284,17 +288,12 @@ model CartItem {
   cartId    String
   productId String
 
-  // خودرویی که کاربر هنگام افزودن قطعه انتخاب کرده است
   vehicleVariantId String?
 
-  // برای جلوگیری از ثبت تکراری یک محصول با خودرو / بدون خودرو
-  // مقدار آن باید vehicleVariantId یا رشته خالی باشد
   fitmentKey String @default("")
 
   quantity Int @default(1)
 
-  // Snapshot قیمت در لحظه افزودن یا آخرین Sync سبد
-  // منبع حقیقت نیست؛ قیمت نهایی همیشه در Backend دوباره محاسبه می‌شود
   unitBasePriceToman      Int
   unitEffectivePriceToman Int
   priceSnapshotAt         DateTime @default(now())
@@ -366,7 +365,7 @@ model VehicleModel {
   sortOrder Int     @default(0)
   imageUrl  String?
 
-  make     VehicleMake      @relation(fields: [makeId], references: [id], onDelete: Restrict)
+  make     VehicleMake     @relation(fields: [makeId], references: [id], onDelete: Restrict)
   variants VehicleVariant[]
 
   createdAt DateTime @default(now())
@@ -390,10 +389,11 @@ model VehicleVariant {
   isActive     Boolean             @default(true)
   sortOrder    Int                 @default(0)
 
-  model           VehicleModel                  @relation(fields: [modelId], references: [id], onDelete: Restrict)
-  compatibilities ProductVehicleCompatibility[]
-  cartItems       CartItem[]
-  orderItems      OrderItem[]
+  model            VehicleModel                  @relation(fields: [modelId], references: [id], onDelete: Restrict)
+  compatibilities  ProductVehicleCompatibility[]
+  cartItems        CartItem[]
+  orderItems       OrderItem[]
+  customerVehicles CustomerVehicle[]             @relation("VehicleVariantCustomerVehicles")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -458,23 +458,39 @@ model CustomerAddress {
   @@index([userId, createdAt])
 }
 
+model CustomerVehicle {
+  id String @id @default(uuid())
+
+  userId           String
+  vehicleVariantId String
+  label            String?
+  isDefault        Boolean @default(false)
+
+  user User @relation("UserCustomerVehicles", fields: [userId], references: [id], onDelete: Restrict)
+  vehicleVariant VehicleVariant @relation("VehicleVariantCustomerVehicles", fields: [vehicleVariantId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, vehicleVariantId])
+  @@index([userId, isDefault])
+  @@index([vehicleVariantId])
+}
+
 model Order {
   id String @id @default(uuid())
 
-  // شماره داخلی سفارش؛ نمایش عمومی بعداً مانند PS-1001 انجام می‌شود
   orderNumber Int @unique @default(autoincrement())
 
   customerUserId String
   customerUser   User   @relation("CustomerOrders", fields: [customerUserId], references: [id], onDelete: Restrict)
 
-  // هر Cart فقط یک بار می‌تواند به Order تبدیل شود
   sourceCartId String @unique
   sourceCart   Cart   @relation("OrderSourceCart", fields: [sourceCartId], references: [id], onDelete: Restrict)
 
   status        OrderStatus        @default(PENDING_PAYMENT)
   paymentStatus OrderPaymentStatus @default(UNPAID)
 
-  // برای حال حاضر ONLINE است، اما بعدها می‌تواند COD یا روش‌های دیگر باشد
   paymentMethodCode String @default("ONLINE")
 
   currencyCode String @default("TOMAN")
@@ -482,7 +498,6 @@ model Order {
   shippingAddressId String?
   shippingAddress   CustomerAddress? @relation("OrderShippingAddress", fields: [shippingAddressId], references: [id], onDelete: Restrict)
 
-  // Snapshot آدرس؛ تغییرات بعدی در Address Book نباید سفارش قدیمی را تغییر دهد
   shippingRecipientFirstName String
   shippingRecipientLastName  String
   shippingRecipientMobile    String
@@ -500,7 +515,6 @@ model Order {
 
   shippingNotes String?
 
-  // مبالغ همگی بر اساس تومان هستند
   itemsBaseTotalToman Int
   itemsDiscountToman  Int
   orderDiscountToman  Int @default(0)
@@ -510,22 +524,20 @@ model Order {
   customerNote String?
   adminNote    String?
 
-  expiresAt   DateTime?
-  paidAt      DateTime?
-  cancelledAt DateTime?
-  processingStartedAt DateTime?
+  expiresAt              DateTime?
+  paidAt                 DateTime?
+  cancelledAt            DateTime?
+  processingStartedAt    DateTime?
+  shippedAt              DateTime?
+  deliveredAt            DateTime?
+  cancellationReason     String?
 
   items           OrderItem[]
   paymentAttempts PaymentAttempt[]
 
-  shippingCarrier    String?
-  trackingCode       String?
-  shipmentNote       String?
-
-  shippedAt          DateTime?
-  deliveredAt        DateTime?
-
-  cancellationReason String?
+  shippingCarrier String?
+  trackingCode    String?
+  shipmentNote    String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -548,13 +560,11 @@ model OrderItem {
   vehicleVariantId String?
   vehicleVariant   VehicleVariant? @relation(fields: [vehicleVariantId], references: [id], onDelete: Restrict)
 
-  // Snapshot محصول
   productSku      String
   productName     String
   brandName       String
   productImageUrl String?
 
-  // Snapshot خودرو؛ ساختار JSON بعداً قابل توسعه می‌ماند
   vehicleSnapshot Json?
 
   fitmentStatus OrderItemFitmentStatus @default(NOT_SELECTED)
@@ -585,15 +595,12 @@ model PaymentAttempt {
 
   attemptNumber Int
 
-  // فعلاً ZARINPAL؛ در آینده درگاه‌های دیگر بدون تغییر Schema اضافه می‌شوند
   providerCode String
 
   status PaymentAttemptStatus @default(CREATED)
 
   amountToman Int
 
-  // برای زرین‌پال Authority اینجا نگهداری می‌شود
-  // برای هر درگاه دیگر، شناسه Session معادل آن ذخیره خواهد شد
   providerSessionId String?
 
   providerTransactionId String?
@@ -606,14 +613,12 @@ model PaymentAttempt {
 
   providerReferenceId String?
 
-  callbackPayload    Json?
-
+  callbackPayload     Json?
   verificationPayload Json?
 
   providerCardPan  String?
   providerCardHash String?
 
-  // فقط داده‌های Sanitized؛ هرگز API Key یا Secret را ذخیره نکن
   requestMetadata  Json?
   responseMetadata Json?
   callbackMetadata Json?

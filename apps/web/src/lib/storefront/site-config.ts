@@ -17,34 +17,18 @@ export const storefrontSiteConfig = {
   },
 };
 
-export const storefrontPrimaryNavigation: StorefrontFooterLink[] = [
+export const storefrontPrimaryNavigation = [
   {
-    label: 'صفحه اصلی',
     href: '/',
+    label: 'صفحه اصلی',
   },
   {
-    label: 'دسته‌بندی قطعات',
-    href: '/products',
-  },
-  {
-    label: 'جستجوی خودرو',
-    href: '/products#vehicle-selector',
-  },
-  {
-    label: 'برندها',
-    href: '/products#catalog-filters',
-  },
-  {
-    label: 'راهنمای انتخاب قطعه',
-    href: '#footer-guide',
-  },
-  {
+    href: '/about',
     label: 'درباره ما',
-    href: '#about',
   },
   {
+    href: '/contact',
     label: 'تماس با ما',
-    href: '#contact',
   },
 ];
 

@@ -316,6 +316,42 @@
   animation: ps-toast-exit 190ms cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
+/* تغییر ظاهر اسکرول‌بار برای مرورگرهای مدرن */
+::-webkit-scrollbar {
+  width: 6px; /* عرض اسکرول‌بار */
+  height: 8px; /* برای اسکرول‌بار افقی */
+}
+
+/* رنگ پس‌زمینه اسکرول‌بار */
+::-webkit-scrollbar-track {
+  background: #f2f5f9;
+}
+
+/* رنگ و استایل دستگیره اسکرول */
+::-webkit-scrollbar-thumb {
+  background: #ff5a00bb;
+  border-radius: 20px;
+}
+
+/* افکت هاور برای دستگیره اسکرول */
+::-webkit-scrollbar-thumb:hover {
+  background: #ff5a00bb;
+}
+
+/* دکمه بالا (▲) */
+::-webkit-scrollbar-button:single-button:decrement {
+  background: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%238750F6'%3E%3Cpath d='M12 8l-6 6h12z'/%3E%3C/svg%3E")
+    center no-repeat;
+  background-color: #2b1555;
+}
+
+/* دکمه پایین (▼) */
+::-webkit-scrollbar-button:single-button:increment {
+  background: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%238750F6'%3E%3Cpath d='M12 16l6-6H6z'/%3E%3C/svg%3E")
+    center no-repeat;
+  background-color: #2b1555;
+}
+
 @keyframes tooltip-in {
   from {
     opacity: 0;

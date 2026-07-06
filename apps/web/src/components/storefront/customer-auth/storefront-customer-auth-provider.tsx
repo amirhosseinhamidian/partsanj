@@ -358,30 +358,31 @@ export function StorefrontCustomerAuthProvider({ children }: PropsWithChildren) 
     return Math.max(0, Math.ceil((resendAvailableAtMs - clockMs) / 1000));
   }, [clockMs, resendAvailableAtMs]);
 
+  const syncAuthenticatedUser = useCallback(async () => {
+    const response = await storefrontCustomerAuthApi.getMe();
+
+    if (!response.data) {
+      throw new Error('Authenticated user was not returned');
+    }
+
+    setUser(response.data);
+    setStatus('authenticated');
+
+    return response.data;
+  }, []);
+
   const refreshSession = useCallback(async () => {
     setStatus('loading');
 
     try {
-      const response = await storefrontCustomerAuthApi.getMe();
-
-      if (!response.data) {
-        setUser(null);
-        setStatus('guest');
-
-        return null;
-      }
-
-      setUser(response.data);
-      setStatus('authenticated');
-
-      return response.data;
+      return await syncAuthenticatedUser();
     } catch {
       setUser(null);
       setStatus('guest');
 
       return null;
     }
-  }, []);
+  }, [syncAuthenticatedUser]);
 
   useEffect(() => {
     void refreshSession();
@@ -464,8 +465,19 @@ export function StorefrontCustomerAuthProvider({ children }: PropsWithChildren) 
     try {
       const response = await storefrontCustomerAuthApi.verifyOtp(normalizedMobile, otp);
 
-      setUser(response.data.user);
+      setUser({
+        ...response.data.user,
+        mobile: response.data.user.mobile ?? normalizedMobile,
+      });
+
       setStatus('authenticated');
+
+      try {
+        await syncAuthenticatedUser();
+      } catch {
+        // اطلاعات اولیه verifyOtp موقتاً حفظ می‌شود
+        // تا Header به حالت مهمان برنگردد
+      }
 
       await reloadCart();
 
@@ -493,7 +505,7 @@ export function StorefrontCustomerAuthProvider({ children }: PropsWithChildren) 
     } finally {
       setIsVerifying(false);
     }
-  }, [mobile, otp, reloadCart, router, toast]);
+  }, [mobile, otp, reloadCart, router, syncAuthenticatedUser, toast]);
 
   const logout = useCallback(async () => {
     setIsLoggingOut(true);

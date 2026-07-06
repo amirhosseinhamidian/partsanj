@@ -65,7 +65,7 @@ function DashboardCard({
   children: ReactNode;
 }) {
   return (
-    <section className='rounded-card border border-border bg-surface p-5 shadow-panel'>
+    <section className='min-w-0 overflow-hidden rounded-card border border-border bg-surface p-5 shadow-panel'>
       <div className='flex items-center gap-2'>
         <span className='text-brand'>{icon}</span>
 
@@ -119,7 +119,7 @@ function LatestOrderCard({
   if (!order) {
     return (
       <DashboardCard title='آخرین سفارش' icon={<PackageOpen className='size-5' />}>
-        <div className='rounded-control border border-dashed border-border bg-surface-muted p-6 text-center'>
+        <div className='bg-card mt-6 rounded-xl border border-dashed border-border px-6 py-12 text-center'>
           <ShoppingBag className='mx-auto size-9 text-foreground-muted' />
 
           <h3 className='mt-3 font-extrabold text-foreground'>هنوز سفارشی ثبت نکرده‌اید</h3>
@@ -144,9 +144,9 @@ function LatestOrderCard({
 
   return (
     <DashboardCard title='آخرین سفارش' icon={<PackageOpen className='size-5' />}>
-      <div className='flex flex-col gap-5'>
-        <div className='flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between'>
-          <div>
+      <div className='min-w-0 space-y-5'>
+        <div className='grid gap-4 border-b border-border pb-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start'>
+          <div className='min-w-0'>
             <div className='flex flex-wrap items-center gap-2'>
               <p className='text-lg font-extrabold text-foreground'>
                 سفارش {formatCustomerOrderNumber(order.orderNumber)}
@@ -162,7 +162,7 @@ function LatestOrderCard({
             </p>
           </div>
 
-          <div className='sm:text-end'>
+          <div className='shrink-0 sm:text-end'>
             <p className='text-xs text-foreground-muted'>مبلغ قابل پرداخت</p>
 
             <p className='numeric mt-1 text-lg font-extrabold text-foreground'>
@@ -171,7 +171,7 @@ function LatestOrderCard({
           </div>
         </div>
 
-        <div className='flex items-center gap-3'>
+        <div className='flex min-w-0 items-center gap-3'>
           <div className='grid size-14 shrink-0 place-items-center overflow-hidden rounded-control border border-border bg-surface-muted'>
             {firstProduct?.productImageUrl ? (
               <img
@@ -184,8 +184,8 @@ function LatestOrderCard({
             )}
           </div>
 
-          <div className='min-w-0'>
-            <p className='truncate font-bold text-foreground'>
+          <div className='min-w-0 flex-1'>
+            <p className='leading-7 font-bold break-words text-foreground'>
               {firstProduct?.productName ?? 'اطلاعات اقلام سفارش'}
             </p>
 
@@ -196,6 +196,7 @@ function LatestOrderCard({
         </div>
 
         <Button
+          className='w-full sm:w-auto'
           variant='secondary'
           iconStart={<ArrowLeft className='size-4' />}
           onClick={() => onViewOrder(order.id)}
@@ -344,10 +345,6 @@ export function AccountDashboardPageClient() {
               سفارش‌ها، نشانی‌های ارسال و اطلاعات حساب خود را از این بخش مدیریت کنید
             </p>
           </div>
-
-          <span className='grid size-14 place-items-center rounded-card bg-brand-soft text-brand'>
-            <UserRound className='size-7' />
-          </span>
         </div>
 
         {user?.mobile ? (

@@ -57,9 +57,15 @@ export class CatalogService {
   }
 
   async findProducts(query: FindProductsQueryDto) {
-    const where = this.buildPublicProductWhere(query);
+    const categoryScopeIds = query.category
+      ? await this.resolveCategoryScopeIds(query.category)
+      : undefined;
+
+    const where = this.buildPublicProductWhere(query, categoryScopeIds);
+
     const skip = (query.page - 1) * query.limit;
     const now = new Date();
+
     const [products, total] = await this.prisma.$transaction([
       this.prisma.product.findMany({
         where,
@@ -80,6 +86,7 @@ export class CatalogService {
           saleEndsAt: true,
           stockStatus: true,
           updatedAt: true,
+
           brand: {
             select: {
               id: true,
@@ -88,6 +95,7 @@ export class CatalogService {
               logoUrl: true,
             },
           },
+
           category: {
             select: {
               id: true,
@@ -95,6 +103,7 @@ export class CatalogService {
               slug: true,
             },
           },
+
           codes: {
             select: {
               type: true,
@@ -109,6 +118,7 @@ export class CatalogService {
               },
             ],
           },
+
           images: {
             take: 1,
             orderBy: {
@@ -123,7 +133,10 @@ export class CatalogService {
           },
         },
       }),
-      this.prisma.product.count({ where }),
+
+      this.prisma.product.count({
+        where,
+      }),
     ]);
 
     return {
@@ -157,6 +170,7 @@ export class CatalogService {
         saleEndsAt: true,
         stockStatus: true,
         updatedAt: true,
+
         brand: {
           select: {
             id: true,
@@ -165,6 +179,7 @@ export class CatalogService {
             logoUrl: true,
           },
         },
+
         category: {
           select: {
             id: true,
@@ -172,6 +187,7 @@ export class CatalogService {
             slug: true,
           },
         },
+
         codes: {
           select: {
             type: true,
@@ -186,6 +202,7 @@ export class CatalogService {
             },
           ],
         },
+
         images: {
           orderBy: {
             sortOrder: 'asc',
@@ -197,6 +214,7 @@ export class CatalogService {
             sortOrder: true,
           },
         },
+
         compatibilities: {
           where: {
             vehicleVariant: {
@@ -215,6 +233,7 @@ export class CatalogService {
           select: {
             notes: true,
             requiresVerification: true,
+
             vehicleVariant: {
               select: {
                 id: true,
@@ -225,11 +244,13 @@ export class CatalogService {
                 yearFrom: true,
                 yearTo: true,
                 yearCalendar: true,
+
                 model: {
                   select: {
                     id: true,
                     name: true,
                     slug: true,
+
                     make: {
                       select: {
                         id: true,
@@ -258,18 +279,22 @@ export class CatalogService {
   private withComputedPricing<T extends ProductPricingFields>(product: T, now = new Date()) {
     return getComputedProductPricing(product, now);
   }
+
   private buildPublicProductWhere(
     query: Pick<
       FindProductsQueryDto,
       'q' | 'brand' | 'category' | 'stockStatus' | 'vehicleVariantId'
     >,
+    categoryScopeIds?: string[],
   ): Prisma.ProductWhereInput {
     const where: Prisma.ProductWhereInput = {
       status: ProductStatus.ACTIVE,
       isPublished: true,
+
       brand: {
         isActive: true,
       },
+
       category: {
         isActive: true,
       },
@@ -283,9 +308,15 @@ export class CatalogService {
     }
 
     if (query.category) {
+      /*
+       * اگر slug نامعتبر باشد، categoryScopeIds برابر [] است
+       * و Prisma هیچ محصولی برنمی‌گرداند
+       */
       where.category = {
         isActive: true,
-        slug: query.category,
+        id: {
+          in: categoryScopeIds ?? [],
+        },
       };
     }
 
@@ -297,6 +328,7 @@ export class CatalogService {
       where.compatibilities = {
         some: {
           vehicleVariantId: query.vehicleVariantId,
+
           vehicleVariant: {
             isActive: true,
             model: {
@@ -344,5 +376,42 @@ export class CatalogService {
     }
 
     return where;
+  }
+
+  private async resolveCategoryScopeIds(categorySlug: string): Promise<string[]> {
+    const selectedCategory = await this.prisma.category.findFirst({
+      where: {
+        slug: categorySlug,
+        isActive: true,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!selectedCategory) {
+      return [];
+    }
+
+    const rows = await this.prisma.$queryRaw<Array<{ id: string }>>`
+      WITH RECURSIVE category_tree AS (
+        SELECT "id"
+        FROM "Category"
+        WHERE "id" = ${selectedCategory.id}
+
+        UNION
+
+        SELECT child."id"
+        FROM "Category" AS child
+        INNER JOIN category_tree AS parent
+          ON child."parentId" = parent."id"
+        WHERE child."isActive" = true
+      )
+
+      SELECT "id"
+      FROM category_tree
+    `;
+
+    return rows.map((row) => row.id);
   }
 }

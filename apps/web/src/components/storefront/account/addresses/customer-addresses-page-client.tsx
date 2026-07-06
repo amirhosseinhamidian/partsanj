@@ -525,8 +525,8 @@ export function CustomerAddressesPageClient() {
       ) : null}
 
       {activeAddresses.length === 0 && !isLoading && !loadError ? (
-        <section className='rounded-card border border-dashed border-border bg-surface p-10 text-center'>
-          <MapPin className='mx-auto size-10 text-foreground-muted' />
+        <section className='bg-card mt-6 rounded-xl border border-dashed border-border px-6 py-12 text-center'>
+          <MapPin className='mx-auto size-9 text-foreground-muted' />
 
           <h2 className='mt-4 text-lg font-extrabold text-foreground'>
             هنوز نشانی‌ای ثبت نکرده‌اید
