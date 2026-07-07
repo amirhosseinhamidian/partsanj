@@ -1,12 +1,8 @@
-import { createCustomerProfileProxyResponse, customerProfileNestApi } from './customer-profile-api';
+import { adminNestApi } from './admin-api';
 
 export const ADMIN_USERS_API_PATH = '/api/v1/admin/users';
 
 const ADMIN_USERS_QUERY_KEYS = ['q', 'role', 'isActive', 'page', 'limit'] as const;
-
-export const adminUserNestApi = customerProfileNestApi;
-
-export const createAdminUserProxyResponse = createCustomerProfileProxyResponse;
 
 export function createAdminUsersListApiPath(searchParams: URLSearchParams) {
   const params = new URLSearchParams();
@@ -27,3 +23,5 @@ export function createAdminUsersListApiPath(searchParams: URLSearchParams) {
 export function adminUserApiPath(userId: string) {
   return `${ADMIN_USERS_API_PATH}/${encodeURIComponent(userId)}`;
 }
+
+export { adminNestApi };

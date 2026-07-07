@@ -5,11 +5,13 @@ import { ThemeSwitcher } from '@/components/theme/theme-switcher';
 import { IconButton } from '@/components/ui/icon-button';
 import { cn } from '@/lib/utils/cn';
 import {
+  BookOpenText,
   Boxes,
-  History,
   CarFront,
+  ChevronDown,
   ClipboardList,
   Gauge,
+  History,
   LayoutDashboard,
   Menu,
   PanelRightClose,
@@ -84,6 +86,23 @@ const navigation: AdminNavigationGroup[] = [
         ],
       },
       {
+        label: 'بلاگ',
+        href: '/admin/blog',
+        icon: BookOpenText,
+        children: [
+          {
+            label: 'مقالات',
+            href: '/admin/blog/posts',
+            disabled: true,
+            badge: 'به‌زودی',
+          },
+          {
+            label: 'دسته‌بندی‌ها',
+            href: '/admin/blog/categories',
+          },
+        ],
+      },
+      {
         label: 'خودروها و سازگاری',
         href: '/admin/vehicles',
         icon: CarFront,
@@ -126,6 +145,10 @@ function isRouteActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+function getNavigationItemKey(item: AdminNavigationItem) {
+  return item.href ?? item.label;
+}
+
 function isNavigationItemActive(pathname: string, item: AdminNavigationItem): boolean {
   const isParentActive = item.href ? isRouteActive(pathname, item.href) : false;
 
@@ -133,6 +156,20 @@ function isNavigationItemActive(pathname: string, item: AdminNavigationItem): bo
     item.children?.some((child) => isRouteActive(pathname, child.href)) ?? false;
 
   return isParentActive || isChildActive;
+}
+
+function getInitialExpandedItems(pathname: string) {
+  const expandedItems: Record<string, boolean> = {};
+
+  for (const group of navigation) {
+    for (const item of group.items) {
+      if (item.children?.length && isNavigationItemActive(pathname, item)) {
+        expandedItems[getNavigationItemKey(item)] = true;
+      }
+    }
+  }
+
+  return expandedItems;
 }
 
 function getCurrentItem(pathname: string) {
@@ -181,6 +218,57 @@ function SidebarContent({
   onCloseMobile,
 }: SidebarContentProps) {
   const displayName = getAdminDisplayName(admin);
+
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(() =>
+    getInitialExpandedItems(pathname),
+  );
+
+  useEffect(() => {
+    setExpandedItems((current) => {
+      let hasChanges = false;
+
+      const next = {
+        ...current,
+      };
+
+      for (const group of navigation) {
+        for (const item of group.items) {
+          if (!item.children?.length || !isNavigationItemActive(pathname, item)) {
+            continue;
+          }
+
+          const itemKey = getNavigationItemKey(item);
+
+          if (!next[itemKey]) {
+            next[itemKey] = true;
+            hasChanges = true;
+          }
+        }
+      }
+
+      return hasChanges ? next : current;
+    });
+  }, [pathname]);
+
+  function toggleItemChildren(item: AdminNavigationItem) {
+    const itemKey = getNavigationItemKey(item);
+
+    if (collapsed) {
+      onToggleCollapse?.();
+
+      setExpandedItems((current) => ({
+        ...current,
+        [itemKey]: true,
+      }));
+
+      return;
+    }
+
+    setExpandedItems((current) => ({
+      ...current,
+      [itemKey]: !current[itemKey],
+    }));
+  }
 
   return (
     <div dir='rtl' className='flex h-full min-h-0 flex-1 flex-col'>
@@ -251,12 +339,20 @@ function SidebarContent({
               {group.items.map((item) => {
                 const Icon = item.icon;
 
+                const hasChildren = Boolean(item.children?.length);
+
+                const itemKey = getNavigationItemKey(item);
+
+                const submenuId = `admin-submenu-${itemKey.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+
                 const isParentRouteActive = item.href ? isRouteActive(pathname, item.href) : false;
 
                 const isChildRouteActive =
                   item.children?.some((child) => isRouteActive(pathname, child.href)) ?? false;
 
                 const active = isNavigationItemActive(pathname, item);
+
+                const isExpanded = Boolean(expandedItems[itemKey]);
 
                 const itemClasses = cn(
                   'group flex h-11 items-center rounded-control text-sm font-semibold transition-colors',
@@ -275,22 +371,32 @@ function SidebarContent({
                     {collapsed ? (
                       <span className='sr-only'>{item.label}</span>
                     ) : (
-                      <>
-                        <span className='min-w-0 flex-1 truncate'>{item.label}</span>
+                      <span className='flex min-w-0 items-center gap-2'>
+                        <span className='truncate'>{item.label}</span>
 
                         {item.badge ? (
                           <span className='rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-bold text-foreground-muted'>
                             {item.badge}
                           </span>
                         ) : null}
-                      </>
+
+                        {hasChildren ? (
+                          <ChevronDown
+                            aria-hidden='true'
+                            className={cn(
+                              'size-4 shrink-0 transition-transform duration-300 motion-reduce:transition-none',
+                              isExpanded && 'rotate-180',
+                            )}
+                          />
+                        ) : null}
+                      </span>
                     )}
                   </>
                 );
 
                 return (
-                  <div key={item.href ?? item.label}>
-                    {item.disabled || !item.href ? (
+                  <div key={itemKey}>
+                    {item.disabled ? (
                       <span
                         aria-disabled='true'
                         title={`${item.label} — به‌زودی`}
@@ -298,7 +404,20 @@ function SidebarContent({
                       >
                         {itemContent}
                       </span>
-                    ) : (
+                    ) : hasChildren ? (
+                      <button
+                        type='button'
+                        aria-expanded={isExpanded && !collapsed}
+                        aria-controls={submenuId}
+                        title={collapsed ? item.label : undefined}
+                        className={cn(itemClasses, 'w-full')}
+                        onClick={() => {
+                          toggleItemChildren(item);
+                        }}
+                      >
+                        {itemContent}
+                      </button>
+                    ) : item.href ? (
                       <Link
                         href={item.href}
                         onClick={onNavigate}
@@ -310,48 +429,75 @@ function SidebarContent({
                       >
                         {itemContent}
                       </Link>
+                    ) : (
+                      <span
+                        aria-disabled='true'
+                        className={cn(itemClasses, 'cursor-not-allowed opacity-45')}
+                      >
+                        {itemContent}
+                      </span>
                     )}
 
-                    {!collapsed && item.children?.length ? (
-                      <div className='mt-1 space-y-1 border-s border-border ps-3'>
-                        {item.children.map((child) => {
-                          const childActive = isRouteActive(pathname, child.href);
+                    {hasChildren ? (
+                      <div
+                        id={submenuId}
+                        aria-hidden={!isExpanded || collapsed}
+                        className={cn(
+                          'grid transition-[grid-template-rows,opacity,margin] duration-300 ease-out motion-reduce:transition-none',
+                          isExpanded && !collapsed
+                            ? 'mt-1 grid-rows-[1fr] opacity-100'
+                            : 'pointer-events-none mt-0 grid-rows-[0fr] opacity-0',
+                        )}
+                      >
+                        <div className='min-h-0 overflow-hidden'>
+                          <div className='space-y-1 border-s border-border ps-3'>
+                            {item.children?.map((child) => {
+                              const childActive = isRouteActive(pathname, child.href);
 
-                          if (child.disabled) {
-                            return (
-                              <span
-                                key={child.href}
-                                aria-disabled='true'
-                                className='flex h-9 items-center rounded-[10px] px-3 text-xs font-semibold text-foreground-muted opacity-45'
-                              >
-                                {child.label}
-                              </span>
-                            );
-                          }
+                              if (child.disabled) {
+                                return (
+                                  <span
+                                    key={child.href}
+                                    aria-disabled='true'
+                                    className='flex h-9 items-center rounded-[10px] px-3 text-xs font-semibold text-foreground-muted opacity-45'
+                                  >
+                                    <span className='truncate'>{child.label}</span>
 
-                          return (
-                            <Link
-                              key={child.href}
-                              href={child.href}
-                              onClick={onNavigate}
-                              aria-current={childActive ? 'page' : undefined}
-                              className={cn(
-                                'flex h-9 items-center rounded-[10px] px-3 text-xs font-semibold transition-colors',
-                                childActive
-                                  ? 'bg-brand-soft text-brand'
-                                  : 'text-foreground-muted hover:bg-surface-muted hover:text-foreground',
-                              )}
-                            >
-                              <span className='truncate'>{child.label}</span>
+                                    {child.badge ? (
+                                      <span className='me-auto rounded-full bg-surface-muted px-1.5 py-0.5 text-[10px] font-bold text-foreground-muted'>
+                                        {child.badge}
+                                      </span>
+                                    ) : null}
+                                  </span>
+                                );
+                              }
 
-                              {child.badge ? (
-                                <span className='me-auto rounded-full bg-surface-muted px-1.5 py-0.5 text-[10px] font-bold text-foreground-muted'>
-                                  {child.badge}
-                                </span>
-                              ) : null}
-                            </Link>
-                          );
-                        })}
+                              return (
+                                <Link
+                                  key={child.href}
+                                  href={child.href}
+                                  onClick={onNavigate}
+                                  aria-current={childActive ? 'page' : undefined}
+                                  tabIndex={isExpanded && !collapsed ? 0 : -1}
+                                  className={cn(
+                                    'flex h-9 items-center rounded-[10px] px-3 text-xs font-semibold transition-colors',
+                                    childActive
+                                      ? 'bg-brand-soft text-brand'
+                                      : 'text-foreground-muted hover:bg-surface-muted hover:text-foreground',
+                                  )}
+                                >
+                                  <span className='truncate'>{child.label}</span>
+
+                                  {child.badge ? (
+                                    <span className='me-auto rounded-full bg-surface-muted px-1.5 py-0.5 text-[10px] font-bold text-foreground-muted'>
+                                      {child.badge}
+                                    </span>
+                                  ) : null}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     ) : null}
                   </div>
@@ -454,7 +600,9 @@ export function AdminAppShell({ admin, children }: AdminAppShellProps) {
           admin={admin}
           pathname={pathname}
           collapsed={desktopCollapsed}
-          onToggleCollapse={() => setDesktopCollapsed((current) => !current)}
+          onToggleCollapse={() => {
+            setDesktopCollapsed((current) => !current);
+          }}
         />
       </aside>
 
@@ -463,7 +611,9 @@ export function AdminAppShell({ admin, children }: AdminAppShellProps) {
           <button
             type='button'
             aria-label='بستن منوی مدیریت'
-            onClick={() => setMobileSidebarOpen(false)}
+            onClick={() => {
+              setMobileSidebarOpen(false);
+            }}
             className='fixed inset-0 z-40 bg-overlay lg:hidden'
           />
 
@@ -477,8 +627,12 @@ export function AdminAppShell({ admin, children }: AdminAppShellProps) {
               admin={admin}
               pathname={pathname}
               collapsed={false}
-              onNavigate={() => setMobileSidebarOpen(false)}
-              onCloseMobile={() => setMobileSidebarOpen(false)}
+              onNavigate={() => {
+                setMobileSidebarOpen(false);
+              }}
+              onCloseMobile={() => {
+                setMobileSidebarOpen(false);
+              }}
             />
           </aside>
         </>
@@ -499,7 +653,9 @@ export function AdminAppShell({ admin, children }: AdminAppShellProps) {
                 variant='outline'
                 aria-label='باز کردن منوی مدیریت'
                 icon={<Menu />}
-                onClick={() => setMobileSidebarOpen(true)}
+                onClick={() => {
+                  setMobileSidebarOpen(true);
+                }}
                 className='lg:hidden'
               />
 

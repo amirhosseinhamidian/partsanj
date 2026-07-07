@@ -16,6 +16,7 @@ import { CustomerOrderModule } from './modules/customer-order/customer-order.mod
 import { CustomerProfileModule } from './modules/customer-profile/customer-profile.module.js';
 import { CustomerVehicleModule } from './modules/customer-vehicle/customer-vehicle.module.js';
 import { AdminUserModule } from './modules/admin-user/admin-user.module.js';
+import { BlogModule } from './modules/blog/admin/blog.module.js';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { AdminUserModule } from './modules/admin-user/admin-user.module.js';
     CustomerProfileModule,
     CustomerVehicleModule,
     AdminUserModule,
+    BlogModule,
   ],
 })
 export class AppModule {}

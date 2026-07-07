@@ -1,15 +1,13 @@
 import { ApiRequestError } from '@/lib/api/api-error';
 import { apiErrorResponse } from '@/lib/api/route-response';
 import {
-  adminUserApiPath,
-  adminUserNestApi,
-  createAdminUserProxyResponse,
-} from '@/lib/server/admin-user-api';
-import {
   isAdminUserRole,
   type AdminUserDetailResponse,
   type UpdateAdminUserInput,
 } from '@/lib/admin/users/admin-user.types';
+import { adminUserApiPath } from '@/lib/server/admin-user-api';
+import { adminNestApi } from '@/lib/server/admin-api';
+import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,9 +63,11 @@ export async function GET(_request: Request, context: RouteContext) {
   try {
     const { userId } = await context.params;
 
-    const result = await adminUserNestApi<AdminUserDetailResponse>(adminUserApiPath(userId));
+    const result = await adminNestApi<AdminUserDetailResponse>(adminUserApiPath(userId), {
+      method: 'GET',
+    });
 
-    return createAdminUserProxyResponse(result);
+    return NextResponse.json(result);
   } catch (error) {
     return apiErrorResponse(error);
   }
@@ -79,15 +79,12 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     const payload = await readUpdatePayload(request);
 
-    const result = await adminUserNestApi<AdminUserDetailResponse>(adminUserApiPath(userId), {
+    const result = await adminNestApi<AdminUserDetailResponse>(adminUserApiPath(userId), {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify(payload),
     });
 
-    return createAdminUserProxyResponse(result);
+    return NextResponse.json(result);
   } catch (error) {
     return apiErrorResponse(error);
   }
