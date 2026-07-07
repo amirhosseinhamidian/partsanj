@@ -23,6 +23,10 @@ export const storefrontPrimaryNavigation = [
     label: 'صفحه اصلی',
   },
   {
+    href: '/blog',
+    label: 'آموزش و مقالات',
+  },
+  {
     href: '/about',
     label: 'درباره ما',
   },

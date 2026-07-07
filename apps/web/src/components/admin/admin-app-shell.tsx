@@ -93,8 +93,6 @@ const navigation: AdminNavigationGroup[] = [
           {
             label: 'مقالات',
             href: '/admin/blog/posts',
-            disabled: true,
-            badge: 'به‌زودی',
           },
           {
             label: 'دسته‌بندی‌ها',
