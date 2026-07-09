@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
 import { Tooltip } from '@/components/ui/tooltip';
-import { Edit, Plus, Trash2 } from 'lucide-react';
+import { Edit, ImageIcon, Plus, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
 import { toPersianDigits } from '@/lib/utils/digits';
 
@@ -35,6 +35,28 @@ function formatDate(value: string): string {
   }).format(new Date(value));
 }
 
+function CategoryImagePreview({ category }: { category: AdminCategory }) {
+  if (!category.imageUrl) {
+    return (
+      <span className='bg-muted mx-auto flex size-12 items-center justify-center rounded-control border border-dashed border-border text-foreground-muted'>
+        <ImageIcon className='size-5' />
+      </span>
+    );
+  }
+
+  return (
+    <span className='bg-muted mx-auto flex size-12 items-center justify-center overflow-hidden rounded-control border border-border'>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={category.imageUrl}
+        alt={category.imageAlt || category.name}
+        className='h-full w-full object-contain p-1.5'
+        loading='lazy'
+      />
+    </span>
+  );
+}
+
 export function CategoriesTable({
   categories,
   loading,
@@ -50,6 +72,13 @@ export function CategoriesTable({
 }: CategoriesTableProps) {
   const columns = useMemo<DataTableColumn<AdminCategory>[]>(
     () => [
+      {
+        key: 'image',
+        header: 'تصویر',
+        align: 'center',
+        minWidth: '90px',
+        cell: (row) => <CategoryImagePreview category={row} />,
+      },
       {
         key: 'name',
         header: 'دسته‌بندی',
@@ -130,6 +159,24 @@ export function CategoriesTable({
           ) : (
             <Badge variant='neutral' dot>
               غیرفعال
+            </Badge>
+          ),
+      },
+      {
+        key: 'showOnHome',
+        header: 'صفحه اصلی',
+        sortable: true,
+        sortValue: (row) => row.showOnHome,
+        align: 'center',
+        minWidth: '120px',
+        cell: (row) =>
+          row.showOnHome ? (
+            <Badge variant='info' dot>
+              نمایش داده می‌شود
+            </Badge>
+          ) : (
+            <Badge variant='neutral' dot>
+              عدم نمایش
             </Badge>
           ),
       },

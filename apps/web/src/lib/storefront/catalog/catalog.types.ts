@@ -15,8 +15,11 @@ export type StorefrontCategory = {
   id: string;
   name: string;
   slug: string;
+  imageUrl: string | null;
+  imageAlt: string | null;
   parentId: string | null;
   sortOrder: number;
+  showOnHome: boolean;
 };
 
 export type StorefrontProductCode = {

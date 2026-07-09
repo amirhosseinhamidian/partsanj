@@ -7,11 +7,13 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  IsUrl,
   Matches,
   MaxLength,
   Min,
 } from 'class-validator';
-import { normalizeSlug, trimText } from './catalog-admin.dto.utils.js';
+
+import { normalizeNullableUrl, normalizeSlug, trimText } from './catalog-admin.dto.utils.js';
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -39,6 +41,57 @@ export class UpdateCategoryDto {
   @Matches(SLUG_PATTERN)
   @MaxLength(120)
   slug?: string;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'https://cdn.partsanj.ir/categories/car-socket.webp',
+  })
+  @IsOptional()
+  @Transform(({ value }) => normalizeNullableUrl(value), {
+    toClassOnly: true,
+  })
+  @IsString()
+  @IsUrl({
+    protocols: ['http', 'https'],
+    require_protocol: true,
+  })
+  @MaxLength(2048)
+  imageUrl?: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'سوکت برق خودرو',
+  })
+  @IsOptional()
+  @Transform(
+    ({ value }) => {
+      if (value === null) {
+        return null;
+      }
+
+      if (typeof value !== 'string') {
+        return value;
+      }
+
+      const normalizedValue = value.trim();
+
+      return normalizedValue || null;
+    },
+    {
+      toClassOnly: true,
+    },
+  )
+  @IsString()
+  @MaxLength(255)
+  imageAlt?: string | null;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Whether this category should be displayed on the storefront home page',
+  })
+  @IsOptional()
+  @IsBoolean()
+  showOnHome?: boolean;
 
   @ApiPropertyOptional({
     nullable: true,

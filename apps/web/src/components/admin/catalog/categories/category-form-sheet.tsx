@@ -25,9 +25,12 @@ import { FormField } from '@/components/ui/form-field';
 type FormValues = {
   name: string;
   slug: string;
+  imageUrl: string;
+  imageAlt: string;
   parentId: string;
   sortOrder: string;
   isActive: boolean;
+  showOnHome: boolean;
 };
 
 type FormErrors = Partial<Record<keyof FormValues, string>>;
@@ -46,9 +49,12 @@ function getInitialValues(category: AdminCategory | null): FormValues {
   return {
     name: category?.name ?? '',
     slug: category?.slug ?? '',
+    imageUrl: category?.imageUrl ?? '',
+    imageAlt: category?.imageAlt ?? '',
     parentId: category?.parentId ?? '',
     sortOrder: String(category?.sortOrder ?? 0),
     isActive: category?.isActive ?? true,
+    showOnHome: category?.showOnHome ?? false,
   };
 }
 
@@ -60,6 +66,16 @@ function normalizeSlug(value: string): string {
     .replace(/_+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
+}
+
+function isValidHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
 function getDescendantIds(categories: AdminCategory[], categoryId: string): Set<string> {
@@ -148,6 +164,8 @@ export function CategoryFormSheet({
     const name = values.name.trim();
     const slug = normalizeSlug(values.slug);
     const sortOrder = Number(values.sortOrder);
+    const imageUrl = values.imageUrl.trim();
+    const imageAlt = values.imageAlt.trim();
 
     if (!name) {
       nextErrors.name = 'نام دسته‌بندی الزامی است';
@@ -161,6 +179,18 @@ export function CategoryFormSheet({
 
     if (!values.sortOrder.trim() || !Number.isInteger(sortOrder) || sortOrder < 0) {
       nextErrors.sortOrder = 'ترتیب نمایش باید یک عدد صحیح صفر یا بزرگ‌تر باشد';
+    }
+
+    if (imageUrl && !isValidHttpUrl(imageUrl)) {
+      nextErrors.imageUrl = 'آدرس تصویر باید یک URL معتبر با http یا https باشد';
+    }
+
+    if (imageUrl && !imageAlt) {
+      nextErrors.imageAlt = 'متن جایگزین تصویر برای تصویر شاخص الزامی است';
+    }
+
+    if (!imageUrl && imageAlt) {
+      nextErrors.imageAlt = 'برای ثبت متن جایگزین، ابتدا آدرس تصویر را وارد کنید';
     }
 
     return nextErrors;
@@ -178,6 +208,8 @@ export function CategoryFormSheet({
 
     const name = values.name.trim();
     const slug = normalizeSlug(values.slug);
+    const imageUrl = values.imageUrl.trim();
+    const imageAlt = values.imageAlt.trim();
     const sortOrder = Number(values.sortOrder);
     const parentId = values.parentId || null;
 
@@ -185,16 +217,22 @@ export function CategoryFormSheet({
       ? {
           name,
           slug,
+          imageUrl: imageUrl || null,
+          imageAlt: imageUrl ? imageAlt : null,
           parentId,
           sortOrder,
           isActive: values.isActive,
+          showOnHome: values.showOnHome,
         }
       : {
           name,
           slug,
+          ...(imageUrl ? { imageUrl } : {}),
+          ...(imageUrl && imageAlt ? { imageAlt } : {}),
           ...(parentId ? { parentId } : {}),
           sortOrder,
           isActive: values.isActive,
+          showOnHome: values.showOnHome,
         };
 
     setSubmitError(null);
@@ -274,6 +312,76 @@ export function CategoryFormSheet({
               )}
             </FormField>
 
+            <div className='bg-muted/30 rounded-card border border-border p-4'>
+              <div className='mb-4'>
+                <p className='text-sm font-bold text-foreground'>تصویر شاخص دسته‌بندی</p>
+
+                <p className='mt-1 text-xs leading-5 text-foreground-secondary'>
+                  این تصویر در صفحه اصلی و بخش دسته‌بندی‌های فروشگاه نمایش داده می‌شود
+                </p>
+              </div>
+
+              <div className='grid gap-4'>
+                <FormField
+                  label='آدرس تصویر'
+                  helperText='URL کامل تصویر را وارد کنید؛ مثال: https://cdn.partsanj.ir/categories/socket.webp'
+                  error={errors.imageUrl}
+                >
+                  {({ id, labelId, describedBy, invalid }) => (
+                    <Input
+                      id={id}
+                      dir='ltr'
+                      aria-labelledby={labelId}
+                      aria-describedby={describedBy}
+                      aria-invalid={invalid}
+                      value={values.imageUrl}
+                      onChange={(event) => setField('imageUrl', event.target.value)}
+                      onBlur={() => setField('imageUrl', values.imageUrl.trim())}
+                      placeholder='https://cdn.partsanj.ir/categories/socket.webp'
+                    />
+                  )}
+                </FormField>
+
+                <FormField
+                  label='متن جایگزین تصویر'
+                  helperText='برای دسترس‌پذیری و SEO؛ مثال: سوکت خودرو'
+                  error={errors.imageAlt}
+                  required={Boolean(values.imageUrl.trim())}
+                >
+                  {({ id, labelId, describedBy, invalid, required }) => (
+                    <Input
+                      id={id}
+                      required={required}
+                      aria-labelledby={labelId}
+                      aria-describedby={describedBy}
+                      aria-invalid={invalid}
+                      value={values.imageAlt}
+                      onChange={(event) => setField('imageAlt', event.target.value)}
+                      onBlur={() => setField('imageAlt', values.imageAlt.trim())}
+                      placeholder='مثلاً سوکت خودرو'
+                    />
+                  )}
+                </FormField>
+
+                {values.imageUrl.trim() && isValidHttpUrl(values.imageUrl.trim()) ? (
+                  <div className='rounded-control border border-border bg-surface p-3'>
+                    <p className='mb-2 text-xs font-bold text-foreground-secondary'>
+                      پیش‌نمایش تصویر
+                    </p>
+
+                    <div className='bg-muted relative flex h-36 items-center justify-center overflow-hidden rounded-control'>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={values.imageUrl.trim()}
+                        alt={values.imageAlt.trim() || 'پیش‌نمایش تصویر دسته‌بندی'}
+                        className='h-full w-full object-contain p-3'
+                      />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
             <FormField
               label='دسته والد'
               helperText='خالی گذاشتن این فیلد، دسته را در سطح اصلی قرار می‌دهد'
@@ -331,6 +439,22 @@ export function CategoryFormSheet({
                   aria-invalid={invalid}
                   checked={values.isActive}
                   onCheckedChange={(checked) => setField('isActive', checked)}
+                />
+              )}
+            </FormField>
+
+            <FormField
+              label='نمایش در صفحه اصلی'
+              helperText='اگر فعال باشد، این دسته‌بندی در سکشن دسته‌بندی‌های اصلی صفحه خانه نمایش داده می‌شود'
+            >
+              {({ id, labelId, describedBy, invalid }) => (
+                <Switch
+                  id={id}
+                  aria-labelledby={labelId}
+                  aria-describedby={describedBy}
+                  aria-invalid={invalid}
+                  checked={values.showOnHome}
+                  onCheckedChange={(checked) => setField('showOnHome', checked)}
                 />
               )}
             </FormField>

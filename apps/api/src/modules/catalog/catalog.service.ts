@@ -46,8 +46,11 @@ export class CatalogService {
         id: true,
         name: true,
         slug: true,
+        imageUrl: true,
+        imageAlt: true,
         parentId: true,
         sortOrder: true,
+        showOnHome: true,
       },
     });
 
@@ -101,6 +104,8 @@ export class CatalogService {
               id: true,
               name: true,
               slug: true,
+              imageUrl: true,
+              imageAlt: true,
             },
           },
 

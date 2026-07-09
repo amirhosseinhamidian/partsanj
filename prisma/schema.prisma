@@ -189,6 +189,10 @@ model Category {
   parentId  String?
   isActive  Boolean @default(true)
   sortOrder Int     @default(0)
+  showOnHome  Boolean @default(false)
+
+  imageUrl String?
+  imageAlt String?
 
   parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
   children Category[] @relation("CategoryHierarchy")
@@ -219,6 +223,9 @@ model Product {
   isPublished    Boolean       @default(false)
   isTorobEnabled Boolean       @default(false)
 
+  showOnHome   Boolean @default(false)
+  homeSortOrder Int    @default(0)
+
   brandId    String
   categoryId String
 
@@ -239,6 +246,7 @@ model Product {
   @@index([categoryId])
   @@index([status, isPublished])
   @@index([stockStatus, isTorobEnabled])
+  @@index([showOnHome, status, isPublished, homeSortOrder])
 }
 
 model ProductCode {

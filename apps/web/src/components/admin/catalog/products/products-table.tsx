@@ -220,6 +220,28 @@ export function ProductsTable({
         cell: (row) => <ProductStatusBadge status={row.status} />,
       },
       {
+        key: 'showOnHome',
+        header: 'صفحه اصلی',
+        minWidth: '80px',
+        align: 'center',
+        cell: (row) =>
+          row.showOnHome ? (
+            <div className='space-y-1'>
+              <Badge variant='info' dot>
+                محصولات ویژه
+              </Badge>
+
+              <p className='numeric text-xs text-foreground-muted'>
+                ترتیب: {toPersianDigits(row.homeSortOrder)}
+              </p>
+            </div>
+          ) : (
+            <Badge variant='neutral' dot>
+              عدم نمایش
+            </Badge>
+          ),
+      },
+      {
         key: 'visibility',
         header: 'نمایش',
         minWidth: '80px',
@@ -241,7 +263,7 @@ export function ProductsTable({
       {
         key: 'updatedAt',
         header: 'آخرین ویرایش',
-        minWidth: '135px',
+        minWidth: '100px',
         align: 'center',
         cell: (row) => (
           <span className='text-sm text-foreground-secondary'>{formatDate(row.updatedAt)}</span>

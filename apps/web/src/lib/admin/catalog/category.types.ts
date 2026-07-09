@@ -13,9 +13,12 @@ export type AdminCategory = {
   id: string;
   name: string;
   slug: string;
+  imageUrl: string | null;
+  imageAlt: string | null;
   parentId: string | null;
   sortOrder: number;
   isActive: boolean;
+  showOnHome: boolean;
   createdAt: string;
   updatedAt: string;
   parent: AdminCategoryParent | null;
@@ -25,17 +28,23 @@ export type AdminCategory = {
 export type CreateCategoryPayload = {
   name: string;
   slug: string;
+  imageUrl?: string;
+  imageAlt?: string;
   parentId?: string;
   sortOrder: number;
   isActive: boolean;
+  showOnHome: boolean;
 };
 
 export type UpdateCategoryPayload = {
   name?: string;
   slug?: string;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
   parentId?: string | null;
   sortOrder?: number;
   isActive?: boolean;
+  showOnHome?: boolean;
 };
 
 export type CategoryListResponse = {

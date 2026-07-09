@@ -64,6 +64,8 @@ type ProductFormValues = {
   status: ProductStatus;
   isPublished: boolean;
   isTorobEnabled: boolean;
+  showOnHome: boolean;
+  homeSortOrder: string;
   brandId: string;
   categoryId: string;
   codes: ProductCodeRow[];
@@ -86,6 +88,7 @@ type ProductFormErrors = Partial<
     | 'status'
     | 'brandId'
     | 'categoryId'
+    | 'homeSortOrder'
     | 'codes'
     | 'images'
     | 'specifications'
@@ -166,6 +169,8 @@ function getInitialValues(product: AdminProductDetail | null): ProductFormValues
     status: product?.status ?? 'DRAFT',
     isPublished: product?.isPublished ?? false,
     isTorobEnabled: product?.isTorobEnabled ?? false,
+    showOnHome: product?.showOnHome ?? false,
+    homeSortOrder: String(product?.homeSortOrder ?? 0),
     brandId: product?.brand.id ?? '',
     categoryId: product?.category.id ?? '',
     codes:
@@ -299,6 +304,8 @@ export function ProductEditorForm({
         key === 'status' ||
         key === 'isPublished' ||
         key === 'isTorobEnabled' ||
+        key === 'showOnHome' ||
+        key === 'homeSortOrder' ||
         key === 'brandId' ||
         key === 'categoryId' ||
         key === 'priceToman' ||
@@ -494,6 +501,8 @@ export function ProductEditorForm({
 
     const basePriceToman = values.priceToman;
 
+    const homeSortOrder = Number(values.homeSortOrder);
+
     const selectedBrand = brands.find((brand) => brand.id === values.brandId);
 
     const selectedCategory = categories.find((category) => category.id === values.categoryId);
@@ -527,6 +536,10 @@ export function ProductEditorForm({
 
     if (basePriceToman !== null && (!Number.isSafeInteger(basePriceToman) || basePriceToman <= 0)) {
       nextErrors.priceToman = 'قیمت اصلی باید یک عدد صحیح بزرگ‌تر از صفر باشد';
+    }
+
+    if (!values.homeSortOrder.trim() || !Number.isInteger(homeSortOrder) || homeSortOrder < 0) {
+      nextErrors.homeSortOrder = 'ترتیب نمایش در صفحه اصلی باید عدد صحیح صفر یا بزرگ‌تر باشد';
     }
 
     if (values.saleEnabled) {
@@ -680,6 +693,24 @@ export function ProductEditorForm({
       }
     }
 
+    if (values.showOnHome) {
+      if (values.status !== 'ACTIVE') {
+        nextErrors.state = 'برای نمایش در صفحه اصلی، محصول باید وضعیت فعال داشته باشد';
+      } else if (!values.isPublished) {
+        nextErrors.state = 'برای نمایش در صفحه اصلی، محصول باید در فروشگاه منتشر شده باشد';
+      } else if (!selectedBrand?.isActive || !selectedCategory?.isActive) {
+        nextErrors.state = 'برای نمایش در صفحه اصلی، برند و دسته‌بندی محصول باید فعال باشند';
+      } else if (
+        effectivePriceToman === null ||
+        !Number.isSafeInteger(effectivePriceToman) ||
+        effectivePriceToman <= 0
+      ) {
+        nextErrors.priceToman = 'برای نمایش در صفحه اصلی، قیمت مؤثر معتبر الزامی است';
+      } else if (normalizedImages.length === 0) {
+        nextErrors.images = 'برای نمایش در صفحه اصلی، حداقل یک تصویر محصول الزامی است';
+      }
+    }
+
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
       return null;
@@ -696,6 +727,8 @@ export function ProductEditorForm({
       status: values.status,
       isPublished: values.isPublished,
       isTorobEnabled: values.isTorobEnabled,
+      showOnHome: values.showOnHome,
+      homeSortOrder,
       brandId: values.brandId,
       categoryId: values.categoryId,
       codes: normalizedCodes,
@@ -1457,6 +1490,56 @@ export function ProductEditorForm({
                   />
                 )}
               </FormField>
+
+              <div className='rounded-control border border-border bg-surface-muted p-4'>
+                <FormField
+                  label='نمایش در محصولات ویژه صفحه اصلی'
+                  helperText='اگر فعال باشد، این محصول در سکشن محصولات ویژه صفحه خانه نمایش داده می‌شود'
+                >
+                  {({ id, labelId, describedBy, invalid }) => (
+                    <Switch
+                      id={id}
+                      aria-labelledby={labelId}
+                      aria-describedby={describedBy}
+                      aria-invalid={invalid}
+                      disabled={isSaving || isArchived}
+                      checked={values.showOnHome}
+                      onCheckedChange={(checked) => {
+                        setField('showOnHome', checked);
+                      }}
+                    />
+                  )}
+                </FormField>
+
+                {values.showOnHome ? (
+                  <div className='mt-4'>
+                    <FormField
+                      label='ترتیب نمایش در صفحه اصلی'
+                      helperText='عدد کمتر زودتر نمایش داده می‌شود'
+                      error={errors.homeSortOrder}
+                    >
+                      {({ id, labelId, describedBy, invalid }) => (
+                        <Input
+                          id={id}
+                          type='number'
+                          min={0}
+                          inputMode='numeric'
+                          dir='ltr'
+                          aria-labelledby={labelId}
+                          aria-describedby={describedBy}
+                          aria-invalid={invalid}
+                          disabled={isSaving || isArchived}
+                          value={values.homeSortOrder}
+                          onChange={(event) => {
+                            setField('homeSortOrder', event.target.value);
+                          }}
+                          placeholder='0'
+                        />
+                      )}
+                    </FormField>
+                  </div>
+                ) : null}
+              </div>
 
               <FormField
                 label='ارسال به ترب'

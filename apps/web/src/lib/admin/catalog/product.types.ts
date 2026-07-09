@@ -48,6 +48,8 @@ export type AdminProductListItem = {
   status: ProductStatus;
   isPublished: boolean;
   isTorobEnabled: boolean;
+  showOnHome: boolean;
+  homeSortOrder: number;
   updatedAt: string;
   brand: AdminProductBrand;
   category: AdminProductCategory;
@@ -98,6 +100,8 @@ export type ProductInput = {
 
   isPublished?: boolean;
   isTorobEnabled?: boolean;
+  showOnHome?: boolean;
+  homeSortOrder?: number;
 
   brandId: string;
   categoryId: string;
@@ -203,6 +207,8 @@ export type AdminProductDetail = {
 
   isPublished: boolean;
   isTorobEnabled: boolean;
+  showOnHome: boolean;
+  homeSortOrder: number;
 
   createdAt: string;
   updatedAt: string;

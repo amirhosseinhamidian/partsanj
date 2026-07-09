@@ -156,6 +156,25 @@ export class CreateProductDto {
   @IsBoolean()
   isTorobEnabled?: boolean;
 
+  @ApiPropertyOptional({
+    default: false,
+    description: 'Whether this product should be displayed on the storefront home page',
+  })
+  @IsOptional()
+  @IsBoolean()
+  showOnHome?: boolean;
+
+  @ApiPropertyOptional({
+    default: 0,
+    minimum: 0,
+    description: 'Display order for featured products on the storefront home page',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  homeSortOrder?: number;
+
   @ApiProperty({
     format: 'uuid',
     description: 'Brand UUID',

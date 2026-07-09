@@ -1,5 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../database/prisma.service.js';
+
+const activeVariantWhere = {
+  isActive: true,
+} satisfies Prisma.VehicleVariantWhereInput;
+
+const activeModelWithVariantWhere = {
+  isActive: true,
+  variants: {
+    some: activeVariantWhere,
+  },
+} satisfies Prisma.VehicleModelWhereInput;
 
 @Injectable()
 export class VehiclesService {
@@ -9,6 +21,9 @@ export class VehiclesService {
     const makes = await this.prisma.vehicleMake.findMany({
       where: {
         isActive: true,
+        models: {
+          some: activeModelWithVariantWhere,
+        },
       },
       orderBy: [
         {
@@ -54,6 +69,9 @@ export class VehiclesService {
       where: {
         makeId: make.id,
         isActive: true,
+        variants: {
+          some: activeVariantWhere,
+        },
       },
       orderBy: [
         {
@@ -65,6 +83,7 @@ export class VehiclesService {
       ],
       select: {
         id: true,
+        makeId: true,
         name: true,
         slug: true,
         imageUrl: true,
@@ -127,6 +146,7 @@ export class VehiclesService {
       ],
       select: {
         id: true,
+        modelId: true,
         name: true,
         slug: true,
         engineCode: true,

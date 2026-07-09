@@ -63,6 +63,41 @@ function getSelectionKey(selection?: StorefrontVehicleSelectionInput) {
   return `${selection.makeSlug}:${selection.modelSlug}:${selection.variantId}`;
 }
 
+function isCompleteVehicleSelectionInput(selection?: StorefrontVehicleSelectionInput | null) {
+  return Boolean(selection?.makeSlug && selection.modelSlug && selection.variantId);
+}
+
+function resolveInitialSelection({
+  initialSelection,
+  storedSelection,
+  hasExternalVehicleFilter,
+}: {
+  initialSelection?: StorefrontVehicleSelectionInput;
+  storedSelection?: StorefrontVehicleSelectionInput;
+  hasExternalVehicleFilter: boolean;
+}) {
+  if (isCompleteVehicleSelectionInput(initialSelection)) {
+    return initialSelection;
+  }
+
+  if (initialSelection?.variantId) {
+    if (
+      isCompleteVehicleSelectionInput(storedSelection) &&
+      storedSelection.variantId === initialSelection.variantId
+    ) {
+      return storedSelection;
+    }
+
+    return initialSelection;
+  }
+
+  if (!hasExternalVehicleFilter) {
+    return storedSelection;
+  }
+
+  return undefined;
+}
+
 export function StorefrontVehicleCompatibilityFilter({
   initialSelection,
   hasExternalVehicleFilter = false,
@@ -90,23 +125,45 @@ export function StorefrontVehicleCompatibilityFilter({
   const externalSelectionKey = getSelectionKey(initialSelection);
 
   useEffect(() => {
-    if (initialSelection || hasExternalVehicleFilter) {
-      setStoredSelection(undefined);
+    const nextStoredSelection = readStorefrontVehicleSelection() ?? undefined;
+
+    if (!initialSelection && !hasExternalVehicleFilter) {
+      setStoredSelection(nextStoredSelection);
       setIsStorageReady(true);
 
       return;
     }
 
-    setStoredSelection(readStorefrontVehicleSelection() ?? undefined);
+    if (
+      initialSelection?.variantId &&
+      nextStoredSelection?.variantId === initialSelection.variantId
+    ) {
+      setStoredSelection(nextStoredSelection);
+      setIsStorageReady(true);
 
+      return;
+    }
+
+    setStoredSelection(undefined);
     setIsStorageReady(true);
-  }, [externalSelectionKey, hasExternalVehicleFilter, initialSelection]);
+  }, [
+    hasExternalVehicleFilter,
+    initialSelection?.makeSlug,
+    initialSelection?.modelSlug,
+    initialSelection?.variantId,
+  ]);
 
   useEffect(() => {
     setSelectionOverride(undefined);
   }, [externalSelectionKey]);
 
-  const effectiveInitialSelection = selectionOverride ?? initialSelection ?? storedSelection;
+  const resolvedInitialSelection = resolveInitialSelection({
+    initialSelection,
+    storedSelection,
+    hasExternalVehicleFilter,
+  });
+
+  const effectiveInitialSelection = selectionOverride ?? resolvedInitialSelection;
 
   const activeVariantId =
     selectedVehicle?.variant.id ?? effectiveInitialSelection?.variantId ?? null;
@@ -150,6 +207,8 @@ export function StorefrontVehicleCompatibilityFilter({
 
     clearStorefrontVehicleSelection();
 
+    onVehicleChange(null);
+
     setLocalResetKey((current) => current + 1);
   }
 
@@ -160,6 +219,18 @@ export function StorefrontVehicleCompatibilityFilter({
 
     await onSaveSelectedVehicle(selectedVehicle);
   }
+
+  const shouldShowManualVehicleHeader = isAuthenticated;
+
+  const manualVehicleSectionClassName = cn(
+    savedVehicles.length > 0
+      ? 'mt-6 border-t border-border pt-5'
+      : shouldShowManualVehicleHeader
+        ? 'mt-5'
+        : 'mt-0',
+  );
+
+  const manualVehiclePickerClassName = shouldShowManualVehicleHeader ? 'mt-4' : undefined;
 
   return (
     <section
@@ -267,24 +338,33 @@ export function StorefrontVehicleCompatibilityFilter({
         </section>
       ) : null}
 
-      <div className={cn(savedVehicles.length > 0 ? 'mt-6 border-t border-border pt-5' : 'mt-5')}>
-        <p className='text-sm font-bold text-foreground'>
-          {savedVehicles.length > 0 ? 'یا انتخاب دستی خودرو' : 'انتخاب دستی خودرو'}
-        </p>
+      <div className={manualVehicleSectionClassName}>
+        {shouldShowManualVehicleHeader ? (
+          <>
+            <p className='text-sm font-bold text-foreground'>
+              {savedVehicles.length > 0 ? 'یا انتخاب دستی خودرو' : 'انتخاب دستی خودرو'}
+            </p>
 
-        <p className='mt-1 text-xs text-foreground-secondary'>
-          برای بررسی خودروی دیگر، برند، مدل و تیپ را دستی انتخاب کنید
-        </p>
+            <p className='mt-1 text-xs text-foreground-secondary'>
+              برای بررسی خودروی دیگر، برند، مدل و تیپ را دستی انتخاب کنید
+            </p>
+          </>
+        ) : null}
 
         {isStorageReady ? (
           <VehicleVariantPicker
             initialSelection={effectiveInitialSelection}
             resetKey={`${resetKey ?? 0}:${localResetKey}`}
             onSelectionChange={handleSelectionChange}
-            className='mt-4'
+            className={manualVehiclePickerClassName}
           />
         ) : (
-          <div className='bg-muted mt-4 h-28 animate-pulse rounded-control' />
+          <div
+            className={cn(
+              'bg-muted h-28 animate-pulse rounded-control',
+              manualVehiclePickerClassName,
+            )}
+          />
         )}
       </div>
 

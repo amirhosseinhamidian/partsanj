@@ -7,11 +7,12 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  IsUrl,
   Matches,
   MaxLength,
   Min,
 } from 'class-validator';
-import { normalizeSlug, trimText } from './catalog-admin.dto.utils.js';
+import { normalizeOptionalUrl, normalizeSlug, trimText } from './catalog-admin.dto.utils.js';
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -37,6 +38,40 @@ export class CreateCategoryDto {
   @Matches(SLUG_PATTERN)
   @MaxLength(120)
   slug!: string;
+
+  @ApiPropertyOptional({
+    example: 'https://cdn.partsanj.ir/categories/car-socket.webp',
+  })
+  @IsOptional()
+  @Transform(({ value }) => normalizeOptionalUrl(value), {
+    toClassOnly: true,
+  })
+  @IsString()
+  @IsUrl({
+    protocols: ['http', 'https'],
+    require_protocol: true,
+  })
+  @MaxLength(2048)
+  imageUrl?: string;
+
+  @ApiPropertyOptional({
+    example: 'سوکت برق خودرو',
+  })
+  @IsOptional()
+  @Transform(({ value }) => trimText(value), {
+    toClassOnly: true,
+  })
+  @IsString()
+  @MaxLength(255)
+  imageAlt?: string;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Whether this category should be displayed on the storefront home page',
+  })
+  @IsOptional()
+  @IsBoolean()
+  showOnHome?: boolean;
 
   @ApiPropertyOptional({
     description: 'Optional parent category UUID',

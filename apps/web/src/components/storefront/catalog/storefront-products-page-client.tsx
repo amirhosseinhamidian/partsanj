@@ -41,6 +41,7 @@ import {
 } from '@/components/storefront/catalog/storefront-products-filter-bar';
 import { cn } from '@/lib/utils/cn';
 import { StorefrontVehicleCompatibilityFilter } from '../vehicles/storefront-vehicle-compatibility-filter';
+import { readStorefrontVehicleSelection } from '@/lib/storefront/vehicles/vehicle-selection-storage';
 
 const PRODUCTS_PAGE_SIZE = 24;
 
@@ -285,6 +286,9 @@ export function StorefrontProductsPageClient() {
     stockStatus,
   }));
 
+  const [storedVehicleSelection, setStoredVehicleSelection] =
+    useState<StorefrontVehicleSelectionInput>();
+
   const {
     vehicles: customerVehicles,
     isLoading: isLoadingCustomerVehicles,
@@ -496,16 +500,25 @@ export function StorefrontProductsPageClient() {
   );
 
   const initialVehicleSelection = useMemo<StorefrontVehicleSelectionInput | undefined>(() => {
-    if (!vehicleMake || !vehicleModel || !vehicleVariantId) {
-      return undefined;
+    if (vehicleMake && vehicleModel && vehicleVariantId) {
+      return {
+        makeSlug: vehicleMake,
+        modelSlug: vehicleModel,
+        variantId: vehicleVariantId,
+      };
     }
 
-    return {
-      makeSlug: vehicleMake,
-      modelSlug: vehicleModel,
-      variantId: vehicleVariantId,
-    };
-  }, [vehicleMake, vehicleModel, vehicleVariantId]);
+    if (
+      vehicleVariantId &&
+      storedVehicleSelection?.variantId === vehicleVariantId &&
+      storedVehicleSelection.makeSlug &&
+      storedVehicleSelection.modelSlug
+    ) {
+      return storedVehicleSelection;
+    }
+
+    return undefined;
+  }, [storedVehicleSelection, vehicleMake, vehicleModel, vehicleVariantId]);
 
   const handleVehicleChange = useCallback(
     (selection: StorefrontVehicleSelection | null) => {
@@ -545,6 +558,27 @@ export function StorefrontProductsPageClient() {
       vehicleModel: vehicleModel || undefined,
     };
   }, [vehicleMake, vehicleModel, vehicleVariantId]);
+
+  useEffect(() => {
+    const storedSelection = readStorefrontVehicleSelection() ?? undefined;
+
+    if (
+      vehicleVariantId &&
+      storedSelection?.variantId === vehicleVariantId &&
+      storedSelection.makeSlug &&
+      storedSelection.modelSlug
+    ) {
+      setStoredVehicleSelection(storedSelection);
+      return;
+    }
+
+    if (!vehicleVariantId) {
+      setStoredVehicleSelection(storedSelection);
+      return;
+    }
+
+    setStoredVehicleSelection(undefined);
+  }, [vehicleVariantId]);
 
   return (
     <div className='mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8'>

@@ -62,6 +62,9 @@ type ProductMutationRecord = {
   isPublished: boolean;
   isTorobEnabled: boolean;
 
+  showOnHome: boolean;
+  homeSortOrder: number;
+
   brandId: string;
   categoryId: string;
 
@@ -82,6 +85,7 @@ type ProductStateCandidate = {
   stockStatus: StockStatus;
   brandIsActive: boolean;
   categoryIsActive: boolean;
+  showOnHome: boolean;
 
   codes: ProductCodeRecord[];
   images: Array<{
@@ -302,9 +306,12 @@ export class CatalogAdminService {
           data: {
             name: dto.name,
             slug: dto.slug,
+            imageUrl: dto.imageUrl ?? null,
+            imageAlt: dto.imageAlt ?? null,
             parentId: dto.parentId ?? null,
             sortOrder: dto.sortOrder ?? 0,
             isActive: dto.isActive ?? true,
+            showOnHome: dto.showOnHome ?? false,
           },
         });
 
@@ -322,6 +329,9 @@ export class CatalogAdminService {
               parentId: category.parentId,
               sortOrder: category.sortOrder,
               isActive: category.isActive,
+              imageUrl: category.imageUrl,
+              imageAlt: category.imageAlt,
+              showOnHome: category.showOnHome,
             },
           },
         });
@@ -357,6 +367,9 @@ export class CatalogAdminService {
             parentId: true,
             sortOrder: true,
             isActive: true,
+            imageUrl: true,
+            imageAlt: true,
+            showOnHome: true,
           },
         });
 
@@ -370,6 +383,9 @@ export class CatalogAdminService {
         this.addChange(changes, 'slug', category.slug, dto.slug);
         this.addChange(changes, 'sortOrder', category.sortOrder, dto.sortOrder);
         this.addChange(changes, 'isActive', category.isActive, dto.isActive);
+        this.addChange(changes, 'imageUrl', category.imageUrl, dto.imageUrl);
+        this.addChange(changes, 'imageAlt', category.imageAlt, dto.imageAlt);
+        this.addChange(changes, 'showOnHome', category.showOnHome, dto.showOnHome);
 
         if (hasParentIdUpdate) {
           this.addChange(changes, 'parentId', category.parentId, dto.parentId ?? null);
@@ -396,6 +412,15 @@ export class CatalogAdminService {
           }),
           ...(hasParentIdUpdate && {
             parentId: dto.parentId ?? null,
+          }),
+          ...(dto.imageUrl !== undefined && {
+            imageUrl: dto.imageUrl,
+          }),
+          ...(dto.imageAlt !== undefined && {
+            imageAlt: dto.imageAlt,
+          }),
+          ...(dto.showOnHome !== undefined && {
+            showOnHome: dto.showOnHome,
           }),
         };
 
@@ -1504,6 +1529,8 @@ export class CatalogAdminService {
           status: true,
           isPublished: true,
           isTorobEnabled: true,
+          showOnHome: true,
+          homeSortOrder: true,
           updatedAt: true,
           brand: {
             select: {
@@ -1700,6 +1727,7 @@ export class CatalogAdminService {
       salePriceToman: dto.salePriceToman ?? null,
       saleStartsAt,
       saleEndsAt,
+      showOnHome: dto.showOnHome ?? false,
 
       stockStatus: dto.stockStatus ?? StockStatus.CHECK_AVAILABILITY,
       brandIsActive: brand.isActive,
@@ -1729,6 +1757,9 @@ export class CatalogAdminService {
         isPublished: dto.isPublished ?? false,
         isTorobEnabled: dto.isTorobEnabled ?? false,
 
+        showOnHome: dto.showOnHome ?? false,
+        homeSortOrder: dto.homeSortOrder ?? 0,
+
         codes: dto.codes ?? [],
         images: dto.images ?? [],
       },
@@ -1754,6 +1785,8 @@ export class CatalogAdminService {
             status: dto.status ?? ProductStatus.DRAFT,
             isPublished: dto.isPublished ?? false,
             isTorobEnabled: dto.isTorobEnabled ?? false,
+            showOnHome: dto.showOnHome ?? false,
+            homeSortOrder: dto.homeSortOrder ?? 0,
             brand: {
               connect: {
                 id: dto.brandId,
@@ -1857,6 +1890,8 @@ export class CatalogAdminService {
 
     const finalPriceToman = hasPriceTomanUpdate ? (dto.priceToman ?? null) : product.priceToman;
 
+    const finalShowOnHome = dto.showOnHome ?? product.showOnHome;
+
     const candidate: ProductStateCandidate = {
       status: dto.status ?? product.status,
       isPublished: dto.isPublished ?? product.isPublished,
@@ -1870,6 +1905,7 @@ export class CatalogAdminService {
       categoryIsActive: category.isActive,
       codes: finalCodes,
       images: finalImages,
+      showOnHome: finalShowOnHome,
     };
 
     this.assertProductState(candidate);
@@ -1927,6 +1963,12 @@ export class CatalogAdminService {
       }),
       ...(dto.isTorobEnabled !== undefined && {
         isTorobEnabled: dto.isTorobEnabled,
+      }),
+      ...(dto.showOnHome !== undefined && {
+        showOnHome: dto.showOnHome,
+      }),
+      ...(dto.homeSortOrder !== undefined && {
+        homeSortOrder: dto.homeSortOrder,
       }),
       ...(dto.brandId !== undefined && {
         brand: {
@@ -2025,6 +2067,10 @@ export class CatalogAdminService {
           before: product.isTorobEnabled,
           after: false,
         },
+        showOnHome: {
+          before: product.showOnHome,
+          after: false,
+        },
       },
     };
 
@@ -2038,6 +2084,7 @@ export class CatalogAdminService {
             status: ProductStatus.ARCHIVED,
             isPublished: false,
             isTorobEnabled: false,
+            showOnHome: false,
 
             auditLogs: {
               create: {
@@ -2310,6 +2357,8 @@ export class CatalogAdminService {
         status: true,
         isPublished: true,
         isTorobEnabled: true,
+        showOnHome: true,
+        homeSortOrder: true,
         brandId: true,
         categoryId: true,
         codes: {
@@ -2434,6 +2483,30 @@ export class CatalogAdminService {
 
     if (!candidate.isTorobEnabled) {
       return;
+    }
+
+    if (candidate.showOnHome) {
+      if (candidate.status !== ProductStatus.ACTIVE) {
+        throw new BadRequestException('Home featured product requires ACTIVE status');
+      }
+
+      if (!candidate.isPublished) {
+        throw new BadRequestException('Home featured product must be published');
+      }
+
+      if (!candidate.brandIsActive || !candidate.categoryIsActive) {
+        throw new BadRequestException(
+          'Home featured product requires an active brand and category',
+        );
+      }
+
+      if (effectivePriceToman === null || effectivePriceToman <= 0) {
+        throw new BadRequestException('Home featured product requires a valid effective price');
+      }
+
+      if (candidate.images.length === 0) {
+        throw new BadRequestException('Home featured product requires at least one image');
+      }
     }
 
     if (candidate.status !== ProductStatus.ACTIVE) {
@@ -2622,6 +2695,8 @@ export class CatalogAdminService {
     this.addChange(changes, 'status', product.status, dto.status);
     this.addChange(changes, 'isPublished', product.isPublished, dto.isPublished);
     this.addChange(changes, 'isTorobEnabled', product.isTorobEnabled, dto.isTorobEnabled);
+    this.addChange(changes, 'showOnHome', product.showOnHome, dto.showOnHome);
+    this.addChange(changes, 'homeSortOrder', product.homeSortOrder, dto.homeSortOrder);
     this.addChange(changes, 'brandId', product.brandId, dto.brandId);
     this.addChange(changes, 'categoryId', product.categoryId, dto.categoryId);
     this.addChange(changes, 'specifications', product.specifications, dto.specifications);
