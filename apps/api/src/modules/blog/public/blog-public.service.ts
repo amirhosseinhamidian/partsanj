@@ -4,6 +4,7 @@ import { PrismaService } from '../../database/prisma.service.js';
 import { PublicBlogCategorySlugParamDto } from './dto/public-blog-category-slug-param.dto.js';
 import { PublicBlogPostListQueryDto } from './dto/public-blog-post-list-query.dto.js';
 import { PublicBlogPostSlugParamDto } from './dto/public-blog-post-slug-param.dto.js';
+import { PublicHomeBlogPostsQueryDto } from './dto/public-home-blog-posts-query.dto.js';
 
 const publicBlogPostListSelect = {
   id: true,
@@ -266,6 +267,82 @@ export class BlogPublicService {
         total,
         totalPages: Math.ceil(total / query.limit),
       },
+    };
+  }
+
+  async findHomePosts(query: PublicHomeBlogPostsQueryDto) {
+    const now = new Date();
+
+    const posts = await this.prisma.blogPost.findMany({
+      where: {
+        showOnHome: true,
+        status: 'PUBLISHED',
+        publishedAt: {
+          lte: now,
+        },
+        category: {
+          isActive: true,
+        },
+      },
+      take: query.limit,
+      orderBy: [
+        {
+          homeSortOrder: 'asc',
+        },
+        {
+          publishedAt: 'desc',
+        },
+        {
+          updatedAt: 'desc',
+        },
+      ],
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        excerpt: true,
+        coverImageUrl: true,
+        coverImageAlt: true,
+        publishedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        authorUser: {
+          select: {
+            firstName: true,
+            lastName: true,
+            mobile: true,
+          },
+        },
+      },
+    });
+
+    return {
+      data: posts.map((post) => ({
+        id: post.id,
+        title: post.title,
+        slug: post.slug,
+        excerpt: post.excerpt,
+        coverImageUrl: post.coverImageUrl,
+        coverImageAlt: post.coverImageAlt,
+        publishedAt: post.publishedAt?.toISOString() ?? post.createdAt.toISOString(),
+        createdAt: post.createdAt.toISOString(),
+        updatedAt: post.updatedAt.toISOString(),
+        category: post.category,
+        author: {
+          name:
+            [post.authorUser.firstName, post.authorUser.lastName]
+              .filter(Boolean)
+              .join(' ')
+              .trim() || post.authorUser.mobile,
+        },
+      })),
     };
   }
 

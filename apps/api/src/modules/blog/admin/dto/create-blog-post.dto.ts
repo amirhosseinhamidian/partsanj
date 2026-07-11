@@ -8,6 +8,9 @@ import {
   Matches,
   MaxLength,
   MinLength,
+  IsBoolean,
+  IsInt,
+  Min,
 } from 'class-validator';
 import { BlogPostStatus } from '../../../../generated/prisma/client.js';
 import {
@@ -63,6 +66,23 @@ export class CreateBlogPostDto {
   @IsOptional()
   @IsEnum(BlogPostStatus)
   status?: BlogPostStatus;
+
+  @IsOptional()
+  @Transform(({ value }) => transformBoolean(value))
+  @IsBoolean()
+  showOnHome?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+
+    return Number(value);
+  })
+  @IsInt()
+  @Min(0)
+  homeSortOrder?: number;
 
   @IsOptional()
   @Transform(({ value }) => normalizeNullableText(value))

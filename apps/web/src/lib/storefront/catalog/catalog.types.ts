@@ -76,22 +76,23 @@ export type StorefrontProductCompatibility = {
   };
 };
 
-export type StorefrontProductDetail = StorefrontProductPricing & {
-  id: string;
-  sku: string;
-  slug: string;
-  name: string;
-  shortDescription: string | null;
-  description: string | null;
-  specifications: unknown | null;
-  stockStatus: StorefrontStockStatus;
-  updatedAt: string;
-  brand: StorefrontBrand;
-  category: Pick<StorefrontCategory, 'id' | 'name' | 'slug'>;
-  codes: StorefrontProductCode[];
-  images: StorefrontProductImage[];
-  compatibilities: StorefrontProductCompatibility[];
-};
+export type StorefrontProductDetail = StorefrontProductSeoFields &
+  StorefrontProductPricing & {
+    id: string;
+    sku: string;
+    slug: string;
+    name: string;
+    shortDescription: string | null;
+    description: string | null;
+    specifications: unknown | null;
+    stockStatus: StorefrontStockStatus;
+    updatedAt: string;
+    brand: StorefrontBrand;
+    category: Pick<StorefrontCategory, 'id' | 'name' | 'slug'>;
+    codes: StorefrontProductCode[];
+    images: StorefrontProductImage[];
+    compatibilities: StorefrontProductCompatibility[];
+  };
 
 export type StorefrontProductsMeta = {
   page: number;
@@ -125,4 +126,15 @@ export type FindStorefrontProductsParams = {
   stockStatus?: StorefrontStockStatus;
   page?: number;
   limit?: number;
+};
+
+export type StorefrontProductSeoFields = {
+  seoTitle: string | null;
+  seoDescription: string | null;
+  canonicalUrl: string | null;
+  noIndex: boolean;
+  openGraphTitle: string | null;
+  openGraphDescription: string | null;
+  openGraphImageUrl: string | null;
+  openGraphImageAlt: string | null;
 };

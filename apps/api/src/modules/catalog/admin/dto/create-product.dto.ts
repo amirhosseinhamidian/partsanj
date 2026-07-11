@@ -16,6 +16,8 @@ import {
   Min,
   ValidateNested,
   IsDateString,
+  ValidateIf,
+  IsUrl,
 } from 'class-validator';
 import { ProductStatus, StockStatus } from '../../../../generated/prisma/client.js';
 import { normalizeProductCode, normalizeSlug, trimText } from './catalog-admin.dto.utils.js';
@@ -23,6 +25,17 @@ import { ProductCodeInputDto, ProductImageInputDto } from './product-input.dto.j
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+function normalizeNullableText(value: unknown) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null || value === '') {
+    return null;
+  }
+
+  return trimText(value);
+}
 export class CreateProductDto {
   @ApiProperty({
     example: 'BOSCH-O2-0258006028',
@@ -174,6 +187,83 @@ export class CreateProductDto {
   @IsInt()
   @Min(0)
   homeSortOrder?: number;
+
+  @ApiPropertyOptional({
+    example: 'خرید سنسور اکسیژن بوش کد 0258006028',
+    maxLength: 120,
+  })
+  @Transform(({ value }) => normalizeNullableText(value), { toClassOnly: true })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @IsString()
+  @MaxLength(120)
+  seoTitle?: string | null;
+
+  @ApiPropertyOptional({
+    example: 'خرید سنسور اکسیژن بوش اصل با بررسی سازگاری خودرو، قیمت شفاف و ارسال سریع.',
+    maxLength: 320,
+  })
+  @Transform(({ value }) => normalizeNullableText(value), { toClassOnly: true })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @IsString()
+  @MaxLength(320)
+  seoDescription?: string | null;
+
+  @ApiPropertyOptional({
+    example: 'https://partsanj.com/products/bosch-oxygen-sensor-0258006028',
+    maxLength: 2048,
+  })
+  @Transform(({ value }) => normalizeNullableText(value), { toClassOnly: true })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @IsUrl({ require_protocol: true })
+  @MaxLength(2048)
+  canonicalUrl?: string | null;
+
+  @ApiPropertyOptional({
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  noIndex?: boolean;
+
+  @ApiPropertyOptional({
+    example: 'خرید سنسور اکسیژن بوش اصل',
+    maxLength: 160,
+  })
+  @Transform(({ value }) => normalizeNullableText(value), { toClassOnly: true })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @IsString()
+  @MaxLength(160)
+  openGraphTitle?: string | null;
+
+  @ApiPropertyOptional({
+    example: 'سنسور اکسیژن بوش مناسب خودروهای منتخب با امکان بررسی سازگاری.',
+    maxLength: 500,
+  })
+  @Transform(({ value }) => normalizeNullableText(value), { toClassOnly: true })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @IsString()
+  @MaxLength(500)
+  openGraphDescription?: string | null;
+
+  @ApiPropertyOptional({
+    example: 'https://cdn.partsanj.com/products/bosch-o2.jpg',
+    maxLength: 2048,
+  })
+  @Transform(({ value }) => normalizeNullableText(value), { toClassOnly: true })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @IsUrl({ require_protocol: true })
+  @MaxLength(2048)
+  openGraphImageUrl?: string | null;
+
+  @ApiPropertyOptional({
+    example: 'تصویر سنسور اکسیژن بوش',
+    maxLength: 255,
+  })
+  @Transform(({ value }) => normalizeNullableText(value), { toClassOnly: true })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @IsString()
+  @MaxLength(255)
+  openGraphImageAlt?: string | null;
 
   @ApiProperty({
     format: 'uuid',

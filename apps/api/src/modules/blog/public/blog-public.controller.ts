@@ -3,6 +3,7 @@ import { BlogPublicService } from './blog-public.service.js';
 import { PublicBlogCategorySlugParamDto } from './dto/public-blog-category-slug-param.dto.js';
 import { PublicBlogPostListQueryDto } from './dto/public-blog-post-list-query.dto.js';
 import { PublicBlogPostSlugParamDto } from './dto/public-blog-post-slug-param.dto.js';
+import { PublicHomeBlogPostsQueryDto } from './dto/public-home-blog-posts-query.dto.js';
 
 @Controller({
   path: 'blog',
@@ -24,6 +25,11 @@ export class BlogPublicController {
   @Get('posts')
   findPosts(@Query() query: PublicBlogPostListQueryDto) {
     return this.blogPublicService.findPosts(query);
+  }
+
+  @Get('home/posts')
+  findHomePosts(@Query() query: PublicHomeBlogPostsQueryDto) {
+    return this.blogPublicService.findHomePosts(query);
   }
 
   @Get('posts/:slug')

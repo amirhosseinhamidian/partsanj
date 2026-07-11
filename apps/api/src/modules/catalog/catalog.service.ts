@@ -3,6 +3,7 @@ import { Prisma, ProductStatus } from '../../generated/prisma/client.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { FindProductsQueryDto } from './dto/find-products.query.dto.js';
 import { getComputedProductPricing, type ProductPricingFields } from './catalog-pricing.utils.js';
+import { FindHomeFeaturedProductsQueryDto } from './dto/find-home-featured-products.query.dto.js';
 
 @Injectable()
 export class CatalogService {
@@ -174,6 +175,14 @@ export class CatalogService {
         saleStartsAt: true,
         saleEndsAt: true,
         stockStatus: true,
+        seoTitle: true,
+        seoDescription: true,
+        canonicalUrl: true,
+        noIndex: true,
+        openGraphTitle: true,
+        openGraphDescription: true,
+        openGraphImageUrl: true,
+        openGraphImageAlt: true,
         updatedAt: true,
 
         brand: {
@@ -278,6 +287,93 @@ export class CatalogService {
 
     return {
       data: this.withComputedPricing(product),
+    };
+  }
+
+  async findHomeFeaturedProducts(query: FindHomeFeaturedProductsQueryDto) {
+    const now = new Date();
+
+    const products = await this.prisma.product.findMany({
+      where: {
+        status: ProductStatus.ACTIVE,
+        isPublished: true,
+        showOnHome: true,
+        brand: {
+          isActive: true,
+        },
+        category: {
+          isActive: true,
+        },
+      },
+      take: query.limit,
+      orderBy: [
+        {
+          homeSortOrder: 'asc',
+        },
+        {
+          updatedAt: 'desc',
+        },
+      ],
+      select: {
+        id: true,
+        sku: true,
+        slug: true,
+        name: true,
+        shortDescription: true,
+        priceToman: true,
+        salePriceToman: true,
+        saleStartsAt: true,
+        saleEndsAt: true,
+        stockStatus: true,
+        updatedAt: true,
+        brand: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logoUrl: true,
+          },
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            imageUrl: true,
+            imageAlt: true,
+          },
+        },
+        codes: {
+          select: {
+            type: true,
+            value: true,
+          },
+          orderBy: [
+            {
+              type: 'asc',
+            },
+            {
+              value: 'asc',
+            },
+          ],
+        },
+        images: {
+          take: 1,
+          orderBy: {
+            sortOrder: 'asc',
+          },
+          select: {
+            id: true,
+            url: true,
+            alt: true,
+            sortOrder: true,
+          },
+        },
+      },
+    });
+
+    return {
+      data: products.map((product) => this.withComputedPricing(product, now)),
     };
   }
 

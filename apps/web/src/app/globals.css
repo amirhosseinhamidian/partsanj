@@ -352,6 +352,15 @@
   background-color: #2b1555;
 }
 
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 @keyframes tooltip-in {
   from {
     opacity: 0;

@@ -30,7 +30,7 @@ export type AdminProductCategory = {
   slug: string;
 };
 
-export type AdminProductListItem = {
+export type AdminProductListItem = ProductSeoFields & {
   id: string;
   sku: string;
   slug: string;
@@ -102,6 +102,15 @@ export type ProductInput = {
   isTorobEnabled?: boolean;
   showOnHome?: boolean;
   homeSortOrder?: number;
+
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  canonicalUrl?: string | null;
+  noIndex?: boolean;
+  openGraphTitle?: string | null;
+  openGraphDescription?: string | null;
+  openGraphImageUrl?: string | null;
+  openGraphImageAlt?: string | null;
 
   brandId: string;
   categoryId: string;
@@ -182,7 +191,7 @@ export type AdminProductAuditLog = {
   };
 };
 
-export type AdminProductDetail = {
+export type AdminProductDetail = ProductSeoFields & {
   id: string;
   sku: string;
   slug: string;
@@ -231,6 +240,17 @@ export type ProductImageInput = {
   url: string;
   alt?: string | null;
   sortOrder: number;
+};
+
+export type ProductSeoFields = {
+  seoTitle: string | null;
+  seoDescription: string | null;
+  canonicalUrl: string | null;
+  noIndex: boolean;
+  openGraphTitle: string | null;
+  openGraphDescription: string | null;
+  openGraphImageUrl: string | null;
+  openGraphImageAlt: string | null;
 };
 
 export type UpdateProductPayload = Omit<

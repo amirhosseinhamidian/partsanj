@@ -226,6 +226,16 @@ model Product {
   showOnHome   Boolean @default(false)
   homeSortOrder Int    @default(0)
 
+  seoTitle       String? @db.VarChar(120)
+  seoDescription String? @db.VarChar(320)
+  canonicalUrl   String? @db.VarChar(2048)
+  noIndex        Boolean @default(false)
+
+  openGraphTitle       String? @db.VarChar(160)
+  openGraphDescription String? @db.VarChar(500)
+  openGraphImageUrl    String? @db.VarChar(2048)
+  openGraphImageAlt    String? @db.VarChar(255)
+
   brandId    String
   categoryId String
 
@@ -701,6 +711,9 @@ model BlogPost {
 
   coverImageUrl String? @db.VarChar(2048)
   coverImageAlt String? @db.VarChar(255)
+
+  showOnHome   Boolean @default(false)
+  homeSortOrder Int    @default(0)
 
   status      BlogPostStatus @default(DRAFT)
   publishedAt DateTime?

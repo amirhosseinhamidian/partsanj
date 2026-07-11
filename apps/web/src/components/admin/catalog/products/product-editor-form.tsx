@@ -66,6 +66,14 @@ type ProductFormValues = {
   isTorobEnabled: boolean;
   showOnHome: boolean;
   homeSortOrder: string;
+  seoTitle: string;
+  seoDescription: string;
+  canonicalUrl: string;
+  noIndex: boolean;
+  openGraphTitle: string;
+  openGraphDescription: string;
+  openGraphImageUrl: string;
+  openGraphImageAlt: string;
   brandId: string;
   categoryId: string;
   codes: ProductCodeRow[];
@@ -89,6 +97,13 @@ type ProductFormErrors = Partial<
     | 'brandId'
     | 'categoryId'
     | 'homeSortOrder'
+    | 'seoTitle'
+    | 'seoDescription'
+    | 'canonicalUrl'
+    | 'openGraphTitle'
+    | 'openGraphDescription'
+    | 'openGraphImageUrl'
+    | 'openGraphImageAlt'
     | 'codes'
     | 'images'
     | 'specifications'
@@ -171,6 +186,14 @@ function getInitialValues(product: AdminProductDetail | null): ProductFormValues
     isTorobEnabled: product?.isTorobEnabled ?? false,
     showOnHome: product?.showOnHome ?? false,
     homeSortOrder: String(product?.homeSortOrder ?? 0),
+    seoTitle: product?.seoTitle ?? '',
+    seoDescription: product?.seoDescription ?? '',
+    canonicalUrl: product?.canonicalUrl ?? '',
+    noIndex: product?.noIndex ?? false,
+    openGraphTitle: product?.openGraphTitle ?? '',
+    openGraphDescription: product?.openGraphDescription ?? '',
+    openGraphImageUrl: product?.openGraphImageUrl ?? '',
+    openGraphImageAlt: product?.openGraphImageAlt ?? '',
     brandId: product?.brand.id ?? '',
     categoryId: product?.category.id ?? '',
     codes:
@@ -190,6 +213,28 @@ function getInitialValues(product: AdminProductDetail | null): ProductFormValues
         })) ?? [],
     specifications: getSpecificationRows(product?.specifications ?? null),
   };
+}
+
+function nullableText(value: string): string | null {
+  const trimmed = value.trim();
+
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function isValidOptionalUrl(value: string): boolean {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return true;
+  }
+
+  try {
+    const url = new URL(trimmed);
+
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
 function formatOptionDescription(
@@ -711,6 +756,38 @@ export function ProductEditorForm({
       }
     }
 
+    if (values.seoTitle.trim().length > 120) {
+      nextErrors.seoTitle = 'عنوان سئو حداکثر ۱۲۰ کاراکتر باشد';
+    }
+
+    if (values.seoDescription.trim().length > 320) {
+      nextErrors.seoDescription = 'توضیحات سئو حداکثر ۳۲۰ کاراکتر باشد';
+    }
+
+    if (values.canonicalUrl.trim().length > 0 && !isValidOptionalUrl(values.canonicalUrl)) {
+      nextErrors.canonicalUrl = 'آدرس Canonical باید یک URL معتبر با http یا https باشد';
+    }
+
+    if (values.openGraphTitle.trim().length > 160) {
+      nextErrors.openGraphTitle = 'عنوان Open Graph حداکثر ۱۶۰ کاراکتر باشد';
+    }
+
+    if (values.openGraphDescription.trim().length > 500) {
+      nextErrors.openGraphDescription = 'توضیحات Open Graph حداکثر ۵۰۰ کاراکتر باشد';
+    }
+
+    if (
+      values.openGraphImageUrl.trim().length > 0 &&
+      !isValidOptionalUrl(values.openGraphImageUrl)
+    ) {
+      nextErrors.openGraphImageUrl =
+        'آدرس تصویر Open Graph باید یک URL معتبر با http یا https باشد';
+    }
+
+    if (values.openGraphImageAlt.trim().length > 255) {
+      nextErrors.openGraphImageAlt = 'متن جایگزین تصویر Open Graph حداکثر ۲۵۵ کاراکتر باشد';
+    }
+
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
       return null;
@@ -729,6 +806,14 @@ export function ProductEditorForm({
       isTorobEnabled: values.isTorobEnabled,
       showOnHome: values.showOnHome,
       homeSortOrder,
+      seoTitle: nullableText(values.seoTitle),
+      seoDescription: nullableText(values.seoDescription),
+      canonicalUrl: nullableText(values.canonicalUrl),
+      noIndex: values.noIndex,
+      openGraphTitle: nullableText(values.openGraphTitle),
+      openGraphDescription: nullableText(values.openGraphDescription),
+      openGraphImageUrl: nullableText(values.openGraphImageUrl),
+      openGraphImageAlt: nullableText(values.openGraphImageAlt),
       brandId: values.brandId,
       categoryId: values.categoryId,
       codes: normalizedCodes,
@@ -1262,6 +1347,187 @@ export function ProductEditorForm({
                   {errors.specifications}
                 </p>
               ) : null}
+            </div>
+          </EditorSection>
+
+          <EditorSection
+            title='سئو و Open Graph'
+            description='این بخش برای کنترل عنوان، توضیحات و تصویر محصول در موتورهای جستجو و شبکه‌های اجتماعی استفاده می‌شود'
+          >
+            <div className='grid gap-5'>
+              <div className='grid gap-5 md:grid-cols-2'>
+                <FormField
+                  label='عنوان سئو'
+                  helperText={`حداکثر ۱۲۰ کاراکتر. مقدار فعلی: ${toPersianDigits(values.seoTitle.length)}`}
+                  error={errors.seoTitle}
+                >
+                  {({ id, labelId, describedBy, invalid }) => (
+                    <Input
+                      id={id}
+                      dir='rtl'
+                      maxLength={120}
+                      aria-labelledby={labelId}
+                      aria-describedby={describedBy}
+                      aria-invalid={invalid}
+                      disabled={isSaving}
+                      value={values.seoTitle}
+                      onChange={(event) => setField('seoTitle', event.target.value)}
+                      placeholder='مثلاً: خرید سنسور اکسیژن بوش اصل'
+                    />
+                  )}
+                </FormField>
+
+                <FormField
+                  label='Canonical URL'
+                  helperText='اگر خالی باشد، آدرس خود محصول به‌عنوان canonical استفاده می‌شود'
+                  error={errors.canonicalUrl}
+                >
+                  {({ id, labelId, describedBy, invalid }) => (
+                    <Input
+                      id={id}
+                      dir='ltr'
+                      aria-labelledby={labelId}
+                      aria-describedby={describedBy}
+                      aria-invalid={invalid}
+                      disabled={isSaving}
+                      value={values.canonicalUrl}
+                      onChange={(event) => setField('canonicalUrl', event.target.value)}
+                      placeholder='https://partsanj.com/products/product-slug'
+                    />
+                  )}
+                </FormField>
+              </div>
+
+              <FormField label='توضیحات سئو' error={errors.seoDescription}>
+                {({ id, labelId, describedBy, invalid }) => (
+                  <Textarea
+                    id={id}
+                    rows={3}
+                    maxLength={320}
+                    aria-labelledby={labelId}
+                    aria-describedby={describedBy}
+                    aria-invalid={invalid}
+                    disabled={isSaving}
+                    value={values.seoDescription}
+                    helperText={`حداکثر ۳۲۰ کاراکتر. مقدار فعلی`}
+                    onChange={(event) => setField('seoDescription', event.target.value)}
+                    placeholder='توضیح کوتاه و دقیق برای نمایش در نتایج جستجو'
+                  />
+                )}
+              </FormField>
+
+              <FormField
+                label='عدم ایندکس توسط موتورهای جستجو'
+                helperText='اگر فعال باشد، صفحه محصول با robots noindex منتشر می‌شود'
+              >
+                {({ id, labelId, describedBy, invalid }) => (
+                  <Switch
+                    id={id}
+                    aria-labelledby={labelId}
+                    aria-describedby={describedBy}
+                    aria-invalid={invalid}
+                    disabled={isSaving}
+                    checked={values.noIndex}
+                    onCheckedChange={(checked) => setField('noIndex', checked)}
+                  />
+                )}
+              </FormField>
+
+              <div className='rounded-2xl border border-border bg-background/60 p-5'>
+                <div className='mb-5'>
+                  <h3 className='text-base font-extrabold text-foreground'>Open Graph</h3>
+                  <p className='mt-1 text-sm leading-6 text-foreground-secondary'>
+                    این اطلاعات هنگام اشتراک‌گذاری لینک محصول در شبکه‌های اجتماعی و پیام‌رسان‌ها
+                    استفاده می‌شود.
+                  </p>
+                </div>
+
+                <div className='grid gap-5 md:grid-cols-2'>
+                  <FormField
+                    label='عنوان Open Graph'
+                    helperText={`حداکثر ۱۶۰ کاراکتر. مقدار فعلی: ${toPersianDigits(values.openGraphTitle.length)}`}
+                    error={errors.openGraphTitle}
+                  >
+                    {({ id, labelId, describedBy, invalid }) => (
+                      <Input
+                        id={id}
+                        dir='rtl'
+                        maxLength={160}
+                        aria-labelledby={labelId}
+                        aria-describedby={describedBy}
+                        aria-invalid={invalid}
+                        disabled={isSaving}
+                        value={values.openGraphTitle}
+                        onChange={(event) => setField('openGraphTitle', event.target.value)}
+                        placeholder='عنوان مناسب برای اشتراک‌گذاری محصول'
+                      />
+                    )}
+                  </FormField>
+
+                  <FormField
+                    label='تصویر Open Graph'
+                    helperText='URL تصویر عمومی با http یا https'
+                    error={errors.openGraphImageUrl}
+                  >
+                    {({ id, labelId, describedBy, invalid }) => (
+                      <Input
+                        id={id}
+                        dir='ltr'
+                        aria-labelledby={labelId}
+                        aria-describedby={describedBy}
+                        aria-invalid={invalid}
+                        disabled={isSaving}
+                        value={values.openGraphImageUrl}
+                        onChange={(event) => setField('openGraphImageUrl', event.target.value)}
+                        placeholder='https://cdn.partsanj.com/products/product-og.jpg'
+                      />
+                    )}
+                  </FormField>
+                </div>
+
+                <div className='mt-5'>
+                  <FormField label='توضیحات Open Graph' error={errors.openGraphDescription}>
+                    {({ id, labelId, describedBy, invalid }) => (
+                      <Textarea
+                        id={id}
+                        rows={3}
+                        maxLength={500}
+                        aria-labelledby={labelId}
+                        aria-describedby={describedBy}
+                        aria-invalid={invalid}
+                        disabled={isSaving}
+                        value={values.openGraphDescription}
+                        helperText={`حداکثر ۵۰۰ کاراکتر. مقدار فعلی`}
+                        onChange={(event) => setField('openGraphDescription', event.target.value)}
+                        placeholder='توضیح مناسب برای پیش‌نمایش شبکه‌های اجتماعی'
+                      />
+                    )}
+                  </FormField>
+                </div>
+
+                <div className='mt-5'>
+                  <FormField
+                    label='Alt تصویر Open Graph'
+                    helperText={`حداکثر ۲۵۵ کاراکتر. مقدار فعلی: ${toPersianDigits(values.openGraphImageAlt.length)}`}
+                    error={errors.openGraphImageAlt}
+                  >
+                    {({ id, labelId, describedBy, invalid }) => (
+                      <Input
+                        id={id}
+                        dir='rtl'
+                        maxLength={255}
+                        aria-labelledby={labelId}
+                        aria-describedby={describedBy}
+                        aria-invalid={invalid}
+                        disabled={isSaving}
+                        value={values.openGraphImageAlt}
+                        onChange={(event) => setField('openGraphImageAlt', event.target.value)}
+                        placeholder='مثلاً: تصویر سنسور اکسیژن بوش'
+                      />
+                    )}
+                  </FormField>
+                </div>
+              </div>
             </div>
           </EditorSection>
         </div>

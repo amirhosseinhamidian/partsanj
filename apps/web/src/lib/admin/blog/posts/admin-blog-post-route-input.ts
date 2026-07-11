@@ -19,7 +19,8 @@ const nullableTextFields = [
   'openGraphImageAlt',
 ] as const;
 
-const booleanFields = ['noIndex'] as const;
+const booleanFields = ['noIndex', 'showOnHome'] as const;
+const numberFields = ['homeSortOrder'] as const;
 
 const createAllowedKeys = new Set<string>([
   'categoryId',
@@ -29,6 +30,7 @@ const createAllowedKeys = new Set<string>([
   'status',
   ...nullableTextFields,
   ...booleanFields,
+  ...numberFields,
 ]);
 
 const updateAllowedKeys = new Set<string>(createAllowedKeys);
@@ -151,6 +153,20 @@ function readOptionalBoolean(
   return value;
 }
 
+function readOptionalNumber(payload: Record<string, unknown>, key: (typeof numberFields)[number]) {
+  if (!hasOwn(payload, key)) {
+    return undefined;
+  }
+
+  const value = payload[key];
+
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    throw new ApiRequestError(`مقدار «${key}» معتبر نیست`, 400, 'INVALID_BLOG_POST_NUMBER_FIELD');
+  }
+
+  return value;
+}
+
 function readOptionalContent(payload: Record<string, unknown>) {
   if (!hasOwn(payload, 'content')) {
     return undefined;
@@ -216,6 +232,18 @@ function appendOptionalFields(payload: Record<string, unknown>, target: UpdateAd
 
   if (noIndex !== undefined) {
     target.noIndex = noIndex;
+  }
+
+  const showOnHome = readOptionalBoolean(payload, 'showOnHome');
+
+  if (showOnHome !== undefined) {
+    target.showOnHome = showOnHome;
+  }
+
+  const homeSortOrder = readOptionalNumber(payload, 'homeSortOrder');
+
+  if (homeSortOrder !== undefined) {
+    target.homeSortOrder = homeSortOrder;
   }
 
   const openGraphTitle = readOptionalNullableText(payload, 'openGraphTitle');

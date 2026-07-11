@@ -44,8 +44,6 @@ export async function getHomeMainCategories() {
 
   const categories = getCategoriesData(result);
 
-  console.log(categories);
-
   return categories
     .filter((category) => category.showOnHome)
     .sort(sortCategoriesByOrder)

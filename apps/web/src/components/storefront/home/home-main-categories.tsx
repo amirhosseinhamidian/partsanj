@@ -85,21 +85,19 @@ export function HomeMainCategories({ categories = [], className }: HomeMainCateg
       className={cn('bg-background py-8 sm:py-10 lg:py-12', className)}
     >
       <div className='mx-auto max-w-7xl px-4 sm:px-6 lg:px-8'>
-        <div className='mb-5 flex flex-wrap items-end justify-between gap-4'>
-          <div className='flex items-center gap-3'>
-            <div className='mb-2 flex items-center gap-1'>
-              <span className='h-5 w-1 rotate-12 rounded-full bg-brand' />
-              <span className='h-5 w-1 rotate-12 rounded-full bg-brand/70' />
-              <span className='h-5 w-1 rotate-12 rounded-full bg-brand/40' />
-            </div>
-
-            <h2
-              id='home-main-categories-title'
-              className='mt-1 text-lg font-extrabold tracking-tight text-foreground sm:text-xl'
-            >
-              دسته‌بندی‌های اصلی
-            </h2>
+        <div className='mb-5 flex items-center gap-3'>
+          <div className='mb-2 flex items-center gap-1'>
+            <span className='h-5 w-1 rotate-12 rounded-full bg-brand' />
+            <span className='h-5 w-1 rotate-12 rounded-full bg-brand/70' />
+            <span className='h-5 w-1 rotate-12 rounded-full bg-brand/40' />
           </div>
+
+          <h2
+            id='home-main-categories-title'
+            className='mt-1 text-lg font-extrabold tracking-tight text-foreground sm:text-xl'
+          >
+            دسته‌بندی‌های اصلی
+          </h2>
         </div>
 
         <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6'>

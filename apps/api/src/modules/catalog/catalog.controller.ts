@@ -9,6 +9,7 @@ import {
 import { CatalogService } from './catalog.service.js';
 import { FindProductsQueryDto } from './dto/find-products.query.dto.js';
 import { ProductSlugParamDto } from './dto/product-slug-param.dto.js';
+import { FindHomeFeaturedProductsQueryDto } from './dto/find-home-featured-products.query.dto.js';
 
 @ApiTags('Catalog')
 @Controller({
@@ -49,6 +50,17 @@ export class CatalogController {
   })
   findProducts(@Query() query: FindProductsQueryDto) {
     return this.catalogService.findProducts(query);
+  }
+
+  @Get('home/featured-products')
+  @ApiOperation({
+    summary: 'List featured products for storefront home page',
+  })
+  @ApiOkResponse({
+    description: 'Featured home products returned successfully',
+  })
+  findHomeFeaturedProducts(@Query() query: FindHomeFeaturedProductsQueryDto) {
+    return this.catalogService.findHomeFeaturedProducts(query);
   }
 
   @Get('products/:slug')

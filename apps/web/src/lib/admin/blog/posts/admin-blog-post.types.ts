@@ -39,25 +39,26 @@ export type AdminBlogPostAuthorSummary = {
   mobile: string;
 };
 
-export type AdminBlogPostListItem = AdminBlogPostSeoFields & {
-  id: string;
+export type AdminBlogPostListItem = AdminBlogPostSeoFields &
+  AdminBlogPostHomeFields & {
+    id: string;
 
-  title: string;
-  slug: string;
-  excerpt: string | null;
+    title: string;
+    slug: string;
+    excerpt: string | null;
 
-  coverImageUrl: string | null;
-  coverImageAlt: string | null;
+    coverImageUrl: string | null;
+    coverImageAlt: string | null;
 
-  status: AdminBlogPostStatus;
-  publishedAt: string | null;
+    status: AdminBlogPostStatus;
+    publishedAt: string | null;
 
-  createdAt: string;
-  updatedAt: string;
+    createdAt: string;
+    updatedAt: string;
 
-  category: AdminBlogPostCategorySummary;
-  authorUser: AdminBlogPostAuthorSummary;
-};
+    category: AdminBlogPostCategorySummary;
+    authorUser: AdminBlogPostAuthorSummary;
+  };
 
 export type AdminBlogPostDetail = AdminBlogPostListItem & {
   content: BlogEditorDocument;
@@ -100,6 +101,9 @@ export type CreateAdminBlogPostInput = {
 
   status?: AdminBlogPostStatus;
 
+  showOnHome?: boolean;
+  homeSortOrder?: number;
+
   seoTitle?: string | null;
   seoDescription?: string | null;
   canonicalUrl?: string | null;
@@ -125,6 +129,9 @@ export type UpdateAdminBlogPostInput = {
 
   status?: AdminBlogPostStatus;
 
+  showOnHome?: boolean;
+  homeSortOrder?: number;
+
   seoTitle?: string | null;
   seoDescription?: string | null;
   canonicalUrl?: string | null;
@@ -134,4 +141,9 @@ export type UpdateAdminBlogPostInput = {
   openGraphDescription?: string | null;
   openGraphImageUrl?: string | null;
   openGraphImageAlt?: string | null;
+};
+
+export type AdminBlogPostHomeFields = {
+  showOnHome: boolean;
+  homeSortOrder: number;
 };

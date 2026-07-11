@@ -9,6 +9,8 @@ import {
   MaxLength,
   MinLength,
   ValidateIf,
+  IsInt,
+  Min,
 } from 'class-validator';
 import {
   normalizeNullableText,
@@ -68,6 +70,17 @@ export class UpdateBlogPostDto {
   @ValidateIf((_object, value) => value !== undefined)
   @IsEnum(BlogPostStatus)
   status?: BlogPostStatus;
+
+  @ValidateIf((_object, value) => value !== undefined)
+  @Transform(({ value }) => transformBoolean(value))
+  @IsBoolean()
+  showOnHome?: boolean;
+
+  @ValidateIf((_object, value) => value !== undefined)
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(0)
+  homeSortOrder?: number;
 
   @ValidateIf((_object, value) => value !== undefined && value !== null)
   @Transform(({ value }) => normalizeNullableText(value))

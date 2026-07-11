@@ -59,6 +59,9 @@ type BlogPostDraft = {
 
   status: AdminBlogPostStatus;
 
+  showOnHome: boolean;
+  homeSortOrder: string;
+
   seoTitle: string;
   seoDescription: string;
   canonicalUrl: string;
@@ -79,6 +82,7 @@ type BlogPostFormErrors = Partial<
     | 'content'
     | 'coverImageUrl'
     | 'coverImageAlt'
+    | 'homeSortOrder'
     | 'seoTitle'
     | 'seoDescription'
     | 'canonicalUrl'
@@ -139,6 +143,9 @@ function createDraft(post: AdminBlogPostDetail | null): BlogPostDraft {
 
     status: post?.status ?? 'DRAFT',
 
+    showOnHome: post?.showOnHome ?? false,
+    homeSortOrder: String(post?.homeSortOrder ?? 0),
+
     seoTitle: post?.seoTitle ?? '',
     seoDescription: post?.seoDescription ?? '',
     canonicalUrl: post?.canonicalUrl ?? '',
@@ -164,6 +171,9 @@ function createPayload(draft: BlogPostDraft): CreateAdminBlogPostInput {
 
     status: draft.status,
 
+    showOnHome: draft.showOnHome,
+    homeSortOrder: Number(draft.homeSortOrder || 0),
+
     seoTitle: toNullableText(draft.seoTitle),
     seoDescription: toNullableText(draft.seoDescription),
     canonicalUrl: toNullableText(draft.canonicalUrl),
@@ -185,6 +195,7 @@ function validateDraft(
 ): BlogPostFormErrors {
   const errors: BlogPostFormErrors = {};
   const slug = normalizeSlug(draft.slug);
+  const homeSortOrder = Number(draft.homeSortOrder);
 
   if (!draft.categoryId) {
     errors.categoryId = 'دسته‌بندی مقاله را انتخاب کنید';
@@ -230,6 +241,10 @@ function validateDraft(
     if (!hasMeaningfulBlogEditorContent(draft.content)) {
       errors.content = 'برای انتشار مقاله، محتوای غیرخالی لازم است';
     }
+  }
+
+  if (!Number.isInteger(homeSortOrder) || homeSortOrder < 0) {
+    errors.homeSortOrder = 'ترتیب نمایش در صفحه اصلی باید عدد صحیح صفر یا بزرگ‌تر باشد';
   }
 
   return errors;
@@ -588,6 +603,66 @@ export function AdminBlogPostEditorPageClient({ blogPostId }: AdminBlogPostEdito
               setField('status', value as AdminBlogPostStatus);
             }}
           />
+
+          <EditorSection
+            title='نمایش در صفحه اصلی'
+            description='برای نمایش مقاله در سکشن راهنمای انتخاب قطعه در صفحه اصلی، این گزینه را فعال کنید'
+            icon={Settings2}
+          >
+            <div className='grid gap-5 md:grid-cols-2'>
+              <FormField
+                label='نمایش در صفحه اصلی'
+                helperText='اگر فعال باشد، این مقاله در سکشن راهنمای انتخاب قطعه نمایش داده می‌شود'
+              >
+                {({ id, labelId, describedBy, invalid }) => (
+                  <Switch
+                    id={id}
+                    aria-labelledby={labelId}
+                    aria-describedby={describedBy}
+                    aria-invalid={invalid}
+                    disabled={isSaving}
+                    checked={draft.showOnHome}
+                    onCheckedChange={(checked) => {
+                      setField('showOnHome', checked);
+                    }}
+                  />
+                )}
+              </FormField>
+
+              <FormField
+                label='ترتیب نمایش'
+                helperText='عدد کمتر، زودتر نمایش داده می‌شود. مثلاً 1، 2، 3'
+                error={errors.homeSortOrder}
+              >
+                {({ id, labelId, describedBy, invalid }) => (
+                  <Input
+                    id={id}
+                    type='number'
+                    min={0}
+                    inputMode='numeric'
+                    dir='ltr'
+                    aria-labelledby={labelId}
+                    aria-describedby={describedBy}
+                    aria-invalid={invalid}
+                    disabled={isSaving}
+                    value={draft.homeSortOrder}
+                    onChange={(event) => {
+                      setField('homeSortOrder', event.target.value);
+                    }}
+                    onBlur={() => {
+                      const value = Number(draft.homeSortOrder);
+
+                      setField(
+                        'homeSortOrder',
+                        Number.isInteger(value) && value >= 0 ? String(value) : '0',
+                      );
+                    }}
+                    placeholder='0'
+                  />
+                )}
+              </FormField>
+            </div>
+          </EditorSection>
 
           <FormField
             label='Slug'

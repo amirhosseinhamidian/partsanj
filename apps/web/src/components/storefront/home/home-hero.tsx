@@ -80,7 +80,7 @@ function HeroCopy() {
         </Link>
 
         <Link
-          href='/categories'
+          href='#home-main-categories'
           className='inline-flex h-12 items-center justify-center gap-2 rounded-control border border-border bg-surface px-5 text-sm font-extrabold text-foreground transition-colors hover:border-brand/45 hover:text-brand dark:bg-white/5'
         >
           <Grid2X2 className='size-4' />
@@ -102,9 +102,9 @@ function HeroArtwork({
 }) {
   return (
     <div className='relative order-2 min-h-[300px] sm:min-h-[380px] lg:order-1 lg:-ml-10 lg:min-h-[440px] xl:-ml-16'>
-      <div className='absolute inset-x-[8%] bottom-[4%] h-[24%] rounded-full bg-brand/20 blur-3xl dark:bg-brand/30' />
+      <div className='scale- absolute inset-x-[8%] bottom-[4%] h-[24%] rounded-full bg-brand/20 blur-3xl dark:bg-brand/30' />
 
-      <div className='absolute inset-0'>
+      <div className='absolute inset-0 scale-125'>
         <Image
           src={lightSrc}
           alt={alt}

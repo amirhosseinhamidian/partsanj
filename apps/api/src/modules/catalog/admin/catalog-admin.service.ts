@@ -65,6 +65,15 @@ type ProductMutationRecord = {
   showOnHome: boolean;
   homeSortOrder: number;
 
+  seoTitle: string | null;
+  seoDescription: string | null;
+  canonicalUrl: string | null;
+  noIndex: boolean;
+  openGraphTitle: string | null;
+  openGraphDescription: string | null;
+  openGraphImageUrl: string | null;
+  openGraphImageAlt: string | null;
+
   brandId: string;
   categoryId: string;
 
@@ -1747,6 +1756,10 @@ export class CatalogAdminService {
         brandId: dto.brandId,
         categoryId: dto.categoryId,
 
+        shortDescription: dto.shortDescription ?? null,
+        description: dto.description ?? null,
+        specifications: dto.specifications ?? null,
+
         priceToman: dto.priceToman ?? null,
         salePriceToman: dto.salePriceToman ?? null,
         saleStartsAt: dto.saleStartsAt ?? null,
@@ -1759,6 +1772,15 @@ export class CatalogAdminService {
 
         showOnHome: dto.showOnHome ?? false,
         homeSortOrder: dto.homeSortOrder ?? 0,
+
+        seoTitle: dto.seoTitle ?? null,
+        seoDescription: dto.seoDescription ?? null,
+        canonicalUrl: dto.canonicalUrl ?? null,
+        noIndex: dto.noIndex ?? false,
+        openGraphTitle: dto.openGraphTitle ?? null,
+        openGraphDescription: dto.openGraphDescription ?? null,
+        openGraphImageUrl: dto.openGraphImageUrl ?? null,
+        openGraphImageAlt: dto.openGraphImageAlt ?? null,
 
         codes: dto.codes ?? [],
         images: dto.images ?? [],
@@ -1774,9 +1796,11 @@ export class CatalogAdminService {
             name: dto.name,
             shortDescription: dto.shortDescription,
             description: dto.description,
+
             ...(dto.specifications !== undefined && {
               specifications: this.toJson(dto.specifications),
             }),
+
             priceToman: dto.priceToman,
             salePriceToman: dto.salePriceToman ?? null,
             saleStartsAt,
@@ -1785,18 +1809,31 @@ export class CatalogAdminService {
             status: dto.status ?? ProductStatus.DRAFT,
             isPublished: dto.isPublished ?? false,
             isTorobEnabled: dto.isTorobEnabled ?? false,
+
             showOnHome: dto.showOnHome ?? false,
             homeSortOrder: dto.homeSortOrder ?? 0,
+
+            seoTitle: dto.seoTitle ?? null,
+            seoDescription: dto.seoDescription ?? null,
+            canonicalUrl: dto.canonicalUrl ?? null,
+            noIndex: dto.noIndex ?? false,
+            openGraphTitle: dto.openGraphTitle ?? null,
+            openGraphDescription: dto.openGraphDescription ?? null,
+            openGraphImageUrl: dto.openGraphImageUrl ?? null,
+            openGraphImageAlt: dto.openGraphImageAlt ?? null,
+
             brand: {
               connect: {
                 id: dto.brandId,
               },
             },
+
             category: {
               connect: {
                 id: dto.categoryId,
               },
             },
+
             ...(dto.codes?.length && {
               codes: {
                 create: dto.codes.map((code) => ({
@@ -1805,6 +1842,7 @@ export class CatalogAdminService {
                 })),
               },
             }),
+
             ...(dto.images?.length && {
               images: {
                 create: dto.images.map((image) => ({
@@ -1814,6 +1852,7 @@ export class CatalogAdminService {
                 })),
               },
             }),
+
             auditLogs: {
               create: {
                 actorUser: {
@@ -1860,10 +1899,9 @@ export class CatalogAdminService {
     const hasImagesUpdate = this.hasOwnProperty(dto, 'images');
 
     const hasSalePriceTomanUpdate = this.hasOwnProperty(dto, 'salePriceToman');
-
     const hasSaleStartsAtUpdate = this.hasOwnProperty(dto, 'saleStartsAt');
-
     const hasSaleEndsAtUpdate = this.hasOwnProperty(dto, 'saleEndsAt');
+    const hasPriceTomanUpdate = this.hasOwnProperty(dto, 'priceToman');
 
     const finalBrandId = dto.brandId ?? product.brandId;
     const finalCategoryId = dto.categoryId ?? product.categoryId;
@@ -1871,7 +1909,6 @@ export class CatalogAdminService {
     const { brand, category } = await this.getBrandAndCategory(finalBrandId, finalCategoryId);
 
     const finalCodes = hasCodesUpdate ? (dto.codes ?? []) : product.codes;
-
     const finalImages = hasImagesUpdate ? (dto.images ?? []) : product.images;
 
     const finalSalePriceToman = hasSalePriceTomanUpdate
@@ -1886,10 +1923,7 @@ export class CatalogAdminService {
       ? this.toNullableDate(dto.saleEndsAt)
       : product.saleEndsAt;
 
-    const hasPriceTomanUpdate = this.hasOwnProperty(dto, 'priceToman');
-
     const finalPriceToman = hasPriceTomanUpdate ? (dto.priceToman ?? null) : product.priceToman;
-
     const finalShowOnHome = dto.showOnHome ?? product.showOnHome;
 
     const candidate: ProductStateCandidate = {
@@ -1912,6 +1946,51 @@ export class CatalogAdminService {
 
     const changes = this.buildProductUpdateChanges(product, dto, hasCodesUpdate, hasImagesUpdate);
 
+    type SeoOpenGraphProductField =
+      | 'seoTitle'
+      | 'seoDescription'
+      | 'canonicalUrl'
+      | 'noIndex'
+      | 'openGraphTitle'
+      | 'openGraphDescription'
+      | 'openGraphImageUrl'
+      | 'openGraphImageAlt';
+
+    const addSeoOpenGraphChange = (field: SeoOpenGraphProductField) => {
+      if (!this.hasOwnProperty(dto, field)) {
+        return;
+      }
+
+      const before = product[field];
+      const after = dto[field];
+
+      if (before === after) {
+        return;
+      }
+
+      const mutableChanges = changes as Record<
+        string,
+        {
+          before: unknown;
+          after: unknown;
+        }
+      >;
+
+      mutableChanges[field] = {
+        before,
+        after,
+      };
+    };
+
+    addSeoOpenGraphChange('seoTitle');
+    addSeoOpenGraphChange('seoDescription');
+    addSeoOpenGraphChange('canonicalUrl');
+    addSeoOpenGraphChange('noIndex');
+    addSeoOpenGraphChange('openGraphTitle');
+    addSeoOpenGraphChange('openGraphDescription');
+    addSeoOpenGraphChange('openGraphImageUrl');
+    addSeoOpenGraphChange('openGraphImageAlt');
+
     const auditChanges = {
       event: 'admin_product_updated',
       fields: changes,
@@ -1925,51 +2004,99 @@ export class CatalogAdminService {
       ...(dto.sku !== undefined && {
         sku: dto.sku,
       }),
+
       ...(dto.slug !== undefined && {
         slug: dto.slug,
       }),
+
       ...(dto.name !== undefined && {
         name: dto.name,
       }),
+
       ...(dto.shortDescription !== undefined && {
         shortDescription: dto.shortDescription,
       }),
+
       ...(dto.description !== undefined && {
         description: dto.description,
       }),
+
       ...(dto.specifications !== undefined && {
         specifications: this.toJson(dto.specifications),
       }),
+
       ...(hasPriceTomanUpdate && {
         priceToman: finalPriceToman,
       }),
+
       ...(hasSalePriceTomanUpdate && {
         salePriceToman: finalSalePriceToman,
       }),
+
       ...(hasSaleStartsAtUpdate && {
         saleStartsAt: finalSaleStartsAt,
       }),
+
       ...(hasSaleEndsAtUpdate && {
         saleEndsAt: finalSaleEndsAt,
       }),
+
       ...(dto.stockStatus !== undefined && {
         stockStatus: dto.stockStatus,
       }),
+
       ...(dto.status !== undefined && {
         status: dto.status,
       }),
+
       ...(dto.isPublished !== undefined && {
         isPublished: dto.isPublished,
       }),
+
       ...(dto.isTorobEnabled !== undefined && {
         isTorobEnabled: dto.isTorobEnabled,
       }),
+
       ...(dto.showOnHome !== undefined && {
         showOnHome: dto.showOnHome,
       }),
+
       ...(dto.homeSortOrder !== undefined && {
         homeSortOrder: dto.homeSortOrder,
       }),
+
+      ...(dto.seoTitle !== undefined && {
+        seoTitle: dto.seoTitle,
+      }),
+
+      ...(dto.seoDescription !== undefined && {
+        seoDescription: dto.seoDescription,
+      }),
+
+      ...(dto.canonicalUrl !== undefined && {
+        canonicalUrl: dto.canonicalUrl,
+      }),
+
+      ...(dto.noIndex !== undefined && {
+        noIndex: dto.noIndex,
+      }),
+
+      ...(dto.openGraphTitle !== undefined && {
+        openGraphTitle: dto.openGraphTitle,
+      }),
+
+      ...(dto.openGraphDescription !== undefined && {
+        openGraphDescription: dto.openGraphDescription,
+      }),
+
+      ...(dto.openGraphImageUrl !== undefined && {
+        openGraphImageUrl: dto.openGraphImageUrl,
+      }),
+
+      ...(dto.openGraphImageAlt !== undefined && {
+        openGraphImageAlt: dto.openGraphImageAlt,
+      }),
+
       ...(dto.brandId !== undefined && {
         brand: {
           connect: {
@@ -1977,6 +2104,7 @@ export class CatalogAdminService {
           },
         },
       }),
+
       ...(dto.categoryId !== undefined && {
         category: {
           connect: {
@@ -1984,6 +2112,7 @@ export class CatalogAdminService {
           },
         },
       }),
+
       ...(hasCodesUpdate && {
         codes: {
           deleteMany: {},
@@ -1993,6 +2122,7 @@ export class CatalogAdminService {
           })),
         },
       }),
+
       ...(hasImagesUpdate && {
         images: {
           deleteMany: {},
@@ -2003,6 +2133,7 @@ export class CatalogAdminService {
           })),
         },
       }),
+
       auditLogs: {
         create: {
           actorUser: {
@@ -2349,18 +2480,32 @@ export class CatalogAdminService {
         shortDescription: true,
         description: true,
         specifications: true,
+
         priceToman: true,
         salePriceToman: true,
         saleStartsAt: true,
         saleEndsAt: true,
+
         stockStatus: true,
         status: true,
         isPublished: true,
         isTorobEnabled: true,
+
         showOnHome: true,
         homeSortOrder: true,
+
+        seoTitle: true,
+        seoDescription: true,
+        canonicalUrl: true,
+        noIndex: true,
+        openGraphTitle: true,
+        openGraphDescription: true,
+        openGraphImageUrl: true,
+        openGraphImageAlt: true,
+
         brandId: true,
         categoryId: true,
+
         codes: {
           select: {
             type: true,
@@ -2375,6 +2520,7 @@ export class CatalogAdminService {
             },
           ],
         },
+
         images: {
           select: {
             url: true,

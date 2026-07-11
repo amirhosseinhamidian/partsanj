@@ -29,6 +29,9 @@ const blogPostListSelect = {
   status: true,
   publishedAt: true,
 
+  showOnHome: true,
+  homeSortOrder: true,
+
   seoTitle: true,
   seoDescription: true,
   canonicalUrl: true,
@@ -79,6 +82,9 @@ type ResolvedBlogPostValues = {
 
   status: BlogPostStatus;
   publishedAt: Date | null;
+
+  showOnHome: boolean;
+  homeSortOrder: number;
 
   seoTitle: string | null;
   seoDescription: string | null;
@@ -167,6 +173,9 @@ function getAuditSnapshot(post: ResolvedBlogPostValues): BlogPostAuditSnapshot {
 
     status: post.status,
     publishedAt: post.publishedAt ? post.publishedAt.toISOString() : null,
+
+    showOnHome: post.showOnHome,
+    homeSortOrder: post.homeSortOrder,
 
     seoTitle: post.seoTitle,
     seoDescription: post.seoDescription,
@@ -294,6 +303,9 @@ export class BlogAdminPostService {
           status,
           publishedAt: status === BlogPostStatus.PUBLISHED ? new Date() : null,
 
+          showOnHome: dto.showOnHome ?? false,
+          homeSortOrder: dto.homeSortOrder ?? 0,
+
           seoTitle: dto.seoTitle ?? null,
           seoDescription: dto.seoDescription ?? null,
           canonicalUrl: dto.canonicalUrl ?? null,
@@ -378,6 +390,9 @@ export class BlogAdminPostService {
           status: dto.status ?? current.status,
           publishedAt: current.publishedAt,
 
+          showOnHome: dto.showOnHome ?? false,
+          homeSortOrder: dto.homeSortOrder ?? 0,
+
           seoTitle: dto.seoTitle !== undefined ? dto.seoTitle : current.seoTitle,
           seoDescription:
             dto.seoDescription !== undefined ? dto.seoDescription : current.seoDescription,
@@ -415,6 +430,9 @@ export class BlogAdminPostService {
 
           status: current.status,
           publishedAt: current.publishedAt,
+
+          showOnHome: current.showOnHome,
+          homeSortOrder: current.homeSortOrder,
 
           seoTitle: current.seoTitle,
           seoDescription: current.seoDescription,

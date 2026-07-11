@@ -162,6 +162,25 @@ export function AdminBlogPostsTable({
         cell: (row) => <BlogPostStatusBadge status={row.status} />,
       },
       {
+        key: 'home',
+        header: 'صفحه اصلی',
+        minWidth: '150px',
+        align: 'center',
+        cell: (row) => (
+          <div className='flex flex-col items-center gap-1'>
+            {row.showOnHome ? (
+              <Badge variant='success'>نمایش دارد</Badge>
+            ) : (
+              <Badge variant='neutral'>نمایش ندارد</Badge>
+            )}
+
+            <span className='text-xs text-foreground-muted'>
+              ترتیب: {toPersianDigits(row.homeSortOrder)}
+            </span>
+          </div>
+        ),
+      },
+      {
         key: 'author',
         header: 'نویسنده',
         minWidth: '165px',
