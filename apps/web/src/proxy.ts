@@ -1,12 +1,80 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 const ACCESS_COOKIE = 'partsanj_admin_access_token';
-const LOGIN_PATH = '/admin/login';
 
-export function proxy(request: NextRequest) {
+const ADMIN_PREFIX = '/admin';
+const ADMIN_LOGIN_PATH = '/admin/login';
+const MAINTENANCE_PATH = '/maintenance';
+
+type PublicSettingsResponse = {
+  data?: {
+    storeEnabled?: boolean;
+  };
+};
+
+function getApiBaseUrl(): string {
+  const apiUrl = process.env.PARTSANJ_API_URL?.trim();
+
+  if (!apiUrl) {
+    throw new Error('PARTSANJ_API_URL is not configured');
+  }
+
+  return apiUrl.replace(/\/+$/, '');
+}
+
+/**
+ * بررسی می‌کند pathname دقیقاً خود مسیر باشد
+ * یا یکی از زیرمسیرهای آن.
+ *
+ * /admin           → true
+ * /admin/products  → true
+ * /administrator   → false
+ */
+function isPathWithin(pathname: string, basePath: string): boolean {
+  return pathname === basePath || pathname.startsWith(`${basePath}/`);
+}
+
+/**
+ * وضعیت فعال بودن فروشگاه را از API دریافت می‌کند.
+ *
+ * Fail-open:
+ * اگر API تنظیمات در دسترس نباشد، سایت را فعال
+ * در نظر می‌گیریم تا اختلال API کل سایت را نبندد.
+ */
+async function getStoreEnabled(): Promise<boolean> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/api/v1/settings`, {
+      method: 'GET',
+
+      headers: {
+        Accept: 'application/json',
+      },
+
+      cache: 'no-store',
+
+      signal: AbortSignal.timeout(1500),
+    });
+
+    if (!response.ok) {
+      return true;
+    }
+
+    const result = (await response.json()) as PublicSettingsResponse;
+
+    return result.data?.storeEnabled !== false;
+  } catch {
+    return true;
+  }
+}
+
+function handleAdminAuthentication(request: NextRequest): NextResponse {
   const { pathname, search } = request.nextUrl;
 
-  if (pathname === LOGIN_PATH) {
+  /**
+   * صفحه ورود ادمین برای کاربر بدون توکن باز است.
+   */
+  if (pathname === ADMIN_LOGIN_PATH) {
     return NextResponse.next();
   }
 
@@ -16,13 +84,99 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const loginUrl = new URL(LOGIN_PATH, request.url);
+  const loginUrl = request.nextUrl.clone();
+
+  loginUrl.pathname = ADMIN_LOGIN_PATH;
+  loginUrl.search = '';
 
   loginUrl.searchParams.set('next', `${pathname}${search}`);
 
   return NextResponse.redirect(loginUrl);
 }
 
+/**
+ * محتوای صفحه /maintenance را با حفظ URL فعلی نمایش می‌دهد.
+ */
+function createMaintenanceRewrite(request: NextRequest): NextResponse {
+  const maintenanceUrl = request.nextUrl.clone();
+
+  maintenanceUrl.pathname = MAINTENANCE_PATH;
+  maintenanceUrl.search = '';
+
+  return NextResponse.rewrite(maintenanceUrl, {
+    status: 503,
+    statusText: 'Service Unavailable',
+
+    headers: {
+      /**
+       * به خزنده‌ها و کلاینت‌ها پیشنهاد می‌کند
+       * یک ساعت بعد دوباره درخواست بدهند.
+       */
+      'Retry-After': '3600',
+
+      /**
+       * پاسخ تعمیرات نباید cache شود.
+       */
+      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+
+      /**
+       * حتی اگر متادیتای صفحه بارگذاری نشود،
+       * پاسخ HTTP به موتور جست‌وجو noindex می‌دهد.
+       */
+      'X-Robots-Tag': 'noindex, nofollow',
+
+      'X-Maintenance-Mode': 'true',
+    },
+  });
+}
+
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  /**
+   * پنل ادمین در حالت تعمیرات همچنان باز می‌ماند
+   * تا مدیر بتواند فروشگاه را دوباره فعال کند.
+   */
+  if (isPathWithin(pathname, ADMIN_PREFIX)) {
+    return handleAdminAuthentication(request);
+  }
+
+  /**
+   * جلوگیری از حلقه rewrite:
+   * خود صفحه maintenance دوباره به خودش rewrite نشود.
+   */
+  if (pathname === MAINTENANCE_PATH) {
+    return NextResponse.next();
+  }
+
+  /**
+   * فقط درخواست‌های صفحه‌ای GET و HEAD بررسی می‌شوند.
+   *
+   * APIها از matcher خارج هستند و درخواست‌های POST
+   * مانند Server Action نیز وارد صفحه تعمیرات نمی‌شوند.
+   */
+  if (request.method === 'GET' || request.method === 'HEAD') {
+    const storeEnabled = await getStoreEnabled();
+
+    if (!storeEnabled) {
+      return createMaintenanceRewrite(request);
+    }
+  }
+
+  return NextResponse.next();
+}
+
 export const config = {
-  matcher: ['/admin', '/admin/:path*'],
+  matcher: [
+    /**
+     * تمام صفحات به‌جز:
+     *
+     * - API
+     * - فایل‌های داخلی Next.js
+     * - Image Optimization
+     * - metadata files
+     * - فایل‌های public دارای پسوند
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\..*).*)',
+  ],
 };

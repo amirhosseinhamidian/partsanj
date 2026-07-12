@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
 
 import { ToastProvider } from '@/components/providers/toast-provider';
 import { ThemeProvider } from '@/components/providers/theme-provider';
@@ -13,53 +14,92 @@ import './globals.css';
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getStorefrontSiteSettings();
 
-  const title = settings.defaultSeoTitle || settings.siteName;
-  const description =
-    settings.defaultSeoDescription || settings.siteTagline || 'فروشگاه تخصصی قطعات یدکی خودرو';
+  const siteName = settings.siteName?.trim() || 'پارت‌سنج';
 
-  const ogImage = settings.defaultOgImageUrl || undefined;
+  const title = settings.defaultSeoTitle?.trim() || siteName;
+
+  const description =
+    settings.defaultSeoDescription?.trim() ||
+    settings.siteTagline?.trim() ||
+    'فروشگاه تخصصی قطعات یدکی خودرو';
+
+  const openGraphImage = settings.defaultOgImageUrl?.trim() || undefined;
+
+  const shouldNoIndex = settings.noIndexSite;
+
+  const faviconUrl = settings.faviconUrl?.trim() || '/images/branding/favicon-default.ico';
 
   return {
     metadataBase: new URL(settings.siteBaseUrl),
+    applicationName: siteName,
     title: {
       default: title,
-      template: `%s | ${settings.siteName}`,
+      template: `%s | ${siteName}`,
     },
     description,
+    icons: {
+      icon: [
+        {
+          url: faviconUrl,
+        },
+      ],
+
+      shortcut: [
+        {
+          url: faviconUrl,
+        },
+      ],
+    },
     robots: {
-      index: !settings.noIndexSite,
-      follow: !settings.noIndexSite,
+      index: !shouldNoIndex,
+      follow: true,
+
+      googleBot: {
+        index: !shouldNoIndex,
+        follow: true,
+
+        ...(!shouldNoIndex
+          ? {
+              'max-image-preview': 'large',
+              'max-snippet': -1,
+              'max-video-preview': -1,
+            }
+          : {}),
+      },
     },
     openGraph: {
+      type: 'website',
+      locale: 'fa_IR',
+      siteName,
+
       title,
       description,
-      type: 'website',
-      siteName: settings.siteName,
-      url: settings.siteBaseUrl,
-      images: ogImage
+
+      images: openGraphImage
         ? [
             {
-              url: ogImage,
-              alt: settings.siteName,
+              url: openGraphImage,
+              alt: siteName,
             },
           ]
         : undefined,
     },
     twitter: {
-      card: ogImage ? 'summary_large_image' : 'summary',
+      card: openGraphImage ? 'summary_large_image' : 'summary',
       title,
       description,
-      images: ogImage ? [ogImage] : undefined,
+      images: openGraphImage ? [openGraphImage] : undefined,
     },
   };
 }
 
-export default async function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+type RootLayoutProps = Readonly<{
+  children: ReactNode;
+}>;
+
+export default async function RootLayout({ children }: RootLayoutProps) {
   const settings = await getStorefrontSiteSettings();
+
   return (
     <html lang='fa' dir='rtl' suppressHydrationWarning>
       <body className={vazirmatn.className}>

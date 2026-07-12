@@ -2,18 +2,56 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import { Clock3, Headphones, Phone, ShieldCheck, Sparkles } from 'lucide-react';
+
 import { getStorefrontSiteSettings } from '@/lib/storefront/settings/site-settings.server';
 import type { StorefrontSiteSettings } from '@/lib/storefront/settings/site-settings.types';
+import { buildSeoMetadata } from '@/lib/storefront/seo/seo-metadata';
 import { toPersianDigits } from '@/lib/utils/digits';
 
-export async function generateMetadata() {
+export async function generateMetadata(): Promise<Metadata> {
   const settings = await getStorefrontSiteSettings();
 
-  return {
-    title: `تماس با ما | ${settings.siteName}`,
-    description:
-      'راه‌های ارتباط با پشتیبانی برای مشاوره انتخاب قطعه، پیگیری سفارش و دریافت راهنمایی خرید.',
-  };
+  const title = `تماس با ما | ${settings.siteName}`;
+
+  const description =
+    `راه‌های ارتباط با پشتیبانی ${settings.siteName} برای مشاوره انتخاب قطعه، ` +
+    'بررسی سازگاری قطعات، پیگیری سفارش و دریافت راهنمایی خرید.';
+
+  return buildSeoMetadata({
+    /**
+     * fallback برای زمانی که helper به title عادی نیاز دارد.
+     */
+    title: 'تماس با ما',
+
+    /**
+     * عنوان کامل و نهایی صفحه.
+     * به‌صورت absolute قرار می‌گیرد تا title template
+     * دوباره نام سایت را اضافه نکند.
+     */
+    seoTitle: title,
+
+    description,
+
+    canonicalPath: '/contact',
+
+    /**
+     * این صفحه به‌صورت عادی قابل ایندکس است،
+     * اما تنظیم کلی noindex سایت بر آن اولویت دارد.
+     */
+    globalNoIndex: settings.noIndexSite,
+
+    type: 'website',
+
+    openGraphTitle: title,
+    openGraphDescription: description,
+
+    openGraphImage: settings.defaultOgImageUrl
+      ? {
+          url: settings.defaultOgImageUrl,
+          alt: `تماس با ${settings.siteName}`,
+        }
+      : null,
+  });
 }
 
 function normalizeTelHref(value: string | null) {

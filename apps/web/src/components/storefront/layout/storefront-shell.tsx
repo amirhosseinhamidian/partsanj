@@ -47,9 +47,15 @@ export function StorefrontShell({ children, settings }: StorefrontShellProps) {
     <StorefrontSettingsProvider settings={settings}>
       <StorefrontCartProvider>
         <StorefrontCustomerAuthProvider>
-          <StorefrontHeader />
+          <StorefrontHeader
+            logoLightUrl={settings.logoLightUrl}
+            logoDarkUrl={settings.logoDarkUrl}
+          />
           {children}
-          <StorefrontFooter />
+          <StorefrontFooter
+            logoLightUrl={settings.logoLightUrl}
+            logoDarkUrl={settings.logoDarkUrl}
+          />
         </StorefrontCustomerAuthProvider>
       </StorefrontCartProvider>
     </StorefrontSettingsProvider>

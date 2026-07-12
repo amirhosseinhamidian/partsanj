@@ -1,5 +1,13 @@
+import type { Metadata } from 'next';
 import { AccountNavigation } from '@/components/storefront/account/account-navigation';
 import type { ReactNode } from 'react';
+
+import { createPrivatePageMetadata } from '@/lib/storefront/seo/private-page-metadata';
+
+export const metadata: Metadata = createPrivatePageMetadata(
+  'حساب کاربری',
+  'مدیریت حساب کاربری، سفارش‌ها، آدرس‌ها و خودروهای شما',
+);
 
 type AccountLayoutProps = {
   children: ReactNode;

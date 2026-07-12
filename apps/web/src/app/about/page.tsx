@@ -1,10 +1,10 @@
+import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
   Award,
   BadgeCheck,
   Boxes,
-  CalendarCheck2,
   Headphones,
   LockKeyhole,
   PackageCheck,
@@ -15,11 +15,35 @@ import {
   WalletCards,
 } from 'lucide-react';
 
-export const metadata = {
-  title: 'درباره ما | پارت‌سنج',
-  description:
-    'پارت‌سنج مرجع تخصصی انتخاب و خرید قطعات یدکی خودرو با تمرکز بر سازگاری دقیق قطعه با مدل و تیپ خودرو است.',
-};
+import { buildSeoMetadata } from '@/lib/storefront/seo/seo-metadata';
+import { getStorefrontSiteSettings } from '@/lib/storefront/settings/site-settings.server';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getStorefrontSiteSettings();
+
+  const siteName = settings.siteName?.trim() || 'پارت‌سنج';
+
+  const title = `درباره ما | ${siteName}`;
+
+  const description =
+    `${siteName} مرجع تخصصی انتخاب و خرید قطعات یدکی خودرو، ` +
+    'با تمرکز بر بررسی دقیق سازگاری قطعه با برند، مدل و تیپ خودرو است.';
+
+  return buildSeoMetadata({
+    title: 'درباره ما',
+    seoTitle: title,
+    description,
+    canonicalPath: '/about',
+    globalNoIndex: settings.noIndexSite,
+    type: 'website',
+    openGraphTitle: title,
+    openGraphDescription: description,
+    openGraphImage: {
+      url: settings.defaultOgImageUrl || '/images/about/about-light.webp',
+      alt: `درباره ${siteName}`,
+    },
+  });
+}
 
 const TRUST_ITEMS = [
   {

@@ -1,10 +1,23 @@
 import 'server-only';
 
 import type { Metadata } from 'next';
-import { PUBLIC_SITE_NAME, toAbsolutePublicUrl } from '../site-url';
+
+import { PUBLIC_SITE_NAME } from '../site-url';
+import { buildSeoMetadata } from '../seo/seo-metadata';
 import type { PublicBlogCategoryDetail, PublicBlogPostDetail } from './public-blog.types';
 
-function getText(...values: Array<string | null | undefined>) {
+type BlogMetadataOptions = {
+  /**
+   * تنظیم کلی noindex سایت که از پنل مدیریت دریافت می‌شود.
+   */
+  globalNoIndex?: boolean;
+  pageNoIndex?: boolean;
+};
+
+/**
+ * اولین متن غیرخالی را از بین مقادیر ورودی برمی‌گرداند.
+ */
+function getText(...values: Array<string | null | undefined>): string {
   for (const value of values) {
     const normalized = value?.trim();
 
@@ -16,46 +29,46 @@ function getText(...values: Array<string | null | undefined>) {
   return '';
 }
 
-function createRobots(noIndex: boolean) {
-  return {
-    index: !noIndex,
-    follow: true,
-  };
-}
-
-export function getBlogIndexMetadata(): Metadata {
+/**
+ * متادیتای صفحه اصلی بلاگ
+ *
+ * مسیر:
+ * /blog
+ */
+export function getBlogIndexMetadata(options?: BlogMetadataOptions): Metadata {
   const title = `بلاگ ${PUBLIC_SITE_NAME}`;
+
   const description = 'راهنماهای کاربردی انتخاب قطعات خودرو، بررسی سازگاری قطعات و نکات فنی خودرو';
 
-  const canonical = toAbsolutePublicUrl('/blog');
+  return buildSeoMetadata({
+    title: 'بلاگ',
+    seoTitle: title,
 
-  return {
-    title,
     description,
 
-    alternates: {
-      canonical,
-    },
+    canonicalPath: '/blog',
 
-    openGraph: {
-      type: 'website',
-      locale: 'fa_IR',
-      siteName: PUBLIC_SITE_NAME,
-      title,
-      description,
-      url: canonical,
-    },
+    globalNoIndex: options?.globalNoIndex,
+    pageNoIndex: options?.pageNoIndex,
 
-    twitter: {
-      card: 'summary',
-      title,
-      description,
-    },
-  };
+    type: 'website',
+
+    openGraphTitle: title,
+    openGraphDescription: description,
+  });
 }
 
-export function getBlogCategoryMetadata(category: PublicBlogCategoryDetail): Metadata {
-  const title = getText(category.seoTitle, `${category.name} | بلاگ ${PUBLIC_SITE_NAME}`);
+/**
+ * متادیتای صفحه جزئیات دسته‌بندی بلاگ
+ *
+ * مسیر:
+ * /blog/category/[slug]
+ */
+export function getBlogCategoryMetadata(
+  category: PublicBlogCategoryDetail,
+  options?: BlogMetadataOptions,
+): Metadata {
+  const fallbackTitle = `${category.name} | بلاگ`;
 
   const description = getText(
     category.seoDescription,
@@ -63,117 +76,114 @@ export function getBlogCategoryMetadata(category: PublicBlogCategoryDetail): Met
     `مقالات دسته‌بندی ${category.name} در ${PUBLIC_SITE_NAME}`,
   );
 
-  const canonical = toAbsolutePublicUrl(category.canonicalUrl || `/blog/category/${category.slug}`);
+  const canonicalPath = category.canonicalUrl || `/blog/category/${category.slug}`;
 
-  const openGraphTitle = getText(category.openGraphTitle, title);
+  const openGraphTitle = getText(
+    category.openGraphTitle,
+    category.seoTitle,
+    `${category.name} | بلاگ ${PUBLIC_SITE_NAME}`,
+  );
 
   const openGraphDescription = getText(category.openGraphDescription, description);
 
-  const openGraphImageUrl = category.openGraphImageUrl
-    ? toAbsolutePublicUrl(category.openGraphImageUrl)
+  const openGraphImage = category.openGraphImageUrl
+    ? {
+        url: category.openGraphImageUrl,
+        alt: getText(category.openGraphImageAlt, category.name) || category.name,
+      }
     : null;
 
-  return {
-    title,
+  return buildSeoMetadata({
+    /**
+     * در صورت نبود seoTitle، این عنوان وارد title template
+     * موجود در RootLayout می‌شود.
+     */
+    title: fallbackTitle,
+
+    /**
+     * در صورت وجود seoTitle، helper آن را به‌شکل absolute
+     * قرار می‌دهد تا title template دوباره نام سایت را اضافه نکند.
+     */
+    seoTitle: category.seoTitle,
+
     description,
 
-    alternates: {
-      canonical,
-    },
+    canonicalPath,
 
-    robots: createRobots(category.noIndex),
+    /**
+     * noindex کلی سایت بر تنظیم اختصاصی دسته‌بندی اولویت دارد.
+     */
+    globalNoIndex: options?.globalNoIndex,
+    pageNoIndex: category.noIndex,
 
-    openGraph: {
-      type: 'website',
-      locale: 'fa_IR',
-      siteName: PUBLIC_SITE_NAME,
-      title: openGraphTitle,
-      description: openGraphDescription,
-      url: canonical,
+    type: 'website',
 
-      images: openGraphImageUrl
-        ? [
-            {
-              url: openGraphImageUrl,
-              alt: category.openGraphImageAlt || category.name,
-            },
-          ]
-        : undefined,
-    },
-
-    twitter: {
-      card: openGraphImageUrl ? 'summary_large_image' : 'summary',
-
-      title: openGraphTitle,
-      description: openGraphDescription,
-
-      images: openGraphImageUrl ? [openGraphImageUrl] : undefined,
-    },
-  };
+    openGraphTitle,
+    openGraphDescription,
+    openGraphImage,
+  });
 }
 
-export function getBlogPostMetadata(post: PublicBlogPostDetail): Metadata {
-  const title = getText(post.seoTitle, post.title);
-
+/**
+ * متادیتای صفحه جزئیات مقاله
+ *
+ * مسیر:
+ * /blog/[slug]
+ */
+export function getBlogPostMetadata(
+  post: PublicBlogPostDetail,
+  options?: BlogMetadataOptions,
+): Metadata {
   const description = getText(
     post.seoDescription,
     post.excerpt,
     `مقاله ${post.title} در ${PUBLIC_SITE_NAME}`,
   );
 
-  const canonical = toAbsolutePublicUrl(post.canonicalUrl || `/blog/${post.slug}`);
+  const canonicalPath = post.canonicalUrl || `/blog/${post.slug}`;
 
-  const openGraphTitle = getText(post.openGraphTitle, title);
+  const openGraphTitle = getText(post.openGraphTitle, post.seoTitle, post.title);
 
   const openGraphDescription = getText(post.openGraphDescription, description);
 
-  const imageUrl = getText(post.openGraphImageUrl, post.coverImageUrl);
+  const openGraphImageUrl = getText(post.openGraphImageUrl, post.coverImageUrl);
 
-  const openGraphImageUrl = imageUrl ? toAbsolutePublicUrl(imageUrl) : null;
+  const openGraphImageAlt = getText(post.openGraphImageAlt, post.coverImageAlt, post.title);
 
-  const imageAlt = getText(post.openGraphImageAlt, post.coverImageAlt, post.title);
+  return buildSeoMetadata({
+    title: post.title,
+    seoTitle: post.seoTitle,
 
-  return {
-    title,
     description,
 
-    alternates: {
-      canonical,
-    },
+    canonicalPath,
 
-    robots: createRobots(post.noIndex),
+    /**
+     * اولویت noindex:
+     *
+     * 1. تنظیم کلی سایت
+     * 2. تنظیم اختصاصی مقاله
+     */
+    globalNoIndex: options?.globalNoIndex,
+    pageNoIndex: post.noIndex,
 
-    openGraph: {
-      type: 'article',
-      locale: 'fa_IR',
-      siteName: PUBLIC_SITE_NAME,
+    type: 'article',
 
-      title: openGraphTitle,
-      description: openGraphDescription,
-      url: canonical,
+    publishedTime: post.publishedAt,
+    modifiedTime: post.updatedAt,
 
-      publishedTime: post.publishedAt,
-      modifiedTime: post.updatedAt,
-      authors: [post.author.name],
-      section: post.category.name,
+    authors: post.author.name ? [post.author.name] : undefined,
 
-      images: openGraphImageUrl
-        ? [
-            {
-              url: openGraphImageUrl,
-              alt: imageAlt,
-            },
-          ]
-        : undefined,
-    },
+    section: post.category.name,
 
-    twitter: {
-      card: openGraphImageUrl ? 'summary_large_image' : 'summary',
+    openGraphTitle,
+    openGraphDescription,
 
-      title: openGraphTitle,
-      description: openGraphDescription,
-
-      images: openGraphImageUrl ? [openGraphImageUrl] : undefined,
-    },
-  };
+    openGraphImage: openGraphImageUrl
+      ? {
+          url: openGraphImageUrl,
+          alt: openGraphImageAlt || post.title,
+        }
+      : null,
+  });
 }

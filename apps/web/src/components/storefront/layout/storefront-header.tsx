@@ -39,6 +39,11 @@ type AccountShortcut = {
   icon: LucideIcon;
 };
 
+type StorefrontHeaderProps = {
+  logoLightUrl?: string | null;
+  logoDarkUrl?: string | null;
+};
+
 const accountShortcuts: AccountShortcut[] = [
   {
     href: '/account',
@@ -318,7 +323,7 @@ function HeaderCustomerMenu({ mobile = false, returnTo }: { mobile?: boolean; re
   );
 }
 
-export function StorefrontHeader() {
+export function StorefrontHeader({ logoLightUrl, logoDarkUrl }: StorefrontHeaderProps) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const searchParams = useSearchParams();
@@ -337,7 +342,7 @@ export function StorefrontHeader() {
   return (
     <header className='sticky top-0 z-50 border-b border-border bg-surface/95 backdrop-blur'>
       <div className='mx-auto flex min-h-18 w-full max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8'>
-        <PartSanjLogo />
+        <PartSanjLogo logoLightUrl={logoLightUrl} logoDarkUrl={logoDarkUrl} />
 
         <nav
           aria-label='ناوبری اصلی'

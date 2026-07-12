@@ -30,59 +30,134 @@ async function getProductForMetadata(slug: string) {
   }
 }
 
+function toAbsoluteUrl(value: string | null | undefined, baseUrl: string): string | undefined {
+  const normalizedValue = value?.trim();
+
+  if (!normalizedValue) {
+    return undefined;
+  }
+
+  try {
+    const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+
+    return new URL(normalizedValue, normalizedBaseUrl).toString();
+  } catch {
+    return undefined;
+  }
+}
+
 export async function generateMetadata({ params }: ProductDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const product = await getProductForMetadata(slug);
 
+  const [product, settings] = await Promise.all([
+    getProductForMetadata(slug),
+    getStorefrontSiteSettings(),
+  ]);
+
+  const siteName = settings.siteName || 'پارت‌سنج';
   if (!product) {
     return {
-      title: 'محصول پیدا نشد | پارت‌سنج',
+      title: {
+        absolute: `محصول پیدا نشد | ${siteName}`,
+      },
+
+      description: 'محصول موردنظر پیدا نشد یا در دسترس نیست.',
+
       robots: {
         index: false,
         follow: false,
+
+        googleBot: {
+          index: false,
+          follow: false,
+        },
       },
     };
   }
 
-  const title = product.seoTitle || `${product.name} | پارت‌سنج`;
-  const description =
-    product.seoDescription ||
-    product.shortDescription ||
-    `مشاهده و خرید ${product.name} در پارت‌سنج با بررسی سازگاری خودرو.`;
+  const title = product.seoTitle?.trim() || `${product.name} | ${siteName}`;
 
-  const ogTitle = product.openGraphTitle || title;
-  const ogDescription = product.openGraphDescription || description;
-  const ogImage = product.openGraphImageUrl || product.images[0]?.url || undefined;
+  const description =
+    product.seoDescription?.trim() ||
+    product.shortDescription?.trim() ||
+    `مشاهده مشخصات و خرید ${product.name} در ${siteName} با امکان بررسی سازگاری قطعه با خودرو.`;
+
+  const shouldNoIndex = settings.noIndexSite || product.noIndex;
+
+  const canonicalPath = product.canonicalUrl?.trim() || `/products/${product.slug}`;
+
+  const canonicalUrl = toAbsoluteUrl(canonicalPath, settings.siteBaseUrl);
+
+  const openGraphImageSource =
+    product.openGraphImageUrl || product.images[0]?.url || settings.defaultOgImageUrl;
+
+  const openGraphImageUrl = toAbsoluteUrl(openGraphImageSource, settings.siteBaseUrl);
+
+  const openGraphTitle = product.openGraphTitle?.trim() || title;
+
+  const openGraphDescription = product.openGraphDescription?.trim() || description;
+
+  const openGraphImageAlt =
+    product.openGraphImageAlt?.trim() || product.images[0]?.alt?.trim() || product.name;
 
   return {
-    title,
+    title: {
+      absolute: title,
+    },
+
     description,
-    alternates: {
-      canonical: product.canonicalUrl || `/products/${product.slug}`,
-    },
+
+    alternates: canonicalUrl
+      ? {
+          canonical: canonicalUrl,
+        }
+      : undefined,
+
     robots: {
-      index: !product.noIndex,
-      follow: !product.noIndex,
+      index: !shouldNoIndex,
+      follow: !shouldNoIndex,
+
+      googleBot: {
+        index: !shouldNoIndex,
+        follow: !shouldNoIndex,
+
+        ...(!shouldNoIndex
+          ? {
+              'max-image-preview': 'large',
+              'max-snippet': -1,
+              'max-video-preview': -1,
+            }
+          : {}),
+      },
     },
+
     openGraph: {
-      title: ogTitle,
-      description: ogDescription,
       type: 'website',
-      url: product.canonicalUrl || `/products/${product.slug}`,
-      images: ogImage
+      locale: 'fa_IR',
+      siteName,
+
+      title: openGraphTitle,
+      description: openGraphDescription,
+
+      url: canonicalUrl,
+
+      images: openGraphImageUrl
         ? [
             {
-              url: ogImage,
-              alt: product.openGraphImageAlt || product.name,
+              url: openGraphImageUrl,
+              alt: openGraphImageAlt,
             },
           ]
         : undefined,
     },
+
     twitter: {
-      card: ogImage ? 'summary_large_image' : 'summary',
-      title: ogTitle,
-      description: ogDescription,
-      images: ogImage ? [ogImage] : undefined,
+      card: openGraphImageUrl ? 'summary_large_image' : 'summary',
+
+      title: openGraphTitle,
+      description: openGraphDescription,
+
+      images: openGraphImageUrl ? [openGraphImageUrl] : undefined,
     },
   };
 }

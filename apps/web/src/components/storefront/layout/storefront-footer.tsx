@@ -9,6 +9,11 @@ import {
 } from '@/lib/storefront/site-config';
 import { PartSanjLogo } from '@/lib/storefront/shared/partsanj-logo';
 
+type StorefrontFooterProps = {
+  logoLightUrl?: string | null;
+  logoDarkUrl?: string | null;
+};
+
 function FooterLinkList({
   title,
   links,
@@ -41,7 +46,7 @@ function FooterLinkList({
   );
 }
 
-export function StorefrontFooter() {
+export function StorefrontFooter({ logoLightUrl, logoDarkUrl }: StorefrontFooterProps) {
   const contact = storefrontSiteConfig.contact;
 
   const hasContactDetails = Boolean(
@@ -53,7 +58,7 @@ export function StorefrontFooter() {
       <div className='mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8'>
         <div className='grid gap-10 lg:grid-cols-[1.35fr_repeat(3,minmax(0,1fr))]'>
           <section id='about'>
-            <PartSanjLogo />
+            <PartSanjLogo logoLightUrl={logoLightUrl} logoDarkUrl={logoDarkUrl} />
 
             <p className='mt-5 max-w-sm text-sm leading-7 text-foreground-secondary'>
               {storefrontSiteConfig.description}

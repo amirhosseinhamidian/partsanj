@@ -3,8 +3,18 @@ import Link from 'next/link';
 import { ArrowRight, Home, Search, Wrench } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'صفحه پیدا نشد | پارت‌سنج',
-  description: 'صفحه‌ای که به دنبال آن هستید در پارت‌سنج پیدا نشد.',
+  title: 'صفحه پیدا نشد',
+
+  description: 'صفحه‌ای که به دنبال آن هستید پیدا نشد، حذف شده یا آدرس آن تغییر کرده است.',
+  robots: {
+    index: false,
+    follow: true,
+
+    googleBot: {
+      index: false,
+      follow: true,
+    },
+  },
 };
 
 export default function NotFoundPage() {
@@ -20,7 +30,8 @@ export default function NotFoundPage() {
 
           <div className='order-1 text-right lg:order-2'>
             <div className='inline-flex items-center gap-2 rounded-full bg-brand-soft px-4 py-2 text-sm font-extrabold text-brand'>
-              <Wrench className='size-4' />
+              <Wrench aria-hidden='true' className='size-4' />
+
               <span>مسیر اشتباه است</span>
             </div>
 
@@ -30,7 +41,7 @@ export default function NotFoundPage() {
 
             <p className='mt-5 max-w-2xl text-base leading-9 text-foreground-secondary lg:text-lg'>
               صفحه‌ای که باز کرده‌اید وجود ندارد، حذف شده یا آدرس آن تغییر کرده است. می‌توانید به
-              صفحه اصلی برگردید یا بین محصولات پارت‌سنج جستجو کنید.
+              صفحه اصلی برگردید یا بین محصولات پارت‌سنج جست‌وجو کنید.
             </p>
 
             <div className='mt-8 flex flex-wrap gap-3'>
@@ -38,7 +49,8 @@ export default function NotFoundPage() {
                 href='/'
                 className='inline-flex h-[52px] items-center justify-center gap-3 rounded-2xl bg-brand px-7 text-sm font-extrabold text-brand-foreground shadow-[0_14px_30px_rgb(255_92_0/0.24)] transition hover:-translate-y-0.5 hover:bg-brand-hover'
               >
-                <Home className='size-5' />
+                <Home aria-hidden='true' className='size-5' />
+
                 <span>بازگشت به خانه</span>
               </Link>
 
@@ -46,7 +58,8 @@ export default function NotFoundPage() {
                 href='/products'
                 className='inline-flex h-[52px] items-center justify-center gap-3 rounded-2xl border border-border bg-surface px-7 text-sm font-extrabold text-foreground transition hover:-translate-y-0.5 hover:border-brand/30 hover:text-brand'
               >
-                <Search className='size-5' />
+                <Search aria-hidden='true' className='size-5' />
+
                 <span>مشاهده محصولات</span>
               </Link>
             </div>
@@ -55,7 +68,8 @@ export default function NotFoundPage() {
               href='/contact'
               className='mt-6 inline-flex items-center gap-2 text-sm font-bold text-foreground-secondary transition hover:text-brand'
             >
-              <ArrowRight className='size-4' />
+              <ArrowRight aria-hidden='true' className='size-4' />
+
               <span>نیاز به راهنمایی دارید؟ تماس با پشتیبانی</span>
             </Link>
           </div>
@@ -72,7 +86,7 @@ function ErrorVisual({ code }: { code: string }) {
 
       <div className='relative text-center'>
         <div className='mx-auto mb-6 flex size-24 items-center justify-center rounded-[28px] bg-brand-soft text-brand shadow-sm'>
-          <Wrench className='size-12 stroke-[1.7]' />
+          <Wrench aria-hidden='true' className='size-12 stroke-[1.7]' />
         </div>
 
         <div className='text-7xl font-black tracking-[-6px] text-brand select-none sm:text-8xl'>
@@ -91,8 +105,11 @@ function ErrorBackground() {
   return (
     <>
       <div className='pointer-events-none absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-white/90 to-transparent dark:from-white/5' />
+
       <div className='pointer-events-none absolute top-32 -right-24 size-72 rounded-full border border-info/15' />
+
       <div className='pointer-events-none absolute top-16 -left-24 size-96 rounded-full bg-brand/5 blur-3xl' />
+
       <div className='pointer-events-none absolute right-0 bottom-12 size-80 rounded-full bg-info/5 blur-3xl' />
     </>
   );
