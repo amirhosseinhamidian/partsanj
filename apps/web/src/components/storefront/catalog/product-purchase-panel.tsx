@@ -2,9 +2,10 @@
 
 import { Button } from '@/components/ui/button';
 import { useStorefrontCart } from '@/components/storefront/cart/storefront-cart-provider';
+import { useStorefrontSettings } from '@/components/storefront/layout/storefront-settings-provider';
 import type { StorefrontProductDetail } from '@/lib/storefront/catalog/catalog.types';
 import type { StorefrontVehicleVariant } from '@/lib/storefront/vehicles/vehicle.types';
-import { CarFront, ChevronLeft, Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react';
+import { CarFront, ChevronLeft, Headphones, Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { toPersianDigits } from '@/lib/utils/digits';
@@ -73,14 +74,147 @@ function CartQuantityControl({
   );
 }
 
+function PriceBlock({
+  product,
+  displayedPrice,
+  showPrices,
+  compact = false,
+}: {
+  product: StorefrontProductDetail;
+  displayedPrice: number | null;
+  showPrices: boolean;
+  compact?: boolean;
+}) {
+  if (!showPrices) {
+    return (
+      <div>
+        <p
+          className={
+            compact
+              ? 'text-sm font-extrabold text-foreground'
+              : 'text-base font-extrabold text-foreground'
+          }
+        >
+          قیمت با استعلام
+        </p>
+
+        {!compact ? (
+          <p className='mt-1 text-xs leading-6 text-foreground-secondary'>
+            برای دریافت قیمت این قطعه با پشتیبانی تماس بگیرید.
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (displayedPrice === null) {
+    return (
+      <div>
+        <p
+          className={
+            compact
+              ? 'text-sm font-extrabold text-foreground'
+              : 'text-base font-extrabold text-foreground'
+          }
+        >
+          قیمت نیازمند استعلام است
+        </p>
+
+        {!compact ? (
+          <p className='mt-1 text-xs leading-6 text-foreground-secondary'>
+            قیمت این قطعه پس از بررسی توسط پشتیبانی اعلام می‌شود.
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {product.isSaleActive && product.priceToman !== null ? (
+        <div className='flex flex-wrap items-center gap-3'>
+          <span className='numeric text-sm text-foreground-muted line-through'>
+            {formatPrice(product.priceToman)}
+          </span>
+
+          <span className='rounded-full bg-danger-soft px-2.5 py-1 text-xs font-bold text-danger'>
+            {toPersianDigits(product.discountPercent)}٪ تخفیف
+          </span>
+        </div>
+      ) : null}
+
+      <p
+        className={
+          compact
+            ? 'numeric mt-0.5 text-base font-extrabold text-foreground'
+            : 'numeric mt-2 text-2xl font-extrabold text-foreground'
+        }
+      >
+        {formatPrice(displayedPrice)}
+      </p>
+    </>
+  );
+}
+
+function SupportButton({
+  href,
+  isExternal,
+  phoneDisplay,
+  className = '',
+}: {
+  href: string;
+  isExternal: boolean;
+  phoneDisplay?: string | null;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      {phoneDisplay ? (
+        <p className='text-md mb-2 text-center font-bold text-foreground md:mb-4 lg:text-xl'>
+          شماره پشتیبانی: {toPersianDigits(phoneDisplay)}
+        </p>
+      ) : null}
+
+      <Link
+        href={href}
+        target={isExternal ? '_blank' : undefined}
+        rel={isExternal ? 'noreferrer' : undefined}
+        className='inline-flex h-12 w-full items-center justify-center gap-2 rounded-control bg-brand px-4 text-sm font-bold text-brand-foreground transition hover:bg-brand-hover'
+      >
+        <Headphones className='size-4' />
+        تماس با پشتیبانی
+        <ChevronLeft className='size-4' />
+      </Link>
+    </div>
+  );
+}
+
+function getFirstNonEmpty(...values: Array<string | null | undefined>) {
+  const value = values.find((item) => typeof item === 'string' && item.trim().length > 0);
+
+  return value?.trim() ?? null;
+}
+
+function normalizeTelHref(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.replace(/[^\d+]/g, '');
+
+  return normalized ? `tel:${normalized}` : null;
+}
+
 export function ProductPurchasePanel({
   product,
   selectedVehicle,
   onSelectVehicle,
 }: ProductPurchasePanelProps) {
+  const settings = useStorefrontSettings();
   const { cart, addItem, updateItemQuantity, removeItem, isMutating } = useStorefrontCart();
 
-  const displayedPrice = product.effectivePriceToman ?? product.priceToman ?? null;
+  const rawDisplayedPrice = product.effectivePriceToman ?? product.priceToman ?? null;
+  const displayedPrice = settings.showPrices ? rawDisplayedPrice : null;
 
   const selectedVehicleVariantId = selectedVehicle?.variant.id ?? null;
 
@@ -93,10 +227,62 @@ export function ProductPurchasePanel({
     [cart?.items, product.id, selectedVehicleVariantId],
   );
 
-  const isUnavailable = product.stockStatus === 'OUT_OF_STOCK' || displayedPrice === null;
+  const primarySupportPhone = getFirstNonEmpty(settings.supportPhone, settings.supportMobile);
+  const primarySupportPhoneHref = normalizeTelHref(primarySupportPhone);
+
+  const fallbackSupportHref =
+    getFirstNonEmpty(
+      settings.whatsappUrl,
+      settings.telegramUrl,
+      settings.baleUrl,
+      settings.instagramUrl,
+    ) ?? '/contact';
+
+  const supportHref = primarySupportPhoneHref ?? fallbackSupportHref;
+  const isExternalSupportHref = supportHref.startsWith('http');
+
+  const supportPhoneDisplay = primarySupportPhone;
+
+  const isOrderingAvailable =
+    settings.storeEnabled && settings.orderingEnabled && settings.showPrices;
+
+  const shouldShowSupportCta = !settings.showPrices || rawDisplayedPrice === null;
+
+  const isUnavailable =
+    !isOrderingAvailable || product.stockStatus === 'OUT_OF_STOCK' || rawDisplayedPrice === null;
 
   const canIncrease =
-    cartItem !== null && !isMutating && cartItem.availability.canPurchase && cartItem.quantity < 99;
+    cartItem !== null &&
+    isOrderingAvailable &&
+    !isMutating &&
+    cartItem.availability.canPurchase &&
+    cartItem.quantity < 99;
+
+  function getPurchaseMessage() {
+    if (!settings.storeEnabled) {
+      return 'فروشگاه موقتاً در حال بروزرسانی است.';
+    }
+
+    if (!settings.orderingEnabled) {
+      return 'ثبت سفارش در حال حاضر غیرفعال است.';
+    }
+
+    if (!settings.showPrices) {
+      return 'برای دریافت قیمت این قطعه با پشتیبانی تماس بگیرید.';
+    }
+
+    if (product.stockStatus === 'OUT_OF_STOCK') {
+      return 'این قطعه در حال حاضر موجود نیست.';
+    }
+
+    if (rawDisplayedPrice === null) {
+      return 'قیمت این قطعه نیازمند استعلام است.';
+    }
+
+    return selectedVehicle
+      ? 'خودروی انتخاب‌شده همراه این قطعه در سبد خرید ثبت می‌شود'
+      : 'می‌توانید قطعه را بدون انتخاب خودرو به سبد خرید اضافه کنید';
+  }
 
   async function handleAddToCart() {
     if (isUnavailable) {
@@ -129,7 +315,7 @@ export function ProductPurchasePanel({
   }
 
   async function handleDecreaseOrRemove() {
-    if (!cartItem) {
+    if (!cartItem || !isOrderingAvailable) {
       return;
     }
 
@@ -150,27 +336,11 @@ export function ProductPurchasePanel({
   return (
     <>
       <div className='mt-6 hidden rounded-card border border-border bg-surface-muted p-5 lg:block'>
-        {displayedPrice !== null ? (
-          <>
-            {product.isSaleActive && product.priceToman !== null ? (
-              <div className='flex flex-wrap items-center gap-3'>
-                <span className='numeric text-sm text-foreground-muted line-through'>
-                  {formatPrice(product.priceToman)}
-                </span>
-
-                <span className='rounded-full bg-danger-soft px-2.5 py-1 text-xs font-bold text-danger'>
-                  {toPersianDigits(product.discountPercent)}٪ تخفیف
-                </span>
-              </div>
-            ) : null}
-
-            <p className='numeric mt-2 text-2xl font-extrabold text-foreground'>
-              {formatPrice(displayedPrice)}
-            </p>
-          </>
-        ) : (
-          <p className='text-base font-bold text-foreground'>قیمت نیازمند استعلام است</p>
-        )}
+        <PriceBlock
+          product={product}
+          displayedPrice={displayedPrice}
+          showPrices={settings.showPrices}
+        />
 
         <div className='mt-5 rounded-control border border-border bg-surface p-4'>
           <div className='flex gap-3'>
@@ -208,7 +378,20 @@ export function ProductPurchasePanel({
           </div>
         </div>
 
-        {cartItem ? (
+        {shouldShowSupportCta ? (
+          <>
+            <SupportButton
+              href={supportHref}
+              isExternal={isExternalSupportHref}
+              phoneDisplay={supportPhoneDisplay}
+              className='mt-5'
+            />
+
+            <p className='mt-3 text-center text-xs leading-6 text-foreground-muted'>
+              {getPurchaseMessage()}
+            </p>
+          </>
+        ) : cartItem && isOrderingAvailable ? (
           <>
             <div className='mt-5 rounded-control border border-success/30 bg-success-soft p-4'>
               <div className='flex flex-wrap items-center justify-between gap-4'>
@@ -255,42 +438,22 @@ export function ProductPurchasePanel({
             </Button>
 
             <p className='mt-3 text-center text-xs leading-6 text-foreground-muted'>
-              {product.stockStatus === 'OUT_OF_STOCK'
-                ? 'این قطعه در حال حاضر موجود نیست'
-                : displayedPrice === null
-                  ? 'قیمت این قطعه نیازمند استعلام است'
-                  : selectedVehicle
-                    ? 'خودروی انتخاب‌شده همراه این قطعه در سبد خرید ثبت می‌شود'
-                    : 'می‌توانید قطعه را بدون انتخاب خودرو به سبد خرید اضافه کنید'}
+              {getPurchaseMessage()}
             </p>
           </>
         )}
       </div>
+
       <div className='fixed inset-x-0 bottom-0 z-60 border-t border-border bg-surface/95 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-floating backdrop-blur lg:hidden'>
         <div className='mx-auto w-full max-w-xl'>
           <div className='flex flex-wrap items-center justify-between gap-3'>
             <div className='min-w-0'>
-              {displayedPrice !== null ? (
-                <>
-                  {product.isSaleActive && product.priceToman !== null ? (
-                    <div className='flex flex-wrap items-center gap-3'>
-                      <span className='numeric text-sm text-foreground-muted line-through'>
-                        {formatPrice(product.priceToman)}
-                      </span>
-
-                      <span className='rounded-full bg-danger-soft px-2.5 py-1 text-xs font-bold text-danger'>
-                        {toPersianDigits(product.discountPercent)}٪
-                      </span>
-                    </div>
-                  ) : null}
-
-                  <p className='numeric mt-0.5 text-base font-extrabold text-foreground'>
-                    {formatPrice(displayedPrice)}
-                  </p>
-                </>
-              ) : (
-                <p className='text-sm font-bold text-foreground'>قیمت نیازمند استعلام است</p>
-              )}
+              <PriceBlock
+                product={product}
+                displayedPrice={displayedPrice}
+                showPrices={settings.showPrices}
+                compact
+              />
             </div>
 
             <button
@@ -310,7 +473,14 @@ export function ProductPurchasePanel({
             </button>
           </div>
 
-          {cartItem ? (
+          {shouldShowSupportCta ? (
+            <SupportButton
+              href={supportHref}
+              isExternal={isExternalSupportHref}
+              phoneDisplay={supportPhoneDisplay}
+              className='mt-3'
+            />
+          ) : cartItem && isOrderingAvailable ? (
             <div className='mt-3 flex items-center gap-3'>
               <CartQuantityControl
                 quantity={cartItem.quantity}

@@ -34,7 +34,6 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toPersianDigits } from '@/lib/utils/digits';
-import { formatPrice } from '@/lib/utils/price';
 import {
   StorefrontProductsFilterBar,
   type StorefrontProductsFilterDraft,
@@ -42,6 +41,7 @@ import {
 import { cn } from '@/lib/utils/cn';
 import { StorefrontVehicleCompatibilityFilter } from '../vehicles/storefront-vehicle-compatibility-filter';
 import { readStorefrontVehicleSelection } from '@/lib/storefront/vehicles/vehicle-selection-storage';
+import { ProductCardPrice } from './product-card-price';
 
 const PRODUCTS_PAGE_SIZE = 24;
 
@@ -158,8 +158,6 @@ function ProductCard({
 }) {
   const primaryImage = product.images[0] ?? null;
 
-  const displayedPrice = product.effectivePriceToman ?? product.priceToman;
-
   const hasActiveSale =
     product.isSaleActive && product.priceToman !== null && product.effectivePriceToman !== null;
 
@@ -203,23 +201,7 @@ function ProductCard({
         )}
 
         <div className='mt-4 flex flex-1 flex-col border-t border-border pt-4'>
-          {displayedPrice !== null ? (
-            <>
-              <p className='numeric mt-1 text-lg font-extrabold text-foreground'>
-                {formatPrice(displayedPrice)}
-              </p>
-
-              {hasActiveSale && product.priceToman !== null ? (
-                <p className='numeric text-xs text-foreground-muted line-through'>
-                  {formatPrice(product.priceToman)}
-                </p>
-              ) : null}
-            </>
-          ) : (
-            <p className='text-sm font-semibold text-foreground-secondary'>
-              قیمت نیازمند استعلام است
-            </p>
-          )}
+          <ProductCardPrice product={product} variant='product-list' showOriginalPrice={false} />
 
           <Link
             href={buildProductHref(product.slug, vehicleContext)}

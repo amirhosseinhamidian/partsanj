@@ -7,13 +7,14 @@ import { ClientApiError } from '@/lib/api/web-client';
 import { ProductsTable } from '@/components/admin/catalog/products/products-table';
 import { Button } from '@/components/ui/button';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, RefreshCw } from 'lucide-react';
+import { PackageSearch, Plus, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { AdminProductsListResponse } from '@/lib/admin/catalog/product.types';
 import {
   ProductsFilterBar,
   type ProductFiltersDraft,
 } from '@/components/admin/catalog/products/products-filter-bar';
+import { PageHeader } from '@/components/ui/page-header';
 
 const PAGE_SIZE = 24;
 
@@ -189,25 +190,13 @@ export function ProductsPageClient() {
 
   return (
     <div className='space-y-6'>
-      <section className='flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-start sm:justify-between'>
-        <div>
-          <p className='text-sm font-semibold text-brand'>مدیریت کاتالوگ</p>
-
-          <h1 className='type-page-title mt-1 text-foreground'>محصولات</h1>
-
-          <p className='type-body mt-2 text-foreground-secondary'>
-            اطلاعات فنی، قیمت، وضعیت موجودی و نمایش محصولات را مدیریت کنید
-          </p>
-        </div>
-
-        <Button
-          type='button'
-          iconStart={<Plus />}
-          onClick={() => router.push('/admin/catalog/products/new')}
-        >
-          افزودن محصول
-        </Button>
-      </section>
+      <PageHeader
+        title='محصولات'
+        description='اطلاعات فنی، قیمت، وضعیت موجودی و نمایش محصولات را مدیریت کنید'
+        icon={<PackageSearch className='size-5 lg:size-8' />}
+        addButtonLabel='افزودن محصول'
+        onAddClick={() => router.push('/admin/catalog/products/new')}
+      />
 
       {loadError ? (
         <div

@@ -39,9 +39,11 @@ import type {
 import { useStorefrontCart } from '@/components/storefront/cart/storefront-cart-provider';
 import { ProductPurchasePanel } from '@/components/storefront/catalog/product-purchase-panel';
 import { toPersianDigits } from '@/lib/utils/digits';
+import type { StorefrontSiteSettings } from '@/lib/storefront/settings/site-settings.types';
 
 type StorefrontProductDetailPageClientProps = {
   slug: string;
+  settings: StorefrontSiteSettings;
 };
 
 type VehicleSelectionContext = {
@@ -391,6 +393,7 @@ function ProductCompatibilityStatus({
 
 export function StorefrontProductDetailPageClient({
   slug,
+  settings,
 }: StorefrontProductDetailPageClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -682,6 +685,7 @@ export function StorefrontProductDetailPageClient({
             product={product}
             selectedVehicle={selectedVehicle}
             onSelectVehicle={() => setIsCompatibilityDialogOpen(true)}
+            settings={settings}
           />
         </section>
       </div>

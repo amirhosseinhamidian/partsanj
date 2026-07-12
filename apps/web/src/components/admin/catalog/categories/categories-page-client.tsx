@@ -12,12 +12,13 @@ import { DeleteCategoryDialog } from '@/components/admin/catalog/categories/dele
 import { CategoriesTable } from '@/components/admin/catalog/categories/categories-table';
 import { Button } from '@/components/ui/button';
 import type { DataTableSort } from '@/components/ui/data-table';
-import { Plus, RefreshCw } from 'lucide-react';
+import { FolderTree, Plus, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   CategoriesFilterBar,
   type CategoryFiltersDraft,
 } from '@/components/admin/catalog/categories/categories-filter-bar';
+import { PageHeader } from '@/components/ui/page-header';
 
 const PAGE_SIZE = 10;
 const EMPTY_CATEGORY_FILTERS: CategoryFiltersDraft = {
@@ -246,21 +247,13 @@ export function CategoriesPageClient() {
   return (
     <div className='space-y-6'>
       {/* این بخش را بعداً با API واقعی PageHeader خودت جایگزین کن */}
-      <section className='flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-start sm:justify-between'>
-        <div>
-          <p className='text-sm font-semibold text-brand'>مدیریت کاتالوگ</p>
-
-          <h1 className='type-page-title mt-1 text-foreground'>دسته‌بندی‌ها</h1>
-
-          <p className='type-body mt-2 text-foreground-secondary'>
-            ساختار دسته‌بندی قطعات و ترتیب نمایش آن‌ها را مدیریت کنید
-          </p>
-        </div>
-
-        <Button iconStart={<Plus />} onClick={openCreateSheet}>
-          افزودن دسته‌بندی
-        </Button>
-      </section>
+      <PageHeader
+        title='دسته‌بندی‌ها'
+        description='ساختار دسته‌بندی قطعات و ترتیب نمایش آن‌ها را مدیریت کنید'
+        icon={<FolderTree className='size-5 lg:size-8' />}
+        addButtonLabel='افزودن دسته‌بندی'
+        onAddClick={openCreateSheet}
+      />
 
       {loadError ? (
         <div

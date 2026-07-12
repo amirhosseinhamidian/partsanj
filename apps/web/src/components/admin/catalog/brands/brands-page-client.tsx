@@ -11,12 +11,13 @@ import { BrandFormSheet } from '@/components/admin/catalog/brands/brand-form-she
 import { BrandsTable } from '@/components/admin/catalog/brands/brands-table';
 import { Button } from '@/components/ui/button';
 import type { DataTableSort } from '@/components/ui/data-table';
-import { Plus, RefreshCw } from 'lucide-react';
+import { BadgeCheck, Plus, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   BrandsFilterBar,
   type BrandFiltersDraft,
 } from '@/components/admin/catalog/brands/brands-filter-bar';
+import { PageHeader } from '@/components/ui/page-header';
 
 const PAGE_SIZE = 10;
 
@@ -214,21 +215,13 @@ export function BrandsPageClient() {
 
   return (
     <div className='space-y-6'>
-      <section className='flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-start sm:justify-between'>
-        <div>
-          <p className='text-sm font-semibold text-brand'>مدیریت کاتالوگ</p>
-
-          <h1 className='type-page-title mt-1 text-foreground'>برندها</h1>
-
-          <p className='type-body mt-2 text-foreground-secondary'>
-            برندهای قطعات را برای استفاده در محصولات، فیلترها و صفحات کاتالوگ مدیریت کنید
-          </p>
-        </div>
-
-        <Button iconStart={<Plus />} onClick={openCreateSheet}>
-          افزودن برند
-        </Button>
-      </section>
+      <PageHeader
+        title='برندها'
+        description='برندهای قطعات را برای استفاده در محصولات، فیلترها و صفحات کاتالوگ مدیریت کنید'
+        icon={<BadgeCheck className='size-5 lg:size-8' />}
+        addButtonLabel='افزودن برند'
+        onAddClick={openCreateSheet}
+      />
 
       {loadError ? (
         <div

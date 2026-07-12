@@ -16,6 +16,7 @@ import {
 import { AdminBlogCategoriesTable } from './admin-blog-categories-table';
 import { toPersianDigits } from '@/lib/utils/digits';
 import { AdminBlogCategoryFormSheet } from './admin-blog-category-form-sheet';
+import { PageHeader } from '@/components/ui/page-header';
 
 const BLOG_CATEGORIES_PAGE_SIZE = 20;
 
@@ -186,29 +187,13 @@ export function AdminBlogCategoriesPageClient() {
   return (
     <>
       <main className='space-y-6'>
-        <header className='flex flex-wrap items-start justify-between gap-4'>
-          <div className='flex items-start gap-3'>
-            <span className='grid size-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand'>
-              <FolderTree className='size-5' />
-            </span>
-
-            <div>
-              <h1 className='text-xl font-extrabold text-foreground'>دسته‌بندی‌های بلاگ</h1>
-
-              <p className='mt-1 text-sm text-foreground-secondary'>
-                ساختار موضوعی مقالات، صفحات دسته‌بندی و تنظیمات SEO بلاگ را مدیریت کنید
-              </p>
-            </div>
-          </div>
-
-          <Button
-            type='button'
-            iconStart={<Plus className='size-4' />}
-            onClick={handleCreateCategory}
-          >
-            دسته‌بندی جدید
-          </Button>
-        </header>
+        <PageHeader
+          title='دسته‌بندی‌های بلاگ'
+          description='ساختار موضوعی مقالات، صفحات دسته‌بندی و تنظیمات SEO بلاگ را مدیریت کنید'
+          icon={<FolderTree />}
+          addButtonLabel='دسته‌بندی جدید'
+          onAddClick={handleCreateCategory}
+        />
 
         <AdminBlogCategoriesFilterBar
           draft={draftFilters}

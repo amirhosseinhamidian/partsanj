@@ -18,6 +18,7 @@ import {
 } from './admin-blog-posts-filter-bar';
 import { AdminBlogPostsTable } from './admin-blog-posts-table';
 import { isAdminBlogPostStatus } from '@/lib/admin/blog/posts/admin-blog-post.types';
+import { PageHeader } from '@/components/ui/page-header';
 
 const BLOG_POSTS_PAGE_SIZE = 20;
 const BLOG_CATEGORY_OPTIONS_LIMIT = 100;
@@ -194,30 +195,15 @@ export function AdminBlogPostsPageClient() {
 
   return (
     <main className='space-y-6'>
-      <header className='flex flex-wrap items-start justify-between gap-4'>
-        <div className='flex items-start gap-3'>
-          <span className='grid size-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand'>
-            <BookOpenText className='size-5' />
-          </span>
-
-          <div>
-            <h1 className='text-xl font-extrabold text-foreground'>مقالات بلاگ</h1>
-
-            <p className='mt-1 text-sm text-foreground-secondary'>
-              فهرست، وضعیت انتشار و تنظیمات محتوایی مقالات بلاگ را مدیریت کنید
-            </p>
-          </div>
-        </div>
-        <Button
-          type='button'
-          iconStart={<Plus className='size-4' />}
-          onClick={() => {
-            router.push('/admin/blog/posts/new');
-          }}
-        >
-          مقاله جدید
-        </Button>
-      </header>
+      <PageHeader
+        title='مقالات بلاگ'
+        description='فهرست، وضعیت انتشار و تنظیمات محتوایی مقالات بلاگ را مدیریت کنید'
+        leading={<BookOpenText className='size-5 lg:size-8' />}
+        addButtonLabel='مقاله جدید'
+        onAddClick={() => {
+          router.push('/admin/blog/posts/new');
+        }}
+      />
 
       <AdminBlogPostsFilterBar
         draft={draftFilters}

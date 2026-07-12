@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { StorefrontProductDetailPageClient } from '@/components/storefront/catalog/storefront-product-detail-page-client';
 import { publicNestApi } from '@/lib/server/public-nest-api';
 import type { StorefrontProductResponse } from '@/lib/storefront/catalog/catalog.types';
+import { getStorefrontSiteSettings } from '@/lib/storefront/settings/site-settings.server';
 
 type ProductDetailPageProps = {
   params: Promise<{
@@ -88,6 +89,7 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
 
 export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
   const { slug } = await params;
+  const settings = await getStorefrontSiteSettings();
 
-  return <StorefrontProductDetailPageClient slug={slug} />;
+  return <StorefrontProductDetailPageClient slug={slug} settings={settings} />;
 }

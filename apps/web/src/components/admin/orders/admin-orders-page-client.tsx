@@ -21,6 +21,7 @@ import {
   AdminOrdersFilterBar,
   type OrderFiltersDraft,
 } from '@/components/admin/orders/admin-orders-filter-bar';
+import { PageHeader } from '@/components/ui/page-header';
 
 type UrlPatch = Partial<
   Record<
@@ -191,31 +192,23 @@ export function AdminOrdersPageClient() {
 
   return (
     <div className='mx-auto w-full max-w-[1600px] space-y-6 px-4 py-6 sm:px-6 lg:px-8'>
-      <header className='flex flex-col justify-between gap-4 lg:flex-row lg:items-end'>
-        <div>
-          <div className='flex items-center gap-2 text-brand'>
-            <ClipboardList className='size-5' />
-            <span className='text-sm font-bold'>مدیریت عملیات فروش</span>
-          </div>
-
-          <h1 className='mt-2 text-2xl font-extrabold text-foreground'>سفارش‌ها</h1>
-
-          <p className='mt-2 max-w-2xl text-sm leading-7 text-foreground-secondary'>
-            وضعیت سفارش، پرداخت، ارسال و پیگیری مشتریان را از این بخش مدیریت کنید
-          </p>
-        </div>
-
-        <Button
-          type='button'
-          variant='outline'
-          iconStart={<RefreshCw className='size-4' />}
-          isLoading={isLoading}
-          loadingLabel='در حال به‌روزرسانی'
-          onClick={() => void loadOrders()}
-        >
-          به‌روزرسانی
-        </Button>
-      </header>
+      <PageHeader
+        title='سفارش‌ها'
+        description='وضعیت سفارش، پرداخت، ارسال و پیگیری مشتریان را از این بخش مدیریت کنید'
+        icon={<ClipboardList className='size-5 lg:size-8' />}
+        actions={
+          <Button
+            type='button'
+            variant='outline'
+            iconStart={<RefreshCw className='size-4' />}
+            isLoading={isLoading}
+            loadingLabel='در حال به‌روزرسانی'
+            onClick={() => void loadOrders()}
+          >
+            به‌روزرسانی
+          </Button>
+        }
+      />
 
       <AdminOrdersFilterBar
         draft={draft}

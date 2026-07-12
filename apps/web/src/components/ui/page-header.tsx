@@ -1,5 +1,7 @@
 import { cn } from '@/lib/utils/cn';
+import { Plus } from 'lucide-react';
 import type { HTMLAttributes, ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
 
 const pageHeaderVariantClasses = {
   plain: 'py-1',
@@ -12,8 +14,22 @@ export type PageHeaderProps = Omit<HTMLAttributes<HTMLElement>, 'title' | 'child
   title: ReactNode;
   description?: ReactNode;
   breadcrumbs?: ReactNode;
+
+  /**
+   * Custom actions beside add button
+   */
   actions?: ReactNode;
-  leading?: ReactNode;
+
+  /**
+   * Header icon
+   */
+  icon?: ReactNode;
+
+  /**
+   * Add button
+   */
+  addButtonLabel?: string;
+  onAddClick?: () => void;
 
   variant?: PageHeaderVariant;
 
@@ -26,59 +42,62 @@ export function PageHeader({
   description,
   breadcrumbs,
   actions,
-  leading,
+  icon,
+  addButtonLabel,
+  onAddClick,
   variant = 'plain',
   titleClassName,
   descriptionClassName,
   className,
   ...props
 }: PageHeaderProps) {
+  const showAddButton = addButtonLabel && onAddClick;
+
   return (
     <header
       {...props}
       className={cn(
-        'flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between',
+        'flex flex-wrap items-start justify-between gap-4',
         pageHeaderVariantClasses[variant],
         className,
       )}
     >
-      <div className='min-w-0 flex-1'>
-        {breadcrumbs ? (
-          <div className='mb-3 text-xs text-foreground-muted'>{breadcrumbs}</div>
+      <div className='flex min-w-0 items-start gap-3'>
+        {icon ? (
+          <span
+            aria-hidden='true'
+            className='grid size-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand lg:size-16'
+          >
+            {icon}
+          </span>
         ) : null}
 
-        <div className='flex min-w-0 items-start gap-3'>
-          {leading ? (
-            <div
-              aria-hidden='true'
-              className='grid size-11 shrink-0 place-items-center rounded-control border border-brand/20 bg-brand-soft text-brand [&>svg]:size-5'
-            >
-              {leading}
-            </div>
+        <div className='min-w-0'>
+          {breadcrumbs ? (
+            <div className='mb-2 text-xs text-foreground-muted'>{breadcrumbs}</div>
           ) : null}
 
-          <div className='min-w-0'>
-            <h1 className={cn('type-page-title text-foreground', titleClassName)}>{title}</h1>
+          <h1 className={cn('text-xl font-extrabold text-foreground lg:text-3xl', titleClassName)}>
+            {title}
+          </h1>
 
-            {description ? (
-              <div
-                className={cn(
-                  'type-body mt-2 max-w-3xl text-foreground-secondary',
-                  descriptionClassName,
-                )}
-              >
-                {description}
-              </div>
-            ) : null}
-          </div>
+          {description ? (
+            <p className={cn('mt-1 text-sm text-foreground-secondary', descriptionClassName)}>
+              {description}
+            </p>
+          ) : null}
         </div>
       </div>
 
-      {actions ? (
-        <div className='flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end'>
-          {actions}
-        </div>
-      ) : null}
+      <div className='flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end'>
+        {actions}
+
+        {showAddButton ? (
+          <Button type='button' iconStart={<Plus className='size-4' />} onClick={onAddClick}>
+            {addButtonLabel}
+          </Button>
+        ) : null}
+      </div>
     </header>
   );
 }

@@ -33,6 +33,7 @@ import { Eye, History, RefreshCw, TriangleAlert } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AdminAuditLogDetailsSheet } from './admin-audit-log-details-sheet';
 import { toPersianDigits } from '@/lib/utils/digits';
+import { PageHeader } from '@/components/ui/page-header';
 
 const PAGE_SIZE = 25;
 
@@ -284,27 +285,22 @@ export function AdminAuditLogsPageClient() {
   return (
     <>
       <div className='space-y-6'>
-        <section className='flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-start sm:justify-between'>
-          <div>
-            <p className='text-sm font-semibold text-brand'>نظارت مدیریتی</p>
-
-            <h1 className='type-page-title mt-1 text-foreground'>گزارش تغییرات</h1>
-
-            <p className='type-body mt-2 text-foreground-secondary'>
-              تاریخچه تغییرات محصولات، برندها، دسته‌بندی‌ها و اطلاعات خودرو را بررسی کنید
-            </p>
-          </div>
-
-          <Button
-            type='button'
-            variant='outline'
-            iconStart={<RefreshCw />}
-            disabled={isLoading}
-            onClick={() => void loadAuditLogs()}
-          >
-            بروزرسانی
-          </Button>
-        </section>
+        <PageHeader
+          title='گزارش تغییرات'
+          description='تاریخچه تغییرات محصولات، برندها، دسته‌بندی‌ها و اطلاعات خودرو را بررسی کنید'
+          icon={<History className='size-5 lg:size-8' />}
+          actions={
+            <Button
+              type='button'
+              variant='outline'
+              iconStart={<RefreshCw />}
+              disabled={isLoading}
+              onClick={() => void loadAuditLogs()}
+            >
+              بروزرسانی
+            </Button>
+          }
+        />
 
         {loadError ? (
           <div

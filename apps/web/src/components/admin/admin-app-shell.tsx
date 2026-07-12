@@ -128,8 +128,7 @@ const navigation: AdminNavigationGroup[] = [
       {
         label: 'تنظیمات',
         icon: Settings2,
-        disabled: true,
-        badge: 'به‌زودی',
+        href: '/admin/settings',
       },
     ],
   },

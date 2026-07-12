@@ -71,6 +71,7 @@ enum AdminAuditEntityType {
   USER
   BLOG_CATEGORY
   BLOG_POST
+  SITE_SETTING
 }
 
 enum AdminAuditAction {
@@ -738,4 +739,40 @@ model BlogPost {
   @@index([status, publishedAt])
   @@index([categoryId, status, publishedAt])
   @@index([authorUserId, createdAt])
+}
+
+model SiteSetting {
+  id String @id @default("site")
+
+  siteName    String  @default("پارت‌سنج") @db.VarChar(100)
+  siteTagline String? @db.VarChar(200)
+  siteBaseUrl String  @default("https://partsanj.com") @db.VarChar(2048)
+
+  logoLightUrl String? @db.VarChar(2048)
+  logoDarkUrl  String? @db.VarChar(2048)
+  faviconUrl   String? @db.VarChar(2048)
+
+  supportPhone  String? @db.VarChar(50)
+  supportMobile String? @db.VarChar(50)
+
+  whatsappUrl  String? @db.VarChar(2048)
+  telegramUrl  String? @db.VarChar(2048)
+  baleUrl      String? @db.VarChar(2048)
+  instagramUrl String? @db.VarChar(2048)
+
+  defaultSeoTitle       String? @db.VarChar(120)
+  defaultSeoDescription String? @db.VarChar(320)
+  defaultOgImageUrl     String? @db.VarChar(2048)
+  noIndexSite           Boolean @default(false)
+
+  storeEnabled   Boolean @default(true)
+  orderingEnabled Boolean @default(true)
+  showPrices      Boolean @default(true)
+
+  defaultShippingCostToman  Int?
+  freeShippingThresholdToman Int?
+  orderExpirationMinutes     Int @default(30)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

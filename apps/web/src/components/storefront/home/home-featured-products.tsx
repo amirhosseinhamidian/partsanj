@@ -2,12 +2,12 @@
 
 import { useRef } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, ShoppingCart } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import type { StorefrontProductListItem } from '@/lib/storefront/catalog/catalog.types';
 import { cn } from '@/lib/utils/cn';
-import { formatPrice } from '@/lib/utils/price';
 import { Button } from '@/components/ui/button';
+import { ProductCardPrice } from '../catalog/product-card-price';
 
 type HomeFeaturedProductsProps = {
   products?: StorefrontProductListItem[];
@@ -93,7 +93,6 @@ export function HomeFeaturedProducts({ products = [], className }: HomeFeaturedP
 
 function FeaturedProductCard({ product }: { product: StorefrontProductListItem }) {
   const primaryImage = product.images?.[0] ?? null;
-  const displayedPrice = product.effectivePriceToman ?? product.priceToman;
   const metaLines = getProductMetaLines(product);
 
   return (
@@ -133,25 +132,23 @@ function FeaturedProductCard({ product }: { product: StorefrontProductListItem }
           </ul>
 
           <div className='mt-auto'>
-            {displayedPrice !== null ? (
-              <p className='font-extrabold text-orange-500'>{formatPrice(displayedPrice)}</p>
-            ) : (
-              <p className='text-xs font-bold text-orange-500'>استعلام قیمت</p>
-            )}
+            <ProductCardPrice product={product} variant='home-row' />
           </div>
         </div>
       </div>
 
       <div className='px-7 pb-3'>
-        <Button
-          size='sm'
-          fullWidth
-          type='button'
-          variant='outline'
-          iconEnd={<ChevronLeft className='h-4 w-4' />}
-        >
-          مشاهده جزییات قطعه
-        </Button>
+        <Link href={`/products/${encodeURIComponent(product.slug)}`}>
+          <Button
+            size='sm'
+            fullWidth
+            type='button'
+            variant='outline'
+            iconEnd={<ChevronLeft className='h-4 w-4' />}
+          >
+            مشاهده جزییات قطعه
+          </Button>
+        </Link>
       </div>
     </article>
   );
