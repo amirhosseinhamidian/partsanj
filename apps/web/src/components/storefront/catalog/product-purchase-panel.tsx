@@ -55,7 +55,7 @@ function CartQuantityControl({
 
       <output
         aria-live='polite'
-        className='numeric grid min-w-10 place-items-center text-sm font-extrabold text-foreground'
+        className='numeric grid min-w-10 place-items-center text-base font-extrabold text-foreground sm:text-lg'
       >
         {toPersianDigits(quantity)}
       </output>
@@ -249,14 +249,19 @@ export function ProductPurchasePanel({
   const shouldShowSupportCta = !settings.showPrices || rawDisplayedPrice === null;
 
   const isUnavailable =
-    !isOrderingAvailable || product.stockStatus === 'OUT_OF_STOCK' || rawDisplayedPrice === null;
+    product.stockStatus !== 'IN_STOCK' || product.stockQuantity <= 0 || displayedPrice === null;
 
   const canIncrease =
     cartItem !== null &&
-    isOrderingAvailable &&
     !isMutating &&
     cartItem.availability.canPurchase &&
-    cartItem.quantity < 99;
+    cartItem.quantity < cartItem.availability.maxOrderQuantity;
+
+  const hasReachedMaximumQuantity =
+    cartItem !== null &&
+    cartItem.availability.canPurchase &&
+    cartItem.availability.maxOrderQuantity > 0 &&
+    cartItem.quantity === cartItem.availability.maxOrderQuantity;
 
   function getPurchaseMessage() {
     if (!settings.storeEnabled) {
@@ -271,7 +276,11 @@ export function ProductPurchasePanel({
       return 'برای دریافت قیمت این قطعه با پشتیبانی تماس بگیرید.';
     }
 
-    if (product.stockStatus === 'OUT_OF_STOCK') {
+    if (product.stockStatus === 'CHECK_AVAILABILITY') {
+      return 'موجودی این قطعه نیازمند استعلام است.';
+    }
+
+    if (product.stockStatus === 'OUT_OF_STOCK' || product.stockQuantity <= 0) {
       return 'این قطعه در حال حاضر موجود نیست.';
     }
 
@@ -280,8 +289,8 @@ export function ProductPurchasePanel({
     }
 
     return selectedVehicle
-      ? 'خودروی انتخاب‌شده همراه این قطعه در سبد خرید ثبت می‌شود'
-      : 'می‌توانید قطعه را بدون انتخاب خودرو به سبد خرید اضافه کنید';
+      ? 'خودروی انتخاب‌شده همراه این قطعه در سبد خرید ثبت می‌شود.'
+      : 'می‌توانید قطعه را بدون انتخاب خودرو به سبد خرید اضافه کنید.';
   }
 
   async function handleAddToCart() {
@@ -411,6 +420,16 @@ export function ProductPurchasePanel({
                   onIncrease={() => void handleIncreaseQuantity()}
                 />
               </div>
+
+              {hasReachedMaximumQuantity ? (
+                <p
+                  role='status'
+                  aria-live='polite'
+                  className='mt-3 border-t border-success/20 pt-3 text-center text-xs font-bold text-success'
+                >
+                  حداکثر تعداد موجودی این محصول را انتخاب کرده‌اید.
+                </p>
+              ) : null}
             </div>
 
             <Link
@@ -481,22 +500,35 @@ export function ProductPurchasePanel({
               className='mt-3'
             />
           ) : cartItem && isOrderingAvailable ? (
-            <div className='mt-3 flex items-center gap-3'>
-              <CartQuantityControl
-                quantity={cartItem.quantity}
-                isMutating={isMutating}
-                canIncrease={canIncrease}
-                onDecreaseOrRemove={() => void handleDecreaseOrRemove()}
-                onIncrease={() => void handleIncreaseQuantity()}
-              />
+            <div className='mt-3'>
+              <div className='flex items-center gap-3'>
+                <CartQuantityControl
+                  quantity={cartItem.quantity}
+                  isMutating={isMutating}
+                  canIncrease={canIncrease}
+                  onDecreaseOrRemove={() => void handleDecreaseOrRemove()}
+                  onIncrease={() => void handleIncreaseQuantity()}
+                />
 
-              <Link
-                href='/cart'
-                className='inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-control bg-brand px-3 text-sm font-bold text-brand-foreground transition-opacity hover:opacity-90'
-              >
-                <ShoppingCart className='size-4 shrink-0' />
-                <span className='truncate'>مشاهده سبد خرید</span>
-              </Link>
+                <Link
+                  href='/cart'
+                  className='inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-control bg-brand px-3 text-sm font-bold text-brand-foreground transition-opacity hover:opacity-90'
+                >
+                  <ShoppingCart className='size-4 shrink-0' />
+
+                  <span className='truncate'>مشاهده سبد خرید</span>
+                </Link>
+              </div>
+
+              {hasReachedMaximumQuantity ? (
+                <p
+                  role='status'
+                  aria-live='polite'
+                  className='mt-2 text-center text-xs font-bold text-warning'
+                >
+                  حداکثر تعداد موجودی این محصول را انتخاب کرده‌اید.
+                </p>
+              ) : null}
             </div>
           ) : (
             <Button

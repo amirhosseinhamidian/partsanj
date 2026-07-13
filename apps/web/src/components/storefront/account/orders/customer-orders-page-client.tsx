@@ -1,5 +1,6 @@
 'use client';
 
+import { CustomerOrderReservationNotice } from '@/components/storefront/account/orders/customer-order-reservation-notice';
 import {
   CustomerOrderStatusBadge,
   CustomerPaymentStatusBadge,
@@ -15,12 +16,68 @@ import {
 import type {
   CustomerOrderListItem,
   CustomerOrdersListResponse,
+  CustomerOrderStatusCounts,
+  CustomerOrderStatusFilter,
 } from '@/lib/storefront/customer/orders/customer-order.types';
 import { ChevronLeft, CircleAlert, ImageOff, PackageOpen, RefreshCw, Truck } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const PAGE_SIZE = 10;
+
+const EMPTY_STATUS_COUNTS: CustomerOrderStatusCounts = {
+  ALL: 0,
+  PENDING_PAYMENT: 0,
+  PROCESSING: 0,
+  SHIPPED: 0,
+  DELIVERED: 0,
+  CANCELLED: 0,
+};
+
+const ORDER_STATUS_TABS: Array<{
+  value: CustomerOrderStatusFilter;
+  label: string;
+  emptyTitle: string;
+  emptyDescription: string;
+}> = [
+  {
+    value: 'ALL',
+    label: 'همه',
+    emptyTitle: 'هنوز سفارشی ثبت نکرده‌اید',
+    emptyDescription:
+      'بعد از ثبت اولین سفارش، وضعیت پرداخت و ارسال آن در این بخش نمایش داده می‌شود',
+  },
+  {
+    value: 'PENDING_PAYMENT',
+    label: 'منتظر پرداخت',
+    emptyTitle: 'سفارش منتظر پرداختی ندارید',
+    emptyDescription: 'سفارش‌هایی که هنوز پرداخت نشده‌اند در این تب نمایش داده می‌شوند',
+  },
+  {
+    value: 'PROCESSING',
+    label: 'در حال پردازش',
+    emptyTitle: 'سفارشی در حال پردازش نیست',
+    emptyDescription: 'سفارش‌های در حال آماده‌سازی در این تب نمایش داده می‌شوند',
+  },
+  {
+    value: 'SHIPPED',
+    label: 'ارسال‌شده',
+    emptyTitle: 'سفارش ارسال‌شده‌ای ندارید',
+    emptyDescription: 'سفارش‌های تحویل‌شده به شرکت حمل‌ونقل در این تب قرار می‌گیرند',
+  },
+  {
+    value: 'DELIVERED',
+    label: 'تحویل‌شده',
+    emptyTitle: 'سفارش تحویل‌شده‌ای ندارید',
+    emptyDescription: 'سفارش‌هایی که به شما تحویل شده‌اند در این تب نمایش داده می‌شوند',
+  },
+  {
+    value: 'CANCELLED',
+    label: 'لغوشده',
+    emptyTitle: 'سفارش لغوشده‌ای ندارید',
+    emptyDescription: 'سفارش‌های لغوشده یا منقضی‌شده در این تب نمایش داده می‌شوند',
+  },
+];
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message.trim()) {
@@ -82,7 +139,68 @@ function ProductPreview({ order }: { order: CustomerOrderListItem }) {
   );
 }
 
-function CustomerOrderCard({ order }: { order: CustomerOrderListItem }) {
+function CustomerOrdersStatusTabs({
+  activeStatus,
+  counts,
+  disabled,
+  onStatusChange,
+}: {
+  activeStatus: CustomerOrderStatusFilter;
+  counts: CustomerOrderStatusCounts;
+  disabled: boolean;
+  onStatusChange: (status: CustomerOrderStatusFilter) => void;
+}) {
+  return (
+    <div className='[scrollbar-width:none] overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden'>
+      <div
+        role='tablist'
+        aria-label='فیلتر سفارش‌ها بر اساس وضعیت'
+        className='flex min-w-max items-center gap-2 rounded-card border border-border bg-surface p-2'
+      >
+        {ORDER_STATUS_TABS.map((tab) => {
+          const isActive = tab.value === activeStatus;
+
+          return (
+            <button
+              key={tab.value}
+              type='button'
+              role='tab'
+              aria-selected={isActive}
+              disabled={disabled && !isActive}
+              onClick={() => onStatusChange(tab.value)}
+              className={[
+                'inline-flex h-10 items-center gap-2 rounded-control px-4 text-sm font-bold whitespace-nowrap transition-colors',
+                'focus:ring-2 focus:ring-brand/30 focus:outline-none disabled:cursor-wait disabled:opacity-60',
+                isActive
+                  ? 'bg-brand text-white shadow-sm'
+                  : 'text-foreground-secondary hover:bg-brand-soft hover:text-brand',
+              ].join(' ')}
+            >
+              <span>{tab.label}</span>
+
+              <span
+                className={[
+                  'numeric grid min-w-6 place-items-center rounded-full px-1.5 py-0.5 text-xs font-extrabold',
+                  isActive ? 'bg-white/20 text-white' : 'bg-surface-muted text-foreground-muted',
+                ].join(' ')}
+              >
+                {new Intl.NumberFormat('fa-IR').format(counts[tab.value])}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CustomerOrderCard({
+  order,
+  onReservationExpired,
+}: {
+  order: CustomerOrderListItem;
+  onReservationExpired: () => void;
+}) {
   const shippingSummary = [
     order.shippingCarrier,
     order.trackingCode ? `کد رهگیری: ${order.trackingCode}` : null,
@@ -117,6 +235,13 @@ function CustomerOrderCard({ order }: { order: CustomerOrderListItem }) {
           </p>
         </div>
       </div>
+
+      <CustomerOrderReservationNotice
+        order={order}
+        compact
+        className='mt-4'
+        onExpired={onReservationExpired}
+      />
 
       <div className='py-5'>
         <ProductPreview order={order} />
@@ -215,8 +340,12 @@ export function CustomerOrdersPageClient() {
   const [result, setResult] = useState<CustomerOrdersListResponse | null>(null);
 
   const [page, setPage] = useState(1);
+  const [activeStatus, setActiveStatus] = useState<CustomerOrderStatusFilter>('ALL');
+  const [statusCounts, setStatusCounts] = useState<CustomerOrderStatusCounts>(EMPTY_STATUS_COUNTS);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const expirationRefreshTimeoutRef = useRef<number | null>(null);
 
   const loadOrders = useCallback(async () => {
     setIsLoading(true);
@@ -226,9 +355,11 @@ export function CustomerOrdersPageClient() {
       const response = await storefrontCustomerOrderApi.list({
         page,
         limit: PAGE_SIZE,
+        status: activeStatus,
       });
 
       setResult(response);
+      setStatusCounts(response.statusCounts);
     } catch (error) {
       if (error instanceof ClientApiError && (error.status === 401 || error.status === 403)) {
         window.location.assign('/login');
@@ -239,14 +370,49 @@ export function CustomerOrdersPageClient() {
     } finally {
       setIsLoading(false);
     }
-  }, [page]);
+  }, [activeStatus, page]);
+
+  const handleStatusChange = useCallback(
+    (status: CustomerOrderStatusFilter) => {
+      if (status === activeStatus) {
+        return;
+      }
+
+      setActiveStatus(status);
+      setPage(1);
+      setResult(null);
+      setLoadError(null);
+    },
+    [activeStatus],
+  );
+
+  const handleReservationExpired = useCallback(() => {
+    if (expirationRefreshTimeoutRef.current !== null) {
+      return;
+    }
+
+    expirationRefreshTimeoutRef.current = window.setTimeout(() => {
+      expirationRefreshTimeoutRef.current = null;
+      void loadOrders();
+    }, 1500);
+  }, [loadOrders]);
 
   useEffect(() => {
     void loadOrders();
   }, [loadOrders]);
 
+  useEffect(() => {
+    return () => {
+      if (expirationRefreshTimeoutRef.current !== null) {
+        window.clearTimeout(expirationRefreshTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const orders = result?.data ?? [];
   const meta = result?.meta;
+  const activeTab =
+    ORDER_STATUS_TABS.find((tab) => tab.value === activeStatus) ?? ORDER_STATUS_TABS[0];
 
   return (
     <div className='space-y-6'>
@@ -259,6 +425,13 @@ export function CustomerOrdersPageClient() {
           وضعیت پرداخت، آماده‌سازی، ارسال و تحویل سفارش‌های خود را پیگیری کنید
         </p>
       </section>
+
+      <CustomerOrdersStatusTabs
+        activeStatus={activeStatus}
+        counts={statusCounts}
+        disabled={isLoading}
+        onStatusChange={handleStatusChange}
+      />
 
       {loadError ? (
         <section
@@ -288,11 +461,22 @@ export function CustomerOrdersPageClient() {
         <section className='bg-card mt-6 rounded-xl border border-dashed border-border px-6 py-12 text-center'>
           <PackageOpen className='mx-auto size-9 text-foreground-muted' />
 
-          <h2 className='mt-4 font-extrabold text-foreground'>هنوز سفارشی ثبت نکرده‌اید</h2>
+          <h2 className='mt-4 font-extrabold text-foreground'>{activeTab.emptyTitle}</h2>
 
           <p className='mt-2 text-sm leading-7 text-foreground-secondary'>
-            بعد از ثبت اولین سفارش، وضعیت پرداخت و ارسال آن در این بخش نمایش داده می‌شود
+            {activeTab.emptyDescription}
           </p>
+
+          {activeStatus !== 'ALL' && statusCounts.ALL > 0 ? (
+            <Button
+              type='button'
+              variant='outline'
+              className='mt-5'
+              onClick={() => handleStatusChange('ALL')}
+            >
+              مشاهده همه سفارش‌ها
+            </Button>
+          ) : null}
         </section>
       ) : null}
 
@@ -300,7 +484,11 @@ export function CustomerOrdersPageClient() {
         <>
           <div aria-busy={isLoading} className='space-y-4'>
             {orders.map((order) => (
-              <CustomerOrderCard key={order.id} order={order} />
+              <CustomerOrderCard
+                key={order.id}
+                order={order}
+                onReservationExpired={handleReservationExpired}
+              />
             ))}
           </div>
 

@@ -52,6 +52,7 @@ export type StorefrontProductListItem = StorefrontProductPricing & {
   name: string;
   shortDescription: string | null;
   stockStatus: StorefrontStockStatus;
+  stockQuantity: number;
   updatedAt: string;
   brand: StorefrontBrand;
   category: Pick<StorefrontCategory, 'id' | 'name' | 'slug'>;
@@ -86,6 +87,7 @@ export type StorefrontProductDetail = StorefrontProductSeoFields &
     description: string | null;
     specifications: unknown | null;
     stockStatus: StorefrontStockStatus;
+    stockQuantity: number;
     updatedAt: string;
     brand: StorefrontBrand;
     category: Pick<StorefrontCategory, 'id' | 'name' | 'slug'>;

@@ -1,5 +1,6 @@
 'use client';
 
+import { CustomerOrderReservationNotice } from '@/components/storefront/account/orders/customer-order-reservation-notice';
 import {
   CustomerOrderStatusBadge,
   CustomerPaymentStatusBadge,
@@ -265,6 +266,12 @@ export function CustomerOrderDetailPageClient({ orderId }: CustomerOrderDetailPa
     }
   }, [orderId]);
 
+  const handleReservationExpired = useCallback(() => {
+    window.setTimeout(() => {
+      void loadOrder();
+    }, 1500);
+  }, [loadOrder]);
+
   useEffect(() => {
     void loadOrder();
   }, [loadOrder]);
@@ -354,6 +361,8 @@ export function CustomerOrderDetailPageClient({ orderId }: CustomerOrderDetailPa
           </Button>
         </section>
       ) : null}
+
+      <CustomerOrderReservationNotice order={order} onExpired={handleReservationExpired} />
 
       <div className='grid gap-6 xl:grid-cols-2'>
         <DetailCard title='وضعیت سفارش' icon={<ClipboardList className='size-5' />}>

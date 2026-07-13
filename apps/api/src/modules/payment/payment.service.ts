@@ -7,12 +7,14 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  OrderInventoryStatus,
   OrderPaymentStatus,
   OrderStatus,
   PaymentAttemptStatus,
   Prisma,
 } from '../../generated/prisma/client.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { expireOrderIfDue } from '../order/order-inventory.utils.js';
 import type { PaymentProviderCode } from './payment-provider.contract.js';
 import { PaymentProviderRegistry } from './providers/payment-provider.registry.js';
 
@@ -180,6 +182,7 @@ export class PaymentService {
         orderNumber: true,
         status: true,
         paymentStatus: true,
+        inventoryStatus: true,
         payableToman: true,
         expiresAt: true,
       },
@@ -203,52 +206,6 @@ export class PaymentService {
       });
     }
 
-    if (order.expiresAt && order.expiresAt.getTime() <= now.getTime()) {
-      await transaction.order.update({
-        where: {
-          id: order.id,
-        },
-        data: {
-          status: OrderStatus.EXPIRED,
-          paymentStatus: OrderPaymentStatus.UNPAID,
-        },
-      });
-
-      await transaction.paymentAttempt.updateMany({
-        where: {
-          orderId: order.id,
-          status: {
-            in: [
-              PaymentAttemptStatus.CREATED,
-              PaymentAttemptStatus.REDIRECTED,
-              PaymentAttemptStatus.CALLBACK_RECEIVED,
-            ],
-          },
-        },
-        data: {
-          status: PaymentAttemptStatus.EXPIRED,
-        },
-      });
-
-      return {
-        kind: 'expired',
-      };
-    }
-
-    if (order.status !== OrderStatus.PENDING_PAYMENT) {
-      throw new ConflictException({
-        code: 'ORDER_NOT_READY_FOR_PAYMENT',
-        message: 'وضعیت فعلی سفارش برای پرداخت آنلاین مناسب نیست',
-      });
-    }
-
-    if (!order.payableToman || order.payableToman <= 0) {
-      throw new ConflictException({
-        code: 'ORDER_PAYMENT_AMOUNT_INVALID',
-        message: 'مبلغ سفارش برای پرداخت آنلاین معتبر نیست',
-      });
-    }
-
     const activeAttempt = await transaction.paymentAttempt.findFirst({
       where: {
         orderId: order.id,
@@ -269,6 +226,42 @@ export class PaymentService {
       throw new ConflictException({
         code: 'PAYMENT_ALREADY_IN_PROGRESS',
         message: 'یک تلاش پرداخت فعال برای این سفارش وجود دارد',
+      });
+    }
+
+    if (order.expiresAt && order.expiresAt.getTime() <= now.getTime()) {
+      const expired = await expireOrderIfDue(transaction, order.id, now);
+
+      if (!expired) {
+        throw new ConflictException({
+          code: 'ORDER_STATE_CHANGED',
+          message: 'وضعیت سفارش هم‌زمان تغییر کرده است، دوباره تلاش کنید',
+        });
+      }
+
+      return {
+        kind: 'expired',
+      };
+    }
+
+    if (order.inventoryStatus !== OrderInventoryStatus.RESERVED) {
+      throw new ConflictException({
+        code: 'ORDER_INVENTORY_NOT_RESERVED',
+        message: 'موجودی این سفارش رزرو نشده است و امکان پرداخت آن وجود ندارد',
+      });
+    }
+
+    if (order.status !== OrderStatus.PENDING_PAYMENT) {
+      throw new ConflictException({
+        code: 'ORDER_NOT_READY_FOR_PAYMENT',
+        message: 'وضعیت فعلی سفارش برای پرداخت آنلاین مناسب نیست',
+      });
+    }
+
+    if (!order.payableToman || order.payableToman <= 0) {
+      throw new ConflictException({
+        code: 'ORDER_PAYMENT_AMOUNT_INVALID',
+        message: 'مبلغ سفارش برای پرداخت آنلاین معتبر نیست',
       });
     }
 

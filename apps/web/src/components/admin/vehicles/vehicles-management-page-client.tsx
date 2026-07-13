@@ -10,12 +10,13 @@ import { ClientApiError } from '@/lib/api/web-client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CarFront, Layers3, RefreshCw, Route, TriangleAlert } from 'lucide-react';
+import { Car, CarFront, Layers3, RefreshCw, Route, TriangleAlert } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { VehicleMakesTab } from '@/components/admin/vehicles/vehicle-makes-tab';
 import { VehicleModelsTab } from '@/components/admin/vehicles/vehicle-models-tab';
 import { VehicleVariantsTab } from '@/components/admin/vehicles/vehicle-variants-tab';
 import { toPersianDigits } from '@/lib/utils/digits';
+import { PageHeader } from '@/components/ui/page-header';
 
 type VehicleManagementTab = 'makes' | 'models' | 'variants';
 
@@ -150,27 +151,22 @@ export function VehiclesManagementPageClient() {
 
   return (
     <div dir='rtl' className='space-y-6 text-right'>
-      <section className='flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-start sm:justify-between'>
-        <div>
-          <p className='text-sm font-semibold text-brand'>مدیریت داده</p>
-
-          <h1 className='type-page-title mt-1 text-foreground'>مدیریت خودروها</h1>
-
-          <p className='type-body mt-2 text-foreground-secondary'>
-            برند، مدل، تیپ، موتور و بازه سال خودروها را برای سازگاری دقیق قطعات مدیریت کنید
-          </p>
-        </div>
-
-        <Button
-          type='button'
-          variant='outline'
-          iconStart={<RefreshCw />}
-          disabled={isLoading}
-          onClick={() => void loadVehicleData()}
-        >
-          بروزرسانی داده‌ها
-        </Button>
-      </section>
+      <PageHeader
+        title='مدیریت خودروها'
+        description='برند، مدل، تیپ، موتور و بازه سال خودروها را برای سازگاری دقیق قطعات مدیریت کنید'
+        icon={<CarFront className='size-5 lg:size-8' />}
+        actions={
+          <Button
+            type='button'
+            variant='outline'
+            iconStart={<RefreshCw />}
+            disabled={isLoading}
+            onClick={() => void loadVehicleData()}
+          >
+            بروزرسانی داده‌ها
+          </Button>
+        }
+      />
 
       {loadError ? (
         <div

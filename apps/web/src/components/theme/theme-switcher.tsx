@@ -1,9 +1,10 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { Monitor, Moon, Sun, type LucideIcon } from 'lucide-react';
-import { useTheme } from '@/components/providers/theme-provider';
 import { useEffect, useState } from 'react';
+import { Monitor, Moon, Sun, type LucideIcon } from 'lucide-react';
+
+import { useTheme } from '@/components/providers/theme-provider';
+import { Button } from '@/components/ui/button';
 
 type ThemeOption = {
   value: 'light' | 'dark' | 'system';
@@ -22,11 +23,6 @@ const options: ThemeOption[] = [
     label: 'تیره',
     icon: Moon,
   },
-  {
-    value: 'system',
-    label: 'سیستم',
-    icon: Monitor,
-  },
 ];
 
 export function ThemeSwitcher() {
@@ -41,7 +37,7 @@ export function ThemeSwitcher() {
     return (
       <div
         aria-hidden='true'
-        className='h-10 w-40 rounded-control border border-border bg-surface'
+        className='h-10 w-29 rounded-control border border-border bg-transparent sm:w-40'
       />
     );
   }
@@ -50,7 +46,7 @@ export function ThemeSwitcher() {
     <div
       role='group'
       aria-label='انتخاب حالت نمایش'
-      className='inline-flex rounded-control border border-border bg-surface p-1 shadow-panel'
+      className='inline-flex rounded-control border border-border bg-transparent p-1 shadow-panel'
     >
       {options.map((option) => {
         const Icon = option.icon;
@@ -62,11 +58,14 @@ export function ThemeSwitcher() {
             type='button'
             size='sm'
             variant={isActive ? 'primary' : 'ghost'}
-            iconStart={<Icon />}
+            iconStart={<Icon aria-hidden='true' />}
+            aria-label={`حالت ${option.label}`}
+            aria-pressed={isActive}
+            title={`حالت ${option.label}`}
             onClick={() => setTheme(option.value)}
-            className='mr-0.5 ml-0.5 h-8 rounded-[9px] px-2.5 text-xs sm:px-3'
+            className='mx-0.5 h-8 gap-0 rounded-[9px] px-2 sm:gap-2 sm:px-3'
           >
-            {option.label}
+            <span className='hidden text-xs sm:inline'>{option.label}</span>
           </Button>
         );
       })}

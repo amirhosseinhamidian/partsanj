@@ -16,6 +16,10 @@ function createOrdersQuery(input: FindCustomerOrdersInput = {}) {
     query.set('limit', String(input.limit));
   }
 
+  if (input.status && input.status !== 'ALL') {
+    query.set('status', input.status);
+  }
+
   const queryString = query.toString();
 
   return queryString ? `?${queryString}` : '';

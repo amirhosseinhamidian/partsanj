@@ -104,6 +104,13 @@ enum OrderPaymentStatus {
   PARTIALLY_REFUNDED
 }
 
+enum OrderInventoryStatus {
+  NOT_RESERVED
+  RESERVED
+  COMMITTED
+  RELEASED
+}
+
 enum PaymentAttemptStatus {
   CREATED
   REDIRECTED
@@ -220,6 +227,9 @@ model Product {
   saleEndsAt     DateTime?
 
   stockStatus    StockStatus   @default(CHECK_AVAILABILITY)
+  stockQuantity    Int         @default(0)
+  lowStockThreshold Int        @default(5)
+
   status         ProductStatus @default(DRAFT)
   isPublished    Boolean       @default(false)
   isTorobEnabled Boolean       @default(false)
@@ -509,7 +519,7 @@ model CustomerVehicle {
 model Order {
   id String @id @default(uuid())
 
-  orderNumber Int @unique @default(autoincrement())
+  orderNumber Int @unique
 
   customerUserId String
   customerUser   User   @relation("CustomerOrders", fields: [customerUserId], references: [id], onDelete: Restrict)
@@ -519,6 +529,11 @@ model Order {
 
   status        OrderStatus        @default(PENDING_PAYMENT)
   paymentStatus OrderPaymentStatus @default(UNPAID)
+
+  inventoryStatus      OrderInventoryStatus @default(NOT_RESERVED)
+  inventoryReservedAt  DateTime?
+  inventoryCommittedAt DateTime?
+  inventoryReleasedAt  DateTime?
 
   paymentMethodCode String @default("ONLINE")
 
@@ -575,6 +590,7 @@ model Order {
   @@index([status, createdAt])
   @@index([paymentStatus, createdAt])
   @@index([shippedAt])
+  @@index([inventoryStatus])
 }
 
 model OrderItem {

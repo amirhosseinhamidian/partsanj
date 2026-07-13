@@ -8,7 +8,6 @@ import {
   MapPinned,
   Menu,
   Package,
-  Search,
   ShoppingCart,
   UserRound,
   CarFront,
@@ -32,6 +31,7 @@ import { PartSanjLogo } from '@/lib/storefront/shared/partsanj-logo';
 import type { StorefrontCustomerAuthUser } from '@/lib/storefront/customer-auth/customer-auth.types';
 import { cn } from '@/lib/utils/cn';
 import { toPersianDigits } from '@/lib/utils/digits';
+import { ThemeSwitcher } from '@/components/theme/theme-switcher';
 
 type AccountShortcut = {
   href: string;
@@ -381,13 +381,7 @@ export function StorefrontHeader({ logoLightUrl, logoDarkUrl }: StorefrontHeader
         </nav>
 
         <div className='ms-auto hidden items-center gap-2 lg:flex'>
-          <Link
-            href='/products'
-            aria-label='جستجو در قطعات'
-            className='grid size-10 place-items-center rounded-control border border-border bg-surface text-foreground-secondary transition-colors hover:border-brand/40 hover:bg-brand-soft hover:text-brand'
-          >
-            <Search className='size-5' />
-          </Link>
+          <ThemeSwitcher />
 
           <HeaderCartButton />
 
@@ -395,6 +389,7 @@ export function StorefrontHeader({ logoLightUrl, logoDarkUrl }: StorefrontHeader
         </div>
 
         <div className='ms-auto flex items-center gap-2 lg:hidden'>
+          <ThemeSwitcher />
           <HeaderCartButton />
 
           <button
@@ -430,6 +425,38 @@ export function StorefrontHeader({ logoLightUrl, logoDarkUrl }: StorefrontHeader
           >
             <div className='mx-auto w-full max-w-7xl px-4 py-4 sm:px-6'>
               <nav aria-label='ناوبری موبایل' className='grid gap-1'>
+                <div className='grid gap-1'>
+                  {storefrontPrimaryNavigation.map((item) => {
+                    const isActive = isNavItemActive(pathname, item.href);
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        aria-current={isActive ? 'page' : undefined}
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className={cn(
+                          'flex min-h-11 items-center rounded-control px-3 text-sm font-bold transition-colors',
+                          isActive
+                            ? 'bg-brand-soft text-brand'
+                            : 'text-foreground-secondary hover:bg-surface-muted hover:text-foreground',
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'me-3 h-5 w-1 shrink-0 rounded-full transition-colors',
+                            isActive ? 'bg-brand' : 'bg-transparent',
+                          )}
+                        />
+
+                        <span>{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+
                 <StorefrontCategoryMobileMenu
                   categories={categoryNavigation}
                   isLoading={isCategoriesLoading}

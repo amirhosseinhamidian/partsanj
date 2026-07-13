@@ -32,6 +32,9 @@ import { CreateVehicleVariantDto } from './dto/create-vehicle-variant.dto.js';
 import { UpdateVehicleVariantDto } from './dto/update-vehicle-variant.dto.js';
 import { FindAdminAuditLogsQueryDto } from './dto/find-admin-audit-logs.query.dto.js';
 
+const DEFAULT_STOCK_QUANTITY = 0;
+const DEFAULT_LOW_STOCK_THRESHOLD = 5;
+
 type ProductCodeRecord = {
   type: ProductCodeType;
   value: string;
@@ -58,6 +61,8 @@ type ProductMutationRecord = {
   saleEndsAt: Date | null;
 
   stockStatus: StockStatus;
+  stockQuantity: number;
+  lowStockThreshold: number;
   status: ProductStatus;
   isPublished: boolean;
   isTorobEnabled: boolean;
@@ -92,6 +97,8 @@ type ProductStateCandidate = {
   saleEndsAt: Date | null;
 
   stockStatus: StockStatus;
+  stockQuantity: number;
+  lowStockThreshold: number;
   brandIsActive: boolean;
   categoryIsActive: boolean;
   showOnHome: boolean;
@@ -1535,6 +1542,8 @@ export class CatalogAdminService {
           saleStartsAt: true,
           saleEndsAt: true,
           stockStatus: true,
+          stockQuantity: true,
+          lowStockThreshold: true,
           status: true,
           isPublished: true,
           isTorobEnabled: true,
@@ -1727,6 +1736,13 @@ export class CatalogAdminService {
     const saleStartsAt = this.toNullableDate(dto.saleStartsAt);
     const saleEndsAt = this.toNullableDate(dto.saleEndsAt);
 
+    const stockQuantity = dto.stockQuantity ?? DEFAULT_STOCK_QUANTITY;
+    const lowStockThreshold = dto.lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD;
+    const stockStatus = this.resolveProductStockStatus(
+      dto.stockStatus ?? StockStatus.CHECK_AVAILABILITY,
+      stockQuantity,
+    );
+
     const candidate: ProductStateCandidate = {
       status: dto.status ?? ProductStatus.DRAFT,
       isPublished: dto.isPublished ?? false,
@@ -1738,7 +1754,9 @@ export class CatalogAdminService {
       saleEndsAt,
       showOnHome: dto.showOnHome ?? false,
 
-      stockStatus: dto.stockStatus ?? StockStatus.CHECK_AVAILABILITY,
+      stockStatus,
+      stockQuantity,
+      lowStockThreshold,
       brandIsActive: brand.isActive,
       categoryIsActive: category.isActive,
       codes: dto.codes ?? [],
@@ -1765,7 +1783,9 @@ export class CatalogAdminService {
         saleStartsAt: dto.saleStartsAt ?? null,
         saleEndsAt: dto.saleEndsAt ?? null,
 
-        stockStatus: dto.stockStatus ?? StockStatus.CHECK_AVAILABILITY,
+        stockStatus,
+        stockQuantity,
+        lowStockThreshold,
         status: dto.status ?? ProductStatus.DRAFT,
         isPublished: dto.isPublished ?? false,
         isTorobEnabled: dto.isTorobEnabled ?? false,
@@ -1805,7 +1825,9 @@ export class CatalogAdminService {
             salePriceToman: dto.salePriceToman ?? null,
             saleStartsAt,
             saleEndsAt,
-            stockStatus: dto.stockStatus ?? StockStatus.CHECK_AVAILABILITY,
+            stockStatus,
+            stockQuantity,
+            lowStockThreshold,
             status: dto.status ?? ProductStatus.DRAFT,
             isPublished: dto.isPublished ?? false,
             isTorobEnabled: dto.isTorobEnabled ?? false,
@@ -1902,6 +1924,9 @@ export class CatalogAdminService {
     const hasSaleStartsAtUpdate = this.hasOwnProperty(dto, 'saleStartsAt');
     const hasSaleEndsAtUpdate = this.hasOwnProperty(dto, 'saleEndsAt');
     const hasPriceTomanUpdate = this.hasOwnProperty(dto, 'priceToman');
+    const hasStockStatusUpdate = this.hasOwnProperty(dto, 'stockStatus');
+    const hasStockQuantityUpdate = this.hasOwnProperty(dto, 'stockQuantity');
+    const hasLowStockThresholdUpdate = this.hasOwnProperty(dto, 'lowStockThreshold');
 
     const finalBrandId = dto.brandId ?? product.brandId;
     const finalCategoryId = dto.categoryId ?? product.categoryId;
@@ -1925,6 +1950,16 @@ export class CatalogAdminService {
 
     const finalPriceToman = hasPriceTomanUpdate ? (dto.priceToman ?? null) : product.priceToman;
     const finalShowOnHome = dto.showOnHome ?? product.showOnHome;
+    const finalStockQuantity = hasStockQuantityUpdate
+      ? (dto.stockQuantity ?? DEFAULT_STOCK_QUANTITY)
+      : product.stockQuantity;
+    const finalLowStockThreshold = hasLowStockThresholdUpdate
+      ? (dto.lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD)
+      : product.lowStockThreshold;
+    const finalStockStatus = this.resolveProductStockStatus(
+      hasStockStatusUpdate ? (dto.stockStatus ?? product.stockStatus) : product.stockStatus,
+      finalStockQuantity,
+    );
 
     const candidate: ProductStateCandidate = {
       status: dto.status ?? product.status,
@@ -1934,7 +1969,9 @@ export class CatalogAdminService {
       salePriceToman: finalSalePriceToman,
       saleStartsAt: finalSaleStartsAt,
       saleEndsAt: finalSaleEndsAt,
-      stockStatus: dto.stockStatus ?? product.stockStatus,
+      stockStatus: finalStockStatus,
+      stockQuantity: finalStockQuantity,
+      lowStockThreshold: finalLowStockThreshold,
       brandIsActive: brand.isActive,
       categoryIsActive: category.isActive,
       codes: finalCodes,
@@ -1945,6 +1982,23 @@ export class CatalogAdminService {
     this.assertProductState(candidate);
 
     const changes = this.buildProductUpdateChanges(product, dto, hasCodesUpdate, hasImagesUpdate);
+
+    if (hasStockStatusUpdate || hasStockQuantityUpdate) {
+      this.addChange(changes, 'stockStatus', product.stockStatus, finalStockStatus);
+    }
+
+    if (hasStockQuantityUpdate) {
+      this.addChange(changes, 'stockQuantity', product.stockQuantity, finalStockQuantity);
+    }
+
+    if (hasLowStockThresholdUpdate) {
+      this.addChange(
+        changes,
+        'lowStockThreshold',
+        product.lowStockThreshold,
+        finalLowStockThreshold,
+      );
+    }
 
     type SeoOpenGraphProductField =
       | 'seoTitle'
@@ -2041,8 +2095,16 @@ export class CatalogAdminService {
         saleEndsAt: finalSaleEndsAt,
       }),
 
-      ...(dto.stockStatus !== undefined && {
-        stockStatus: dto.stockStatus,
+      ...((hasStockStatusUpdate || hasStockQuantityUpdate) && {
+        stockStatus: finalStockStatus,
+      }),
+
+      ...(hasStockQuantityUpdate && {
+        stockQuantity: finalStockQuantity,
+      }),
+
+      ...(hasLowStockThresholdUpdate && {
+        lowStockThreshold: finalLowStockThreshold,
       }),
 
       ...(dto.status !== undefined && {
@@ -2487,6 +2549,8 @@ export class CatalogAdminService {
         saleEndsAt: true,
 
         stockStatus: true,
+        stockQuantity: true,
+        lowStockThreshold: true,
         status: true,
         isPublished: true,
         isTorobEnabled: true,
@@ -2616,6 +2680,7 @@ export class CatalogAdminService {
   }
 
   private assertProductState(candidate: ProductStateCandidate): void {
+    this.assertProductInventory(candidate);
     this.assertProductPricing(candidate);
 
     const effectivePriceToman = this.getEffectivePriceToman(candidate);
@@ -2675,12 +2740,47 @@ export class CatalogAdminService {
       throw new BadRequestException('Torob requires product stock status to be IN_STOCK');
     }
 
+    if (candidate.stockQuantity <= 0) {
+      throw new BadRequestException('Torob requires a positive product stock quantity');
+    }
+
     if (candidate.codes.length === 0) {
       throw new BadRequestException('Torob requires at least one product code');
     }
 
     if (candidate.images.length === 0) {
       throw new BadRequestException('Torob requires at least one product image');
+    }
+  }
+
+  private resolveProductStockStatus(
+    requestedStatus: StockStatus,
+    stockQuantity: number,
+  ): StockStatus {
+    if (requestedStatus === StockStatus.CHECK_AVAILABILITY) {
+      return StockStatus.CHECK_AVAILABILITY;
+    }
+
+    return stockQuantity > 0 ? StockStatus.IN_STOCK : StockStatus.OUT_OF_STOCK;
+  }
+
+  private assertProductInventory(
+    candidate: Pick<ProductStateCandidate, 'stockStatus' | 'stockQuantity' | 'lowStockThreshold'>,
+  ): void {
+    if (candidate.stockQuantity < 0) {
+      throw new BadRequestException('Product stock quantity cannot be negative');
+    }
+
+    if (candidate.lowStockThreshold < 0) {
+      throw new BadRequestException('Product low stock threshold cannot be negative');
+    }
+
+    if (candidate.stockStatus === StockStatus.IN_STOCK && candidate.stockQuantity === 0) {
+      throw new BadRequestException('An IN_STOCK product must have a positive stock quantity');
+    }
+
+    if (candidate.stockStatus === StockStatus.OUT_OF_STOCK && candidate.stockQuantity > 0) {
+      throw new BadRequestException('An OUT_OF_STOCK product must have zero stock quantity');
     }
   }
 
@@ -2837,7 +2937,6 @@ export class CatalogAdminService {
     this.addChange(changes, 'salePriceToman', product.salePriceToman, dto.salePriceToman);
     this.addChange(changes, 'saleStartsAt', product.saleStartsAt, dto.saleStartsAt);
     this.addChange(changes, 'saleEndsAt', product.saleEndsAt, dto.saleEndsAt);
-    this.addChange(changes, 'stockStatus', product.stockStatus, dto.stockStatus);
     this.addChange(changes, 'status', product.status, dto.status);
     this.addChange(changes, 'isPublished', product.isPublished, dto.isPublished);
     this.addChange(changes, 'isTorobEnabled', product.isTorobEnabled, dto.isTorobEnabled);
@@ -2909,36 +3008,6 @@ export class CatalogAdminService {
     }
 
     return JSON.parse(serialized) as Prisma.InputJsonValue;
-  }
-
-  private async ensureVehicleMakeExists(id: string): Promise<void> {
-    const make = await this.prisma.vehicleMake.findUnique({
-      where: {
-        id,
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    if (!make) {
-      throw new NotFoundException('Vehicle make not found');
-    }
-  }
-
-  private async ensureVehicleModelExists(id: string): Promise<void> {
-    const model = await this.prisma.vehicleModel.findUnique({
-      where: {
-        id,
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    if (!model) {
-      throw new NotFoundException('Vehicle model not found');
-    }
   }
 
   private assertVehicleVariantYears(yearFrom: number | null, yearTo: number | null): void {

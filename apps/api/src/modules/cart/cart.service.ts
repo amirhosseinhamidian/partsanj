@@ -27,7 +27,12 @@ type CartItemFitmentStatus =
   | 'REQUIRES_VERIFICATION'
   | 'NOT_CONFIRMED';
 
-type CartItemAvailabilityReason = 'PRODUCT_INACTIVE' | 'OUT_OF_STOCK' | 'PRICE_UNAVAILABLE';
+type CartItemAvailabilityReason =
+  | 'PRODUCT_INACTIVE'
+  | 'CHECK_AVAILABILITY'
+  | 'OUT_OF_STOCK'
+  | 'INSUFFICIENT_STOCK'
+  | 'PRICE_UNAVAILABLE';
 
 @Injectable()
 export class CartService {
@@ -67,7 +72,7 @@ export class CartService {
   ) {
     const cartResolution = await this.resolveCartForMutation(user, guestToken);
 
-    const productPrice = await this.getPurchasableProduct(dto.productId);
+    const product = await this.getPurchasableProduct(dto.productId);
 
     if (dto.vehicleVariantId) {
       await this.ensureActiveVehicleVariant(dto.vehicleVariantId);
@@ -79,6 +84,7 @@ export class CartService {
       where: {
         cartId_productId_fitmentKey: {
           cartId: cartResolution.cart.id,
+
           productId: dto.productId,
           fitmentKey,
         },
@@ -91,6 +97,8 @@ export class CartService {
       throw new BadRequestException(`Maximum quantity per cart item is ${MAX_CART_ITEM_QUANTITY}`);
     }
 
+    this.assertQuantityIsAvailable(nextQuantity, product.maxOrderQuantity);
+
     if (existingItem) {
       await this.prisma.cartItem.update({
         where: {
@@ -98,8 +106,8 @@ export class CartService {
         },
         data: {
           quantity: nextQuantity,
-          unitBasePriceToman: productPrice.unitBasePriceToman,
-          unitEffectivePriceToman: productPrice.unitEffectivePriceToman,
+          unitBasePriceToman: product.unitBasePriceToman,
+          unitEffectivePriceToman: product.unitEffectivePriceToman,
           priceSnapshotAt: new Date(),
         },
       });
@@ -111,8 +119,8 @@ export class CartService {
           vehicleVariantId: dto.vehicleVariantId,
           fitmentKey,
           quantity: dto.quantity,
-          unitBasePriceToman: productPrice.unitBasePriceToman,
-          unitEffectivePriceToman: productPrice.unitEffectivePriceToman,
+          unitBasePriceToman: product.unitBasePriceToman,
+          unitEffectivePriceToman: product.unitEffectivePriceToman,
         },
       });
     }
@@ -144,7 +152,43 @@ export class CartService {
       throw new NotFoundException('Cart item not found');
     }
 
-    const productPrice = await this.getPurchasableProduct(item.productId);
+    /**
+     * ارسال دوباره همان quantity تغییری ایجاد نمی‌کند.
+     */
+    if (dto.quantity === item.quantity) {
+      return {
+        cart: await this.serializeCart(cart.id),
+      };
+    }
+
+    /**
+     * کاهش تعداد باید همیشه مجاز باشد؛ حتی اگر محصول بعداً ناموجود،
+     * غیرفعال یا موجودی آن کمتر از تعداد فعلی سبد شده باشد.
+     * در غیر این صورت کاربر نمی‌تواند تعارض موجودی را برطرف کند.
+     */
+    if (dto.quantity < item.quantity) {
+      await this.prisma.cartItem.update({
+        where: {
+          id: item.id,
+        },
+        data: {
+          quantity: dto.quantity,
+        },
+      });
+
+      await this.touchCart(cart.id);
+
+      return {
+        cart: await this.serializeCart(cart.id),
+      };
+    }
+
+    /**
+     * فقط افزایش تعداد نیازمند کنترل وضعیت محصول، قیمت و موجودی است.
+     */
+    const product = await this.getPurchasableProduct(item.productId);
+
+    this.assertQuantityIsAvailable(dto.quantity, product.maxOrderQuantity);
 
     await this.prisma.cartItem.update({
       where: {
@@ -152,8 +196,8 @@ export class CartService {
       },
       data: {
         quantity: dto.quantity,
-        unitBasePriceToman: productPrice.unitBasePriceToman,
-        unitEffectivePriceToman: productPrice.unitEffectivePriceToman,
+        unitBasePriceToman: product.unitBasePriceToman,
+        unitEffectivePriceToman: product.unitEffectivePriceToman,
         priceSnapshotAt: new Date(),
       },
     });
@@ -180,6 +224,22 @@ export class CartService {
       await this.ensureActiveVehicleVariant(nextVehicleVariantId);
     }
 
+    const sourceItemForAvailability = await this.prisma.cartItem.findFirst({
+      where: {
+        id: itemId,
+        cartId: cart.id,
+      },
+      select: {
+        productId: true,
+      },
+    });
+
+    if (!sourceItemForAvailability) {
+      throw new NotFoundException('Cart item not found');
+    }
+
+    const product = await this.getPurchasableProduct(sourceItemForAvailability.productId);
+
     const now = new Date();
 
     await this.prisma.$transaction(async (transaction) => {
@@ -193,6 +253,8 @@ export class CartService {
       if (!sourceItem) {
         throw new NotFoundException('Cart item not found');
       }
+
+      this.assertQuantityIsAvailable(sourceItem.quantity, product.maxOrderQuantity);
 
       if (sourceItem.fitmentKey === nextFitmentKey) {
         await transaction.cart.update({
@@ -225,6 +287,8 @@ export class CartService {
             `Maximum quantity per cart item is ${MAX_CART_ITEM_QUANTITY}`,
           );
         }
+
+        this.assertQuantityIsAvailable(mergedQuantity, product.maxOrderQuantity);
 
         const sourceSnapshotIsNewer = sourceItem.priceSnapshotAt > targetItem.priceSnapshotAt;
 
@@ -336,6 +400,33 @@ export class CartService {
       },
     });
 
+    const uniqueProductIds = Array.from(new Set(guestItems.map((item) => item.productId)));
+
+    const products =
+      uniqueProductIds.length > 0
+        ? await this.prisma.product.findMany({
+            where: {
+              id: {
+                in: uniqueProductIds,
+              },
+            },
+            select: {
+              id: true,
+              stockStatus: true,
+              stockQuantity: true,
+            },
+          })
+        : [];
+
+    const quantityLimitByProductId = new Map<string, number | null>(
+      products.map((product) => [
+        product.id,
+        product.stockStatus === StockStatus.IN_STOCK && product.stockQuantity > 0
+          ? Math.min(product.stockQuantity, MAX_CART_ITEM_QUANTITY)
+          : null,
+      ]),
+    );
+
     const now = new Date();
 
     await this.prisma.$transaction(async (transaction) => {
@@ -350,14 +441,21 @@ export class CartService {
           },
         });
 
+        const availableLimit = quantityLimitByProductId.get(guestItem.productId) ?? null;
+
         if (!customerItem) {
+          const quantity =
+            availableLimit === null
+              ? Math.min(MAX_CART_ITEM_QUANTITY, guestItem.quantity)
+              : Math.min(availableLimit, guestItem.quantity);
+
           await transaction.cartItem.create({
             data: {
               cartId: customerCart.id,
               productId: guestItem.productId,
               vehicleVariantId: guestItem.vehicleVariantId,
               fitmentKey: guestItem.fitmentKey,
-              quantity: guestItem.quantity,
+              quantity,
               unitBasePriceToman: guestItem.unitBasePriceToman,
               unitEffectivePriceToman: guestItem.unitEffectivePriceToman,
               priceSnapshotAt: guestItem.priceSnapshotAt,
@@ -367,6 +465,12 @@ export class CartService {
           continue;
         }
 
+        const combinedQuantity = customerItem.quantity + guestItem.quantity;
+        const quantity =
+          availableLimit === null
+            ? Math.min(MAX_CART_ITEM_QUANTITY, combinedQuantity)
+            : Math.min(availableLimit, combinedQuantity);
+
         const sourceSnapshotIsNewer = guestItem.priceSnapshotAt > customerItem.priceSnapshotAt;
 
         await transaction.cartItem.update({
@@ -374,7 +478,7 @@ export class CartService {
             id: customerItem.id,
           },
           data: {
-            quantity: Math.min(MAX_CART_ITEM_QUANTITY, customerItem.quantity + guestItem.quantity),
+            quantity,
             ...(sourceSnapshotIsNewer
               ? {
                   unitBasePriceToman: guestItem.unitBasePriceToman,
@@ -424,11 +528,17 @@ export class CartService {
       where: {
         id: productId,
       },
+
       select: {
         id: true,
+        name: true,
+
         status: true,
         isPublished: true,
+
         stockStatus: true,
+        stockQuantity: true,
+
         priceToman: true,
         salePriceToman: true,
         saleStartsAt: true,
@@ -441,16 +551,21 @@ export class CartService {
     }
 
     if (product.status !== ProductStatus.ACTIVE || !product.isPublished) {
-      throw new ConflictException('Product is not available for purchase');
+      throw new ConflictException('این محصول در حال حاضر قابل خرید نیست');
     }
 
-    if (product.stockStatus === StockStatus.OUT_OF_STOCK) {
-      throw new ConflictException('Product is out of stock');
+    if (product.stockStatus === StockStatus.CHECK_AVAILABILITY) {
+      throw new ConflictException('موجودی این محصول نیازمند استعلام است');
+    }
+
+    if (product.stockStatus !== StockStatus.IN_STOCK || product.stockQuantity <= 0) {
+      throw new ConflictException('این محصول در حال حاضر ناموجود است');
     }
 
     const pricing = getComputedProductPricing(product);
 
     const unitBasePriceToman = product.priceToman;
+
     const unitEffectivePriceToman = pricing.effectivePriceToman;
 
     if (
@@ -459,13 +574,28 @@ export class CartService {
       !unitEffectivePriceToman ||
       unitEffectivePriceToman <= 0
     ) {
-      throw new ConflictException('Product price is unavailable');
+      throw new ConflictException('قیمت این محصول در دسترس نیست');
     }
 
     return {
+      productId: product.id,
+      productName: product.name,
+
+      stockQuantity: product.stockQuantity,
+
+      maxOrderQuantity: Math.min(product.stockQuantity, MAX_CART_ITEM_QUANTITY),
+
       unitBasePriceToman,
       unitEffectivePriceToman,
     };
+  }
+
+  private assertQuantityIsAvailable(requestedQuantity: number, availableQuantity: number) {
+    if (requestedQuantity <= availableQuantity) {
+      return;
+    }
+
+    throw new ConflictException(`موجودی این محصول فقط ${availableQuantity} عدد است`);
   }
 
   private async ensureActiveVehicleVariant(vehicleVariantId: string) {
@@ -690,6 +820,7 @@ export class CartService {
                 status: true,
                 isPublished: true,
                 stockStatus: true,
+                stockQuantity: true,
                 priceToman: true,
                 salePriceToman: true,
                 saleStartsAt: true,
@@ -800,8 +931,20 @@ export class CartService {
         availabilityReasons.push('PRODUCT_INACTIVE');
       }
 
-      if (item.product.stockStatus === StockStatus.OUT_OF_STOCK) {
+      const availableQuantity =
+        item.product.stockStatus === StockStatus.IN_STOCK
+          ? Math.max(0, item.product.stockQuantity)
+          : 0;
+
+      const maxOrderQuantity = Math.min(availableQuantity, MAX_CART_ITEM_QUANTITY);
+      const hasQuantityConflict = item.quantity > maxOrderQuantity;
+
+      if (item.product.stockStatus === StockStatus.CHECK_AVAILABILITY) {
+        availabilityReasons.push('CHECK_AVAILABILITY');
+      } else if (item.product.stockStatus !== StockStatus.IN_STOCK || availableQuantity <= 0) {
         availabilityReasons.push('OUT_OF_STOCK');
+      } else if (hasQuantityConflict) {
+        availabilityReasons.push('INSUFFICIENT_STOCK');
       }
 
       if (pricing.effectivePriceToman === null || pricing.effectivePriceToman <= 0) {
@@ -877,6 +1020,9 @@ export class CartService {
         availability: {
           canPurchase,
           reasons: availabilityReasons,
+          availableQuantity,
+          maxOrderQuantity,
+          hasQuantityConflict,
         },
 
         price: {

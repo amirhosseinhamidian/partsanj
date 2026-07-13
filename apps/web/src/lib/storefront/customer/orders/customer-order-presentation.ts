@@ -1,3 +1,4 @@
+import { toPersianDigits } from '@/lib/utils/digits';
 import type {
   CustomerOrderItem,
   CustomerOrderPaymentStatus,
@@ -15,7 +16,7 @@ const jalaliDateFormatter = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
 });
 
 export function formatCustomerOrderNumber(orderNumber: number): string {
-  return `#${persianNumberFormatter.format(orderNumber)}`;
+  return `#${toPersianDigits(orderNumber)}`;
 }
 
 export function formatToman(amount: number): string {

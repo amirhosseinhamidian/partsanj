@@ -1,8 +1,9 @@
 'use client';
 
+import { useStorefrontCart } from '@/components/storefront/cart/storefront-cart-provider';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ImageUrlPreview } from '@/components/ui/image-url-preview';
-import { useStorefrontCart } from '@/components/storefront/cart/storefront-cart-provider';
 import type {
   StorefrontCart,
   StorefrontCartAvailabilityReason,
@@ -10,13 +11,14 @@ import type {
   StorefrontCartItem,
 } from '@/lib/storefront/cart/cart.types';
 import { cn } from '@/lib/utils/cn';
+import { toPersianDigits } from '@/lib/utils/digits';
+import { formatPrice } from '@/lib/utils/price';
 import {
   CarFront,
   CheckCircle2,
   ChevronLeft,
   CircleAlert,
   Minus,
-  PackageOpen,
   Plus,
   RefreshCw,
   ShoppingCart,
@@ -24,9 +26,6 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import Link from 'next/link';
-import { toPersianDigits } from '@/lib/utils/digits';
-import { Badge } from '@/components/ui/badge';
-import { formatPrice } from '@/lib/utils/price';
 
 function buildProductHref(item: StorefrontCartItem): string {
   const searchParams = new URLSearchParams();
@@ -47,7 +46,9 @@ function buildProductHref(item: StorefrontCartItem): string {
 function getAvailabilityReasonLabel(reason: StorefrontCartAvailabilityReason): string {
   const labels: Record<StorefrontCartAvailabilityReason, string> = {
     PRODUCT_INACTIVE: 'این محصول دیگر برای خرید فعال نیست',
+    CHECK_AVAILABILITY: 'موجودی این محصول نیازمند استعلام است',
     OUT_OF_STOCK: 'این محصول در حال حاضر موجود نیست',
+    INSUFFICIENT_STOCK: 'تعداد انتخاب‌شده بیشتر از موجودی فعلی است',
     PRICE_UNAVAILABLE: 'قیمت این محصول نیازمند استعلام است',
   };
 
@@ -98,79 +99,93 @@ function getFitmentConfig(status: StorefrontCartFitmentStatus) {
   };
 }
 
-function CartItemQuantityControl({ item }: { item: StorefrontCartItem }) {
-  const { isMutating, updateItemQuantity, removeItem } = useStorefrontCart();
+function CartItemQuantityControl({
+  quantity,
+  isMutating,
+  canPurchase,
+  maxOrderQuantity,
+  hasQuantityConflict,
+  onDecreaseOrRemove,
+  onIncrease,
+}: {
+  quantity: number;
+  isMutating: boolean;
+  canPurchase: boolean;
+  maxOrderQuantity: number;
+  hasQuantityConflict: boolean;
+  onDecreaseOrRemove: () => void;
+  onIncrease: () => void;
+}) {
+  const hasReachedMaximumQuantity =
+    canPurchase && !hasQuantityConflict && maxOrderQuantity > 0 && quantity === maxOrderQuantity;
 
-  const canIncrease = item.availability.canPurchase && !isMutating && item.quantity < 99;
+  const canIncrease =
+    canPurchase && !isMutating && !hasQuantityConflict && quantity < maxOrderQuantity;
 
-  async function handleDecreaseOrRemove() {
-    try {
-      if (item.quantity === 1) {
-        await removeItem(item.id);
-        return;
-      }
-
-      await updateItemQuantity(item.id, {
-        quantity: item.quantity - 1,
-      });
-    } catch {
-      // Toast در Cart Provider نمایش داده می‌شود
-    }
-  }
-
-  async function handleIncrease() {
-    if (!canIncrease) {
-      return;
-    }
-
-    try {
-      await updateItemQuantity(item.id, {
-        quantity: item.quantity + 1,
-      });
-    } catch {
-      // Toast در Cart Provider نمایش داده می‌شود
-    }
-  }
+  const increaseButtonLabel = hasReachedMaximumQuantity
+    ? 'حداکثر موجودی انتخاب شده است'
+    : canPurchase
+      ? 'افزایش تعداد'
+      : 'افزایش تعداد در حال حاضر امکان‌پذیر نیست';
 
   return (
-    <div className='flex shrink-0 items-center rounded-control border border-border bg-surface p-1'>
-      <button
-        type='button'
-        disabled={isMutating}
-        aria-label={item.quantity === 1 ? 'حذف از سبد خرید' : 'کاهش تعداد'}
-        title={item.quantity === 1 ? 'حذف از سبد خرید' : 'کاهش تعداد'}
-        onClick={() => void handleDecreaseOrRemove()}
-        className='grid size-10 place-items-center rounded-control text-foreground-secondary transition-colors hover:bg-danger-soft hover:text-danger disabled:pointer-events-none disabled:opacity-50'
-      >
-        {item.quantity === 1 ? <Trash2 className='size-4' /> : <Minus className='size-4' />}
-      </button>
+    <div className='flex max-w-full flex-col items-start gap-2'>
+      <div className='flex shrink-0 items-center rounded-control border border-border bg-surface p-1'>
+        <button
+          type='button'
+          disabled={isMutating}
+          aria-label={quantity === 1 ? 'حذف از سبد خرید' : 'کاهش تعداد'}
+          title={quantity === 1 ? 'حذف از سبد خرید' : 'کاهش تعداد'}
+          onClick={onDecreaseOrRemove}
+          className='grid size-10 place-items-center rounded-control text-foreground-secondary transition-colors hover:bg-danger-soft hover:text-danger disabled:pointer-events-none disabled:opacity-50'
+        >
+          {quantity === 1 ? <Trash2 className='size-4' /> : <Minus className='size-4' />}
+        </button>
 
-      <output
-        aria-live='polite'
-        className='numeric grid min-w-11 place-items-center text-sm font-extrabold text-foreground'
-      >
-        {toPersianDigits(item.quantity)}
-      </output>
+        <output
+          aria-live='polite'
+          className='numeric grid min-w-10 place-items-center text-base font-extrabold text-foreground'
+        >
+          {toPersianDigits(quantity)}
+        </output>
 
-      <button
-        type='button'
-        disabled={!canIncrease}
-        aria-label='افزایش تعداد'
-        title='افزایش تعداد'
-        onClick={() => void handleIncrease()}
-        className='grid size-10 place-items-center rounded-control text-foreground-secondary transition-colors hover:bg-brand-soft hover:text-brand disabled:pointer-events-none disabled:opacity-50'
-      >
-        <Plus className='size-4' />
-      </button>
+        <button
+          type='button'
+          disabled={!canIncrease}
+          aria-label={increaseButtonLabel}
+          title={increaseButtonLabel}
+          onClick={onIncrease}
+          className='grid size-10 place-items-center rounded-control text-foreground-secondary transition-colors hover:bg-brand-soft hover:text-brand disabled:pointer-events-none disabled:opacity-50'
+        >
+          <Plus className='size-4' />
+        </button>
+      </div>
+
+      {hasReachedMaximumQuantity ? (
+        <p role='status' aria-live='polite' className='text-xs leading-5 font-bold text-warning'>
+          حداکثر تعداد موجودی این محصول را انتخاب کرده‌اید.
+        </p>
+      ) : null}
+
+      {hasQuantityConflict ? (
+        <p role='alert' className='text-xs leading-5 font-bold text-danger'>
+          {maxOrderQuantity > 0 ? (
+            <>
+              تعداد انتخاب‌شده بیشتر از موجودی فعلی است. حداکثر موجودی قابل سفارش{' '}
+              {toPersianDigits(maxOrderQuantity)} عدد است.
+            </>
+          ) : (
+            'این محصول در حال حاضر موجودی قابل سفارش ندارد.'
+          )}
+        </p>
+      ) : null}
     </div>
   );
 }
 
 function CartItemWarnings({ item }: { item: StorefrontCartItem }) {
   const hasAvailabilityWarning = !item.availability.canPurchase;
-
   const currentEffectivePriceToman = item.price.currentEffectivePriceToman;
-
   const hasPriceChanged = item.price.hasPriceChanged && currentEffectivePriceToman !== null;
 
   if (!hasAvailabilityWarning && !hasPriceChanged) {
@@ -253,9 +268,18 @@ function CartItemFitment({ item }: { item: StorefrontCartItem }) {
   );
 }
 
-function CartItemCard({ item }: { item: StorefrontCartItem }) {
+function CartItemCard({
+  item,
+  isMutating,
+  onDecreaseOrRemove,
+  onIncrease,
+}: {
+  item: StorefrontCartItem;
+  isMutating: boolean;
+  onDecreaseOrRemove: (item: StorefrontCartItem) => void;
+  onIncrease: (item: StorefrontCartItem) => void;
+}) {
   const productHref = buildProductHref(item);
-
   const currentPrice = item.price.currentEffectivePriceToman;
 
   return (
@@ -304,13 +328,20 @@ function CartItemCard({ item }: { item: StorefrontCartItem }) {
           ) : null}
 
           <CartItemFitment item={item} />
-
           <CartItemWarnings item={item} />
         </div>
       </div>
 
-      <div className='flex flex-wrap items-center justify-between gap-4 border-t border-border bg-surface-muted px-4 py-4 sm:px-5'>
-        <CartItemQuantityControl item={item} />
+      <div className='flex flex-wrap items-start justify-between gap-4 border-t border-border bg-surface-muted px-4 py-4 sm:px-5'>
+        <CartItemQuantityControl
+          quantity={item.quantity}
+          isMutating={isMutating}
+          canPurchase={item.availability.canPurchase}
+          maxOrderQuantity={item.availability.maxOrderQuantity}
+          hasQuantityConflict={item.availability.hasQuantityConflict}
+          onDecreaseOrRemove={() => onDecreaseOrRemove(item)}
+          onIncrease={() => onIncrease(item)}
+        />
 
         <div className='text-end'>
           {item.price.hasPriceChanged ? (
@@ -335,8 +366,15 @@ function CartItemCard({ item }: { item: StorefrontCartItem }) {
 }
 
 function CartSummary({ cart }: { cart: StorefrontCart }) {
-  const hasUnavailableItems = cart.items.some((item) => !item.availability.canPurchase);
-  const canStartCheckout = !hasUnavailableItems;
+  /**
+   * hasQuantityConflict را مستقل از canPurchase هم بررسی می‌کنیم تا حتی اگر
+   * پاسخ قدیمی API یا mapping ناقص باشد، سفارش با تعداد بیش از موجودی ادامه پیدا نکند.
+   */
+  const hasBlockingItems = cart.items.some(
+    (item) => !item.availability.canPurchase || item.availability.hasQuantityConflict,
+  );
+
+  const canStartCheckout = cart.items.length > 0 && !hasBlockingItems;
 
   const hasFitmentRisks = cart.items.some(
     (item) =>
@@ -345,18 +383,15 @@ function CartSummary({ cart }: { cart: StorefrontCart }) {
 
   return (
     <>
-      {/* Desktop summary */}
       <aside className='hidden h-fit self-start rounded-card border border-border bg-surface p-5 shadow-panel xl:sticky xl:top-24 xl:block'>
         <div className='flex items-center gap-2'>
           <ShoppingCart className='size-5 text-brand' />
-
           <h2 className='text-lg font-extrabold text-foreground'>خلاصه سفارش</h2>
         </div>
 
         <dl className='mt-5 space-y-3 text-sm'>
           <div className='flex items-center justify-between gap-4'>
             <dt className='text-foreground-secondary'>کالاهای آماده خرید</dt>
-
             <dd className='numeric font-extrabold text-foreground'>
               {toPersianDigits(cart.summary.purchasableItemCount)}
             </dd>
@@ -365,7 +400,6 @@ function CartSummary({ cart }: { cart: StorefrontCart }) {
           <div className='border-t border-border pt-4'>
             <div className='flex items-end justify-between gap-4'>
               <dt className='text-sm font-extrabold text-foreground'>جمع کالاها</dt>
-
               <dd className='numeric text-xl font-extrabold text-foreground'>
                 {formatPrice(cart.summary.subtotalToman)}
               </dd>
@@ -373,7 +407,7 @@ function CartSummary({ cart }: { cart: StorefrontCart }) {
           </div>
         </dl>
 
-        {hasUnavailableItems ? (
+        {hasBlockingItems ? (
           <div className='mt-5 rounded-control border border-danger/30 bg-danger-soft p-3'>
             <p className='text-xs leading-6 text-danger'>
               برخی از آیتم‌ها فعلاً قابل ثبت سفارش نیستند و در جمع نهایی لحاظ نشده‌اند
@@ -405,10 +439,9 @@ function CartSummary({ cart }: { cart: StorefrontCart }) {
         )}
       </aside>
 
-      {/* Mobile bottom bar */}
       <div className='fixed inset-x-0 bottom-0 z-[60] border-t border-border bg-surface/95 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-floating backdrop-blur xl:hidden'>
         <div className='mx-auto w-full max-w-xl'>
-          {hasUnavailableItems ? (
+          {hasBlockingItems ? (
             <p className='mb-2 text-center text-xs font-semibold text-danger'>
               برخی آیتم‌ها قابل ثبت سفارش نیستند
             </p>
@@ -421,15 +454,29 @@ function CartSummary({ cart }: { cart: StorefrontCart }) {
           <div className='flex items-center gap-3'>
             <div className='min-w-0 flex-1'>
               <p className='text-xs font-semibold text-foreground-muted'>جمع کالاها</p>
-
               <p className='numeric mt-1 text-lg font-extrabold text-foreground'>
                 {formatPrice(cart.summary.subtotalToman)}
               </p>
             </div>
 
-            <Button type='button' disabled className='h-12 shrink-0 px-4' iconEnd={<ChevronLeft />}>
-              ادامه سفارش
-            </Button>
+            {canStartCheckout ? (
+              <Link
+                href='/checkout'
+                className='inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-control bg-brand px-4 text-sm font-bold text-brand-foreground transition-opacity hover:opacity-90'
+              >
+                ادامه سفارش
+                <ChevronLeft className='size-4' />
+              </Link>
+            ) : (
+              <Button
+                type='button'
+                disabled
+                className='h-12 shrink-0 px-4'
+                iconEnd={<ChevronLeft />}
+              >
+                ادامه سفارش
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -480,7 +527,46 @@ function CartPageSkeleton() {
 }
 
 export function StorefrontCartPageClient() {
-  const { cart, isLoading, cartLoadError, reloadCart } = useStorefrontCart();
+  const { cart, isLoading, isMutating, cartLoadError, reloadCart, updateItemQuantity, removeItem } =
+    useStorefrontCart();
+
+  async function handleIncreaseQuantity(item: StorefrontCartItem) {
+    if (
+      isMutating ||
+      !item.availability.canPurchase ||
+      item.availability.hasQuantityConflict ||
+      item.quantity >= item.availability.maxOrderQuantity
+    ) {
+      return;
+    }
+
+    try {
+      await updateItemQuantity(item.id, {
+        quantity: item.quantity + 1,
+      });
+    } catch {
+      // Toast در Cart Provider نمایش داده می‌شود.
+    }
+  }
+
+  async function handleDecreaseOrRemove(item: StorefrontCartItem) {
+    if (isMutating) {
+      return;
+    }
+
+    try {
+      if (item.quantity === 1) {
+        await removeItem(item.id);
+        return;
+      }
+
+      await updateItemQuantity(item.id, {
+        quantity: item.quantity - 1,
+      });
+    } catch {
+      // Toast در Cart Provider نمایش داده می‌شود.
+    }
+  }
 
   if (isLoading) {
     return <CartPageSkeleton />;
@@ -521,7 +607,7 @@ export function StorefrontCartPageClient() {
   }
 
   return (
-    <div className='mx-auto w-full max-w-7xl px-4 pt-8 pb-2 sm:px-6 lg:px-8 xl:py-8'>
+    <div className='mx-auto w-full max-w-7xl px-4 pt-8 pb-32 sm:px-6 lg:px-8 xl:py-8'>
       <div className='flex flex-wrap items-end justify-between gap-4'>
         <div>
           <div className='flex items-center gap-2 text-sm text-foreground-muted'>
@@ -530,7 +616,6 @@ export function StorefrontCartPageClient() {
             </Link>
 
             <ChevronLeft className='size-4' />
-
             <span>سبد خرید</span>
           </div>
 
@@ -543,7 +628,13 @@ export function StorefrontCartPageClient() {
       <div className='mt-8 grid min-w-0 items-start gap-8 xl:grid-cols-[minmax(0,1fr)_360px]'>
         <section className='min-w-0 space-y-4'>
           {cart.items.map((item) => (
-            <CartItemCard key={item.id} item={item} />
+            <CartItemCard
+              key={item.id}
+              item={item}
+              isMutating={isMutating}
+              onDecreaseOrRemove={(currentItem) => void handleDecreaseOrRemove(currentItem)}
+              onIncrease={(currentItem) => void handleIncreaseQuantity(currentItem)}
+            />
           ))}
         </section>
 

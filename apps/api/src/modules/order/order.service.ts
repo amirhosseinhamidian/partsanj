@@ -1,7 +1,16 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { randomInt } from 'node:crypto';
+
+import {
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   CartOwnerType,
   CartStatus,
+  OrderInventoryStatus,
   OrderItemFitmentStatus,
   OrderPaymentStatus,
   OrderStatus,
@@ -12,7 +21,12 @@ import {
 import { getComputedProductPricing } from '../catalog/catalog-pricing.utils.js';
 import { PrismaService } from '../database/prisma.service.js';
 import type { CreateOrderFromCartDto } from './dto/create-order-from-cart.dto.js';
-import { ConfigService } from '@nestjs/config';
+import { reserveOrderInventory } from './order-inventory.utils.js';
+
+const ORDER_NUMBER_MIN = 100_001;
+const ORDER_NUMBER_MAX_EXCLUSIVE = 1_000_000;
+const MAX_ORDER_NUMBER_ATTEMPTS = 5;
+const MAX_SERIALIZATION_ATTEMPTS = 2;
 
 type PreparedOrderItem = {
   productId: string;
@@ -46,9 +60,10 @@ export class OrderService {
   ) {}
 
   async createFromCart(userId: string, dto: CreateOrderFromCartDto) {
-    let lastError: unknown;
+    let serializationAttempts = 0;
+    let orderNumberAttempts = 0;
 
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+    while (true) {
       try {
         return await this.prisma.$transaction(
           (transaction) => this.createFromCartInTransaction(transaction, userId, dto),
@@ -57,20 +72,32 @@ export class OrderService {
           },
         );
       } catch (error) {
-        lastError = error;
+        if (this.isSerializationConflict(error)) {
+          serializationAttempts += 1;
 
-        const isRetryableConflict =
-          error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034';
+          if (serializationAttempts < MAX_SERIALIZATION_ATTEMPTS) {
+            continue;
+          }
 
-        if (isRetryableConflict && attempt === 0) {
-          continue;
+          throw error;
+        }
+
+        if (this.isOrderNumberCollision(error)) {
+          orderNumberAttempts += 1;
+
+          if (orderNumberAttempts < MAX_ORDER_NUMBER_ATTEMPTS) {
+            continue;
+          }
+
+          throw new InternalServerErrorException({
+            code: 'ORDER_NUMBER_GENERATION_FAILED',
+            message: 'امکان تولید شماره یکتای سفارش وجود نداشت. لطفاً دوباره تلاش کنید.',
+          });
         }
 
         throw error;
       }
     }
-
-    throw lastError;
   }
 
   async findOneForCustomer(userId: string, orderId: string) {
@@ -255,8 +282,18 @@ export class OrderService {
         continue;
       }
 
-      if (product.stockStatus === StockStatus.OUT_OF_STOCK) {
+      if (product.stockStatus === StockStatus.CHECK_AVAILABILITY) {
+        validationMessages.push(`موجودی «${product.name}» نیازمند استعلام است`);
+        continue;
+      }
+
+      if (product.stockStatus !== StockStatus.IN_STOCK || product.stockQuantity <= 0) {
         validationMessages.push(`«${product.name}» در حال حاضر ناموجود است`);
+        continue;
+      }
+
+      if (cartItem.quantity > product.stockQuantity) {
+        validationMessages.push(`موجودی «${product.name}» فقط ${product.stockQuantity} عدد است`);
         continue;
       }
 
@@ -365,13 +402,21 @@ export class OrderService {
 
     const expiresAt = new Date(now.getTime() + this.getPaymentOrderTtlMinutes() * 60_000);
 
+    const orderNumber = this.generateOrderNumber();
+
+    await reserveOrderInventory(transaction, preparedItems);
+
     const order = await transaction.order.create({
       data: {
+        orderNumber,
         customerUserId: userId,
         sourceCartId: cart.id,
 
         status: OrderStatus.PENDING_PAYMENT,
         paymentStatus: OrderPaymentStatus.UNPAID,
+
+        inventoryStatus: OrderInventoryStatus.RESERVED,
+        inventoryReservedAt: now,
 
         paymentMethodCode: 'ONLINE',
         currencyCode: 'TOMAN',
@@ -446,6 +491,34 @@ export class OrderService {
       itemCount: order._count.items,
       createdAt: order.createdAt,
     };
+  }
+
+  private generateOrderNumber() {
+    return randomInt(ORDER_NUMBER_MIN, ORDER_NUMBER_MAX_EXCLUSIVE);
+  }
+
+  private isSerializationConflict(error: unknown) {
+    return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034';
+  }
+
+  private isOrderNumberCollision(error: unknown) {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+      return false;
+    }
+
+    const target = error.meta?.target;
+
+    if (Array.isArray(target)) {
+      return target.some(
+        (value) => typeof value === 'string' && value.toLowerCase().includes('ordernumber'),
+      );
+    }
+
+    if (typeof target === 'string') {
+      return target.toLowerCase().includes('ordernumber');
+    }
+
+    return error.message.toLowerCase().includes('ordernumber');
   }
 
   private normalizeOptionalText(value: string | null | undefined) {

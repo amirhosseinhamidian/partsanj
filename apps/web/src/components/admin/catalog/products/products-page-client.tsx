@@ -1,22 +1,33 @@
 'use client';
 
-import { adminBrandsApi } from '@/lib/api/admin-brands-client';
-import { adminCategoriesApi } from '@/lib/api/admin-categories-client';
-import { adminProductsApi } from '@/lib/api/admin-products-client';
-import { ClientApiError } from '@/lib/api/web-client';
-import { ProductsTable } from '@/components/admin/catalog/products/products-table';
-import { Button } from '@/components/ui/button';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { PackageSearch, Plus, RefreshCw } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import type { AdminProductsListResponse } from '@/lib/admin/catalog/product.types';
 import {
   ProductsFilterBar,
   type ProductFiltersDraft,
 } from '@/components/admin/catalog/products/products-filter-bar';
+import { ProductsTable } from '@/components/admin/catalog/products/products-table';
+import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
+import { adminBrandsApi } from '@/lib/api/admin-brands-client';
+import { adminCategoriesApi } from '@/lib/api/admin-categories-client';
+import { adminProductsApi } from '@/lib/api/admin-products-client';
+import { ClientApiError } from '@/lib/api/web-client';
+import type {
+  AdminProductsListResponse,
+  ProductStatus,
+  StockStatus,
+} from '@/lib/admin/catalog/product.types';
+import { PackageSearch, RefreshCw } from 'lucide-react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const PAGE_SIZE = 24;
+
+const PRODUCT_STATUSES: ProductStatus[] = ['DRAFT', 'ACTIVE', 'ARCHIVED'];
+const STOCK_STATUSES: StockStatus[] = ['IN_STOCK', 'OUT_OF_STOCK', 'CHECK_AVAILABILITY'];
+
+type UrlPatch = Partial<
+  Record<'q' | 'brandId' | 'categoryId' | 'status' | 'stockStatus' | 'page', string | null>
+>;
 
 const emptyResponse: AdminProductsListResponse = {
   data: [],
@@ -36,41 +47,109 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+function parsePositiveInteger(value: string | null, fallback: number) {
+  const parsed = Number(value);
+
+  if (!Number.isSafeInteger(parsed) || parsed < 1) {
+    return fallback;
+  }
+
+  return parsed;
+}
+
+function isProductStatus(value: string | null): value is ProductStatus {
+  return PRODUCT_STATUSES.some((status) => status === value);
+}
+
+function isStockStatus(value: string | null): value is StockStatus {
+  return STOCK_STATUSES.some((status) => status === value);
+}
+
+function readFilters(searchParamsString: string) {
+  const params = new URLSearchParams(searchParamsString);
+  const status = params.get('status');
+  const stockStatus = params.get('stockStatus');
+
+  return {
+    q: params.get('q')?.trim() || '',
+    brandId: params.get('brandId')?.trim() || '',
+    categoryId: params.get('categoryId')?.trim() || '',
+    status: isProductStatus(status) ? status : '',
+    stockStatus: isStockStatus(stockStatus) ? stockStatus : '',
+    page: parsePositiveInteger(params.get('page'), 1),
+  } satisfies ProductFiltersDraft & { page: number };
+}
+
+function toDraft(filters: ReturnType<typeof readFilters>): ProductFiltersDraft {
+  return {
+    q: filters.q,
+    brandId: filters.brandId,
+    categoryId: filters.categoryId,
+    status: filters.status,
+    stockStatus: filters.stockStatus,
+  };
+}
+
 export function ProductsPageClient() {
-  const [response, setResponse] = useState<AdminProductsListResponse>(emptyResponse);
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const searchParamsString = searchParams.toString();
+
+  const filters = useMemo(() => readFilters(searchParamsString), [searchParamsString]);
+
+  const [response, setResponse] = useState<AdminProductsListResponse>(emptyResponse);
+  const [draftFilters, setDraftFilters] = useState<ProductFiltersDraft>(() => toDraft(filters));
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [brands, setBrands] = useState<Awaited<ReturnType<typeof adminBrandsApi.list>>>([]);
-
   const [categories, setCategories] = useState<Awaited<ReturnType<typeof adminCategoriesApi.list>>>(
     [],
   );
 
-  const emptyFilters: ProductFiltersDraft = {
-    q: '',
-    brandId: '',
-    categoryId: '',
-    status: '',
-    stockStatus: '',
-  };
-
-  const [draftFilters, setDraftFilters] = useState<ProductFiltersDraft>(emptyFilters);
-
-  const [appliedFilters, setAppliedFilters] = useState<ProductFiltersDraft>(emptyFilters);
-
   const [isOptionsLoading, setIsOptionsLoading] = useState(true);
   const [optionsError, setOptionsError] = useState<string | null>(null);
 
-  const [page, setPage] = useState(1);
-
   const latestProductsRequestId = useRef(0);
+
+  useEffect(() => {
+    setDraftFilters(toDraft(filters));
+  }, [filters]);
+
+  const replaceUrl = useCallback(
+    (patch: UrlPatch) => {
+      const nextParams = new URLSearchParams(searchParamsString);
+
+      for (const [key, value] of Object.entries(patch)) {
+        const normalizedValue = value?.trim() ?? '';
+
+        if (!normalizedValue || (key === 'page' && normalizedValue === '1')) {
+          nextParams.delete(key);
+          continue;
+        }
+
+        nextParams.set(key, normalizedValue);
+      }
+
+      const nextQueryString = nextParams.toString();
+      const nextUrl = nextQueryString ? `${pathname}?${nextQueryString}` : pathname;
+      const currentUrl = searchParamsString ? `${pathname}?${searchParamsString}` : pathname;
+
+      if (nextUrl === currentUrl) {
+        return;
+      }
+
+      router.replace(nextUrl, {
+        scroll: false,
+      });
+    },
+    [pathname, router, searchParamsString],
+  );
 
   const loadProducts = useCallback(async () => {
     const requestId = latestProductsRequestId.current + 1;
-
     latestProductsRequestId.current = requestId;
 
     setIsLoading(true);
@@ -78,12 +157,12 @@ export function ProductsPageClient() {
 
     try {
       const result = await adminProductsApi.list({
-        q: appliedFilters.q.trim() || undefined,
-        status: appliedFilters.status || undefined,
-        stockStatus: appliedFilters.stockStatus || undefined,
-        brandId: appliedFilters.brandId || undefined,
-        categoryId: appliedFilters.categoryId || undefined,
-        page,
+        q: filters.q || undefined,
+        status: filters.status || undefined,
+        stockStatus: filters.stockStatus || undefined,
+        brandId: filters.brandId || undefined,
+        categoryId: filters.categoryId || undefined,
+        page: filters.page,
         limit: PAGE_SIZE,
       });
 
@@ -108,7 +187,7 @@ export function ProductsPageClient() {
         setIsLoading(false);
       }
     }
-  }, [appliedFilters, page]);
+  }, [filters]);
 
   const loadFilterOptions = useCallback(async () => {
     setIsOptionsLoading(true);
@@ -169,18 +248,29 @@ export function ProductsPageClient() {
   );
 
   function applyFilters(nextDraft = draftFilters) {
-    setAppliedFilters({
-      ...nextDraft,
-      q: nextDraft.q.trim(),
+    replaceUrl({
+      q: nextDraft.q,
+      brandId: nextDraft.brandId,
+      categoryId: nextDraft.categoryId,
+      status: nextDraft.status,
+      stockStatus: nextDraft.stockStatus,
+      page: '1',
     });
-
-    setPage(1);
   }
 
   function resetFilters() {
+    const emptyFilters: ProductFiltersDraft = {
+      q: '',
+      brandId: '',
+      categoryId: '',
+      status: '',
+      stockStatus: '',
+    };
+
     setDraftFilters(emptyFilters);
-    setAppliedFilters(emptyFilters);
-    setPage(1);
+    router.replace(pathname, {
+      scroll: false,
+    });
   }
 
   function refreshAll() {
@@ -257,7 +347,11 @@ export function ProductsPageClient() {
         page={response.meta.page}
         pageSize={response.meta.limit}
         totalItems={response.meta.total}
-        onPageChange={setPage}
+        onPageChange={(page) => {
+          replaceUrl({
+            page: String(page),
+          });
+        }}
         onEdit={(product) => {
           router.push(`/admin/catalog/products/${product.id}`);
         }}

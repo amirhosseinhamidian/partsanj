@@ -39,7 +39,7 @@ export async function getStorefrontSiteSettings(): Promise<StorefrontSiteSetting
     const response = await publicNestApi<StorefrontSiteSettingsResponse>('/api/v1/settings', {
       method: 'GET',
       next: {
-        revalidate: 1,
+        revalidate: 300,
         tags: ['site-settings'],
       },
     });

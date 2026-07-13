@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
 import {
+  OrderInventoryStatus,
   OrderPaymentStatus,
   OrderStatus,
   PaymentAttemptStatus,
@@ -68,6 +69,7 @@ export class PaymentCallbackService {
             orderNumber: true,
             status: true,
             paymentStatus: true,
+            inventoryStatus: true,
           },
         },
       },
@@ -109,11 +111,25 @@ export class PaymentCallbackService {
       };
     }
 
-    if (attempt.status === PaymentAttemptStatus.CALLBACK_RECEIVED) {
+    if (
+      attempt.order.status === OrderStatus.CANCELLED ||
+      attempt.order.status === OrderStatus.EXPIRED ||
+      attempt.order.inventoryStatus !== OrderInventoryStatus.RESERVED
+    ) {
       return {
         ...identity,
-        state: 'pending',
+        state: 'failed',
       };
+    }
+
+    if (attempt.status === PaymentAttemptStatus.CALLBACK_RECEIVED) {
+      return this.verifyReceivedAttempt(providerCode, {
+        id: attempt.id,
+        orderId: attempt.orderId,
+        orderNumber: attempt.order.orderNumber,
+        amountToman: attempt.amountToman,
+        providerSessionId: decision.providerSessionId,
+      });
     }
 
     if (decision.kind === 'invalid') {
@@ -150,11 +166,7 @@ export class PaymentCallbackService {
       where: {
         id: paymentAttemptId,
         status: {
-          in: [
-            PaymentAttemptStatus.CREATED,
-            PaymentAttemptStatus.REDIRECTED,
-            PaymentAttemptStatus.EXPIRED,
-          ],
+          in: [PaymentAttemptStatus.CREATED, PaymentAttemptStatus.REDIRECTED],
         },
       },
       data: {
@@ -299,16 +311,28 @@ export class PaymentCallbackService {
         return false;
       }
 
-      await transaction.order.update({
+      const orderResult = await transaction.order.updateMany({
         where: {
           id: attempt.orderId,
+          status: OrderStatus.PENDING_PAYMENT,
+          inventoryStatus: OrderInventoryStatus.RESERVED,
         },
         data: {
           status: OrderStatus.PAID,
           paymentStatus: OrderPaymentStatus.PAID,
           paidAt: now,
+
+          inventoryStatus: OrderInventoryStatus.COMMITTED,
+          inventoryCommittedAt: now,
         },
       });
+
+      if (orderResult.count !== 1) {
+        throw new ConflictException({
+          code: 'ORDER_PAYMENT_STATE_CHANGED',
+          message: 'وضعیت سفارش یا رزرو موجودی برای ثبت پرداخت معتبر نیست',
+        });
+      }
 
       return true;
     });

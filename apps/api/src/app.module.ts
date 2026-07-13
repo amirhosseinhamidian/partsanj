@@ -18,6 +18,7 @@ import { CustomerVehicleModule } from './modules/customer-vehicle/customer-vehic
 import { AdminUserModule } from './modules/admin-user/admin-user.module.js';
 import { BlogModule } from './modules/blog/blog.module.js';
 import { AdminSettingsModule } from './modules/admin-settings/admin-settings.module.js';
+import { AdminDashboardModule } from './modules/admin-dashboard/admin-dashboard.module.js';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { AdminSettingsModule } from './modules/admin-settings/admin-settings.mod
     AdminUserModule,
     BlogModule,
     AdminSettingsModule,
+    AdminDashboardModule,
   ],
 })
 export class AppModule {}

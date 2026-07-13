@@ -148,6 +148,38 @@ export class CreateProductDto {
   stockStatus?: StockStatus;
 
   @ApiPropertyOptional({
+    default: 0,
+    minimum: 0,
+    example: 12,
+    description: 'Current sellable inventory quantity',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({
+    message: 'تعداد موجودی باید عدد صحیح باشد',
+  })
+  @Min(0, {
+    message: 'تعداد موجودی نمی‌تواند منفی باشد',
+  })
+  stockQuantity?: number;
+
+  @ApiPropertyOptional({
+    default: 5,
+    minimum: 0,
+    example: 5,
+    description: 'Inventory quantity at or below which the product is considered low stock',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({
+    message: 'حد هشدار موجودی باید عدد صحیح باشد',
+  })
+  @Min(0, {
+    message: 'حد هشدار موجودی نمی‌تواند منفی باشد',
+  })
+  lowStockThreshold?: number;
+
+  @ApiPropertyOptional({
     enum: ProductStatus,
     default: ProductStatus.DRAFT,
   })

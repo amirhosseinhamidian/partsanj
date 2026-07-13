@@ -7,11 +7,13 @@ import {
 import {
   AdminAuditAction,
   AdminAuditEntityType,
+  OrderInventoryStatus,
   OrderPaymentStatus,
   OrderStatus,
   Prisma,
 } from '../../generated/prisma/client.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { releaseOrderInventory } from '../order/order-inventory.utils.js';
 import { CancelAdminOrderDto } from './dto/cancel-admin-order.dto.js';
 import { FindAdminOrdersQueryDto } from './dto/find-admin-orders.query.dto.js';
 import { MarkOrderShippedDto } from './dto/mark-order-shipped.dto.js';
@@ -21,6 +23,7 @@ type OrderMutationRecord = {
   orderNumber: number;
   status: OrderStatus;
   paymentStatus: OrderPaymentStatus;
+  inventoryStatus: OrderInventoryStatus;
 
   shippingCarrier: string | null;
   trackingCode: string | null;
@@ -139,6 +142,7 @@ export class AdminOrderService {
 
           status: true,
           paymentStatus: true,
+          inventoryStatus: true,
           paymentMethodCode: true,
           currencyCode: true,
 
@@ -255,6 +259,11 @@ export class AdminOrderService {
 
           customerNote: true,
           adminNote: true,
+
+          inventoryStatus: true,
+          inventoryReservedAt: true,
+          inventoryCommittedAt: true,
+          inventoryReleasedAt: true,
 
           expiresAt: true,
           paidAt: true,
@@ -613,6 +622,8 @@ export class AdminOrderService {
 
       this.assertSingleMutation(result.count);
 
+      const inventoryReleased = await releaseOrderInventory(transaction, order.id, now);
+
       await this.writeAuditLog(transaction, {
         actorUserId,
         order,
@@ -623,6 +634,11 @@ export class AdminOrderService {
             status: {
               before: OrderStatus.PENDING_PAYMENT,
               after: OrderStatus.CANCELLED,
+            },
+
+            inventoryStatus: {
+              before: order.inventoryStatus,
+              after: inventoryReleased ? OrderInventoryStatus.RELEASED : order.inventoryStatus,
             },
 
             cancelledAt: {
@@ -656,6 +672,7 @@ export class AdminOrderService {
 
         status: true,
         paymentStatus: true,
+        inventoryStatus: true,
         processingStartedAt: true,
 
         shippingCarrier: true,
@@ -678,7 +695,11 @@ export class AdminOrderService {
   }
 
   private assertProcessingTransition(order: OrderMutationRecord) {
-    if (order.status !== OrderStatus.PAID || order.paymentStatus !== OrderPaymentStatus.PAID) {
+    if (
+      order.status !== OrderStatus.PAID ||
+      order.paymentStatus !== OrderPaymentStatus.PAID ||
+      order.inventoryStatus !== OrderInventoryStatus.COMMITTED
+    ) {
       throw new ConflictException({
         code: 'ORDER_PROCESSING_TRANSITION_INVALID',
         message: 'فقط سفارش پرداخت‌شده می‌تواند وارد مرحله آماده‌سازی شود',
@@ -689,7 +710,8 @@ export class AdminOrderService {
   private assertShipmentTransition(order: OrderMutationRecord) {
     if (
       order.status !== OrderStatus.PROCESSING ||
-      order.paymentStatus !== OrderPaymentStatus.PAID
+      order.paymentStatus !== OrderPaymentStatus.PAID ||
+      order.inventoryStatus !== OrderInventoryStatus.COMMITTED
     ) {
       throw new ConflictException({
         code: 'ORDER_SHIPMENT_TRANSITION_INVALID',
@@ -699,7 +721,11 @@ export class AdminOrderService {
   }
 
   private assertDeliveryTransition(order: OrderMutationRecord) {
-    if (order.status !== OrderStatus.SHIPPED || order.paymentStatus !== OrderPaymentStatus.PAID) {
+    if (
+      order.status !== OrderStatus.SHIPPED ||
+      order.paymentStatus !== OrderPaymentStatus.PAID ||
+      order.inventoryStatus !== OrderInventoryStatus.COMMITTED
+    ) {
       throw new ConflictException({
         code: 'ORDER_DELIVERY_TRANSITION_INVALID',
         message: 'فقط سفارش ارسال‌شده می‌تواند تحویل‌شده ثبت شود',

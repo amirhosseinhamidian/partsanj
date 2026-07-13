@@ -49,6 +49,8 @@ type SpecificationRow = {
   value: string;
 };
 
+type InventoryMode = 'TRACKED' | 'CHECK_AVAILABILITY';
+
 type ProductFormValues = {
   sku: string;
   slug: string;
@@ -60,7 +62,9 @@ type ProductFormValues = {
   salePriceToman: number | null;
   saleStartsAt: Date | null;
   saleEndsAt: Date | null;
-  stockStatus: StockStatus;
+  inventoryMode: InventoryMode;
+  stockQuantity: string;
+  lowStockThreshold: string;
   status: ProductStatus;
   isPublished: boolean;
   isTorobEnabled: boolean;
@@ -92,7 +96,9 @@ type ProductFormErrors = Partial<
     | 'salePriceToman'
     | 'saleStartsAt'
     | 'saleEndsAt'
-    | 'stockStatus'
+    | 'inventoryMode'
+    | 'stockQuantity'
+    | 'lowStockThreshold'
     | 'status'
     | 'brandId'
     | 'categoryId'
@@ -180,7 +186,11 @@ function getInitialValues(product: AdminProductDetail | null): ProductFormValues
     saleStartsAt: product?.saleStartsAt ? toDateOrNull(product.saleStartsAt) : null,
 
     saleEndsAt: product?.saleEndsAt ? toDateOrNull(product.saleEndsAt) : null,
-    stockStatus: product?.stockStatus ?? 'CHECK_AVAILABILITY',
+    inventoryMode: product?.stockStatus === 'CHECK_AVAILABILITY' ? 'CHECK_AVAILABILITY' : 'TRACKED',
+
+    stockQuantity: String(product?.stockQuantity ?? 0),
+
+    lowStockThreshold: String(product?.lowStockThreshold ?? 5),
     status: product?.status ?? 'DRAFT',
     isPublished: product?.isPublished ?? false,
     isTorobEnabled: product?.isTorobEnabled ?? false,
@@ -251,6 +261,14 @@ function getErrorMessage(error: unknown): string {
   }
 
   return 'ذخیره محصول با خطا مواجه شد';
+}
+
+function resolveStockStatus(inventoryMode: InventoryMode, stockQuantity: number): StockStatus {
+  if (inventoryMode === 'CHECK_AVAILABILITY') {
+    return 'CHECK_AVAILABILITY';
+  }
+
+  return stockQuantity > 0 ? 'IN_STOCK' : 'OUT_OF_STOCK';
 }
 
 function EditorSection({
@@ -354,7 +372,9 @@ export function ProductEditorForm({
         key === 'brandId' ||
         key === 'categoryId' ||
         key === 'priceToman' ||
-        key === 'stockStatus'
+        key === 'inventoryMode' ||
+        key === 'stockQuantity' ||
+        key === 'lowStockThreshold'
           ? undefined
           : current.state,
     }));
@@ -548,6 +568,10 @@ export function ProductEditorForm({
 
     const homeSortOrder = Number(values.homeSortOrder);
 
+    const stockQuantity = Number(values.stockQuantity);
+
+    const lowStockThreshold = Number(values.lowStockThreshold);
+
     const selectedBrand = brands.find((brand) => brand.id === values.brandId);
 
     const selectedCategory = categories.find((category) => category.id === values.categoryId);
@@ -585,6 +609,18 @@ export function ProductEditorForm({
 
     if (!values.homeSortOrder.trim() || !Number.isInteger(homeSortOrder) || homeSortOrder < 0) {
       nextErrors.homeSortOrder = 'ترتیب نمایش در صفحه اصلی باید عدد صحیح صفر یا بزرگ‌تر باشد';
+    }
+
+    if (!values.stockQuantity.trim() || !Number.isSafeInteger(stockQuantity) || stockQuantity < 0) {
+      nextErrors.stockQuantity = 'تعداد موجودی باید عدد صحیح صفر یا بزرگ‌تر باشد';
+    }
+
+    if (
+      !values.lowStockThreshold.trim() ||
+      !Number.isSafeInteger(lowStockThreshold) ||
+      lowStockThreshold < 0
+    ) {
+      nextErrors.lowStockThreshold = 'حد هشدار موجودی باید عدد صحیح صفر یا بزرگ‌تر باشد';
     }
 
     if (values.saleEnabled) {
@@ -629,6 +665,11 @@ export function ProductEditorForm({
         nextErrors.saleEndsAt = 'زمان پایان باید بعد از زمان شروع باشد';
       }
     }
+
+    const resolvedStockStatus = resolveStockStatus(
+      values.inventoryMode,
+      Number.isSafeInteger(stockQuantity) ? stockQuantity : 0,
+    );
 
     const normalizedCodes = values.codes.map((code) => ({
       type: code.type,
@@ -729,8 +770,12 @@ export function ProductEditorForm({
         effectivePriceToman <= 0
       ) {
         nextErrors.priceToman = 'برای فعال‌سازی ترب، قیمت مؤثر معتبر الزامی است';
-      } else if (values.stockStatus !== 'IN_STOCK') {
-        nextErrors.stockStatus = 'برای فعال‌سازی ترب، وضعیت موجودی باید «موجود» باشد';
+      } else if (resolvedStockStatus !== 'IN_STOCK') {
+        if (values.inventoryMode === 'CHECK_AVAILABILITY') {
+          nextErrors.inventoryMode = 'برای فعال‌سازی ترب، محصول باید دارای موجودی عددی باشد';
+        } else {
+          nextErrors.stockQuantity = 'برای فعال‌سازی ترب، تعداد موجودی باید بیشتر از صفر باشد';
+        }
       } else if (normalizedCodes.length === 0) {
         nextErrors.codes = 'برای فعال‌سازی ترب، حداقل یک کد محصول الزامی است';
       } else if (normalizedImages.length === 0) {
@@ -800,7 +845,9 @@ export function ProductEditorForm({
       shortDescription: values.shortDescription.trim(),
       description: values.description.trim(),
       specifications,
-      stockStatus: values.stockStatus,
+      stockStatus: resolvedStockStatus,
+      stockQuantity,
+      lowStockThreshold,
       status: values.status,
       isPublished: values.isPublished,
       isTorobEnabled: values.isTorobEnabled,
@@ -1701,34 +1748,6 @@ export function ProductEditorForm({
                 </FormField>
               )}
 
-              <FormField label='وضعیت موجودی' error={errors.stockStatus}>
-                {({ id, labelId, describedBy, invalid }) => (
-                  <Select
-                    id={id}
-                    aria-labelledby={labelId}
-                    aria-describedby={describedBy}
-                    aria-invalid={invalid}
-                    value={values.stockStatus}
-                    disabled={isSaving || isArchived}
-                    onValueChange={(value) => setField('stockStatus', value as StockStatus)}
-                    options={[
-                      {
-                        value: 'IN_STOCK',
-                        label: 'موجود',
-                      },
-                      {
-                        value: 'OUT_OF_STOCK',
-                        label: 'ناموجود',
-                      },
-                      {
-                        value: 'CHECK_AVAILABILITY',
-                        label: 'نیازمند استعلام',
-                      },
-                    ]}
-                  />
-                )}
-              </FormField>
-
               <FormField
                 label='نمایش در فروشگاه'
                 helperText='فقط محصول فعال با برند و دسته فعال قابل انتشار است'
@@ -1835,6 +1854,101 @@ export function ProductEditorForm({
                 </div>
               ) : null}
             </div>
+          </EditorSection>
+
+          <EditorSection
+            title='موجودی و انبار'
+            description='تعداد قابل فروش محصول و حد هشدار کمبود موجودی را مشخص کنید'
+          >
+            <div className='grid gap-5 md:grid-cols-2'>
+              <FormField
+                label='روش مدیریت موجودی'
+                helperText='محصولات استعلامی مستقیماً قابل سفارش نیستند'
+                error={errors.inventoryMode}
+                className='md:col-span-2'
+              >
+                {({ id, labelId, describedBy, invalid }) => (
+                  <Select
+                    id={id}
+                    aria-labelledby={labelId}
+                    aria-describedby={describedBy}
+                    aria-invalid={invalid}
+                    disabled={isSaving}
+                    value={values.inventoryMode}
+                    onValueChange={(value) => setField('inventoryMode', value as InventoryMode)}
+                    options={[
+                      {
+                        value: 'TRACKED',
+                        label: 'مدیریت موجودی عددی',
+                      },
+                      {
+                        value: 'CHECK_AVAILABILITY',
+                        label: 'نیازمند استعلام موجودی',
+                      },
+                    ]}
+                  />
+                )}
+              </FormField>
+
+              <FormField
+                label='تعداد موجودی'
+                helperText={
+                  values.inventoryMode === 'CHECK_AVAILABILITY'
+                    ? 'در حالت استعلام، این مقدار در سفارش استفاده نمی‌شود'
+                    : 'حداکثر تعداد قابل فروش این محصول'
+                }
+                error={errors.stockQuantity}
+              >
+                {({ id, labelId, describedBy, invalid }) => (
+                  <Input
+                    id={id}
+                    type='number'
+                    inputMode='numeric'
+                    min={0}
+                    step={1}
+                    aria-labelledby={labelId}
+                    aria-describedby={describedBy}
+                    aria-invalid={invalid}
+                    disabled={isSaving || values.inventoryMode === 'CHECK_AVAILABILITY'}
+                    value={values.stockQuantity}
+                    onChange={(event) => setField('stockQuantity', event.target.value)}
+                    placeholder='0'
+                  />
+                )}
+              </FormField>
+
+              <FormField
+                label='حد هشدار موجودی'
+                helperText='در این تعداد یا کمتر، محصول کم‌موجود محسوب می‌شود'
+                error={errors.lowStockThreshold}
+              >
+                {({ id, labelId, describedBy, invalid }) => (
+                  <Input
+                    id={id}
+                    type='number'
+                    inputMode='numeric'
+                    min={0}
+                    step={1}
+                    aria-labelledby={labelId}
+                    aria-describedby={describedBy}
+                    aria-invalid={invalid}
+                    disabled={isSaving || values.inventoryMode === 'CHECK_AVAILABILITY'}
+                    value={values.lowStockThreshold}
+                    onChange={(event) => setField('lowStockThreshold', event.target.value)}
+                    placeholder='5'
+                  />
+                )}
+              </FormField>
+            </div>
+
+            {values.inventoryMode === 'TRACKED' ? (
+              <div className='mt-4 rounded-control border border-border bg-surface-muted px-4 py-3 text-sm text-foreground-secondary'>
+                وضعیت محاسبه‌شده:{' '}
+                <strong className='text-foreground'>
+                  {Number(values.stockQuantity) > 0 ? 'موجود' : 'ناموجود'}
+                </strong>
+              </div>
+            ) : null}
           </EditorSection>
 
           <div className='rounded-card border border-border bg-surface p-4 shadow-panel'>

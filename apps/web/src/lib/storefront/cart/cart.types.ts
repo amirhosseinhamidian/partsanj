@@ -10,7 +10,9 @@ export type StorefrontCartFitmentStatus =
 
 export type StorefrontCartAvailabilityReason =
   | 'PRODUCT_INACTIVE'
+  | 'CHECK_AVAILABILITY'
   | 'OUT_OF_STOCK'
+  | 'INSUFFICIENT_STOCK'
   | 'PRICE_UNAVAILABLE';
 
 export type StorefrontCartProductImage = {
@@ -75,7 +77,12 @@ export type StorefrontCartItem = {
 
   availability: {
     canPurchase: boolean;
+
     reasons: StorefrontCartAvailabilityReason[];
+
+    availableQuantity: number;
+    maxOrderQuantity: number;
+    hasQuantityConflict: boolean;
   };
 
   price: {

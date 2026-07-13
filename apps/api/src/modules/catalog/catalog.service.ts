@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, ProductStatus } from '../../generated/prisma/client.js';
+import { Prisma, ProductStatus, StockStatus } from '../../generated/prisma/client.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { FindProductsQueryDto } from './dto/find-products.query.dto.js';
 import { getComputedProductPricing, type ProductPricingFields } from './catalog-pricing.utils.js';
@@ -65,85 +65,190 @@ export class CatalogService {
       ? await this.resolveCategoryScopeIds(query.category)
       : undefined;
 
-    const where = this.buildPublicProductWhere(query, categoryScopeIds);
+    const baseWhere = this.buildPublicProductWhere(query, categoryScopeIds);
 
-    const skip = (query.page - 1) * query.limit;
+    const pageOffset = (query.page - 1) * query.limit;
     const now = new Date();
 
-    const [products, total] = await this.prisma.$transaction([
-      this.prisma.product.findMany({
-        where,
-        skip,
-        take: query.limit,
+    /*
+     * ترتیب سراسری موجودی باید قبل از pagination اعمال شود:
+     *
+     * 1. محصولات قابل خرید: IN_STOCK و stockQuantity > 0
+     * 2. محصولات نیازمند استعلام: CHECK_AVAILABILITY
+     * 3. محصولات ناموجود یا دارای داده ناسازگار: OUT_OF_STOCK
+     *    و همچنین IN_STOCK با stockQuantity <= 0
+     *
+     * استفاده از AND باعث می‌شود فیلترهای فعلی مانند جستجو، برند،
+     * دسته‌بندی، خودرو و stockStatus بدون overwrite شدن حفظ شوند.
+     */
+    const availableWhere: Prisma.ProductWhereInput = {
+      AND: [
+        baseWhere,
+        {
+          stockStatus: StockStatus.IN_STOCK,
+          stockQuantity: {
+            gt: 0,
+          },
+        },
+      ],
+    };
+
+    const checkAvailabilityWhere: Prisma.ProductWhereInput = {
+      AND: [
+        baseWhere,
+        {
+          stockStatus: StockStatus.CHECK_AVAILABILITY,
+        },
+      ],
+    };
+
+    const unavailableWhere: Prisma.ProductWhereInput = {
+      AND: [
+        baseWhere,
+        {
+          OR: [
+            {
+              stockStatus: StockStatus.OUT_OF_STOCK,
+            },
+            {
+              stockStatus: StockStatus.IN_STOCK,
+              stockQuantity: {
+                lte: 0,
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const [availableCount, checkAvailabilityCount, unavailableCount] =
+      await this.prisma.$transaction([
+        this.prisma.product.count({
+          where: availableWhere,
+        }),
+        this.prisma.product.count({
+          where: checkAvailabilityWhere,
+        }),
+        this.prisma.product.count({
+          where: unavailableWhere,
+        }),
+      ]);
+
+    const availableSkip = Math.min(pageOffset, availableCount);
+    const availableTake = Math.min(query.limit, Math.max(availableCount - pageOffset, 0));
+
+    const remainingAfterAvailable = query.limit - availableTake;
+    const checkAvailabilitySkip = Math.max(pageOffset - availableCount, 0);
+    const checkAvailabilityTake = Math.min(
+      remainingAfterAvailable,
+      Math.max(checkAvailabilityCount - checkAvailabilitySkip, 0),
+    );
+
+    const remainingAfterCheckAvailability = remainingAfterAvailable - checkAvailabilityTake;
+    const unavailableSkip = Math.max(pageOffset - availableCount - checkAvailabilityCount, 0);
+    const unavailableTake = Math.min(
+      remainingAfterCheckAvailability,
+      Math.max(unavailableCount - unavailableSkip, 0),
+    );
+
+    const productOrderBy: Prisma.ProductOrderByWithRelationInput[] = [
+      {
+        updatedAt: 'desc',
+      },
+      {
+        id: 'desc',
+      },
+    ];
+
+    const productSelect = {
+      id: true,
+      sku: true,
+      slug: true,
+      name: true,
+      shortDescription: true,
+      priceToman: true,
+      salePriceToman: true,
+      saleStartsAt: true,
+      saleEndsAt: true,
+      stockStatus: true,
+      stockQuantity: true,
+      updatedAt: true,
+
+      brand: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          logoUrl: true,
+        },
+      },
+
+      category: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          imageUrl: true,
+          imageAlt: true,
+        },
+      },
+
+      codes: {
+        select: {
+          type: true,
+          value: true,
+        },
+        orderBy: [
+          {
+            type: 'asc',
+          },
+          {
+            value: 'asc',
+          },
+        ],
+      },
+
+      images: {
+        take: 1,
         orderBy: {
-          updatedAt: 'desc',
+          sortOrder: 'asc',
         },
         select: {
           id: true,
-          sku: true,
-          slug: true,
-          name: true,
-          shortDescription: true,
-          priceToman: true,
-          salePriceToman: true,
-          saleStartsAt: true,
-          saleEndsAt: true,
-          stockStatus: true,
-          updatedAt: true,
-
-          brand: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              logoUrl: true,
-            },
-          },
-
-          category: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              imageUrl: true,
-              imageAlt: true,
-            },
-          },
-
-          codes: {
-            select: {
-              type: true,
-              value: true,
-            },
-            orderBy: [
-              {
-                type: 'asc',
-              },
-              {
-                value: 'asc',
-              },
-            ],
-          },
-
-          images: {
-            take: 1,
-            orderBy: {
-              sortOrder: 'asc',
-            },
-            select: {
-              id: true,
-              url: true,
-              alt: true,
-              sortOrder: true,
-            },
-          },
+          url: true,
+          alt: true,
+          sortOrder: true,
         },
-      }),
+      },
+    } satisfies Prisma.ProductSelect;
 
-      this.prisma.product.count({
-        where,
+    const [availableProducts, checkAvailabilityProducts, unavailableProducts] = await Promise.all([
+      this.prisma.product.findMany({
+        where: availableWhere,
+        skip: availableSkip,
+        take: availableTake,
+        orderBy: productOrderBy,
+        select: productSelect,
+      }),
+      this.prisma.product.findMany({
+        where: checkAvailabilityWhere,
+        skip: checkAvailabilitySkip,
+        take: checkAvailabilityTake,
+        orderBy: productOrderBy,
+        select: productSelect,
+      }),
+      this.prisma.product.findMany({
+        where: unavailableWhere,
+        skip: unavailableSkip,
+        take: unavailableTake,
+        orderBy: productOrderBy,
+        select: productSelect,
       }),
     ]);
+
+    const products = [...availableProducts, ...checkAvailabilityProducts, ...unavailableProducts];
+
+    const total = availableCount + checkAvailabilityCount + unavailableCount;
 
     return {
       data: products.map((product) => this.withComputedPricing(product, now)),
@@ -175,6 +280,7 @@ export class CatalogService {
         saleStartsAt: true,
         saleEndsAt: true,
         stockStatus: true,
+        stockQuantity: true,
         seoTitle: true,
         seoDescription: true,
         canonicalUrl: true,
@@ -325,6 +431,7 @@ export class CatalogService {
         saleStartsAt: true,
         saleEndsAt: true,
         stockStatus: true,
+        stockQuantity: true,
         updatedAt: true,
         brand: {
           select: {

@@ -14,6 +14,7 @@ function createCustomerOrdersPath(request: NextRequest) {
 
   const page = request.nextUrl.searchParams.get('page');
   const limit = request.nextUrl.searchParams.get('limit');
+  const status = request.nextUrl.searchParams.get('status');
 
   if (page) {
     query.set('page', page);
@@ -21,6 +22,10 @@ function createCustomerOrdersPath(request: NextRequest) {
 
   if (limit) {
     query.set('limit', limit);
+  }
+
+  if (status) {
+    query.set('status', status);
   }
 
   const queryString = query.toString();

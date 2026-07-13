@@ -1,6 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { OrderStatus, Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../database/prisma.service.js';
-import { FindCustomerOrdersQueryDto } from './dto/find-customer-orders.query.dto.js';
+import {
+  CustomerOrderStatusFilter,
+  FindCustomerOrdersQueryDto,
+} from './dto/find-customer-orders.query.dto.js';
 
 type CustomerOrderTimelineSource = {
   createdAt: Date;
@@ -18,13 +22,28 @@ export class CustomerOrderService {
   async findOrders(customerUserId: string, query: FindCustomerOrdersQueryDto) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
+    const selectedStatus = query.status ?? CustomerOrderStatusFilter.ALL;
     const skip = (page - 1) * limit;
 
-    const where = {
+    const customerWhere: Prisma.OrderWhereInput = {
       customerUserId,
     };
 
-    const [orders, total] = await this.prisma.$transaction([
+    const where: Prisma.OrderWhereInput = {
+      ...customerWhere,
+      ...this.createStatusWhere(selectedStatus),
+    };
+
+    const [
+      orders,
+      total,
+      allCount,
+      pendingPaymentCount,
+      processingCount,
+      shippedCount,
+      deliveredCount,
+      cancelledCount,
+    ] = await this.prisma.$transaction([
       this.prisma.order.findMany({
         where,
         skip,
@@ -43,6 +62,7 @@ export class CustomerOrderService {
 
           status: true,
           paymentStatus: true,
+          inventoryStatus: true,
           paymentMethodCode: true,
           currencyCode: true,
 
@@ -51,6 +71,7 @@ export class CustomerOrderService {
           shippingCarrier: true,
           trackingCode: true,
 
+          expiresAt: true,
           createdAt: true,
           paidAt: true,
           processingStartedAt: true,
@@ -82,6 +103,49 @@ export class CustomerOrderService {
       this.prisma.order.count({
         where,
       }),
+
+      this.prisma.order.count({
+        where: customerWhere,
+      }),
+
+      this.prisma.order.count({
+        where: {
+          ...customerWhere,
+          status: OrderStatus.PENDING_PAYMENT,
+        },
+      }),
+
+      this.prisma.order.count({
+        where: {
+          ...customerWhere,
+          status: {
+            in: [OrderStatus.PAID, OrderStatus.PROCESSING],
+          },
+        },
+      }),
+
+      this.prisma.order.count({
+        where: {
+          ...customerWhere,
+          status: OrderStatus.SHIPPED,
+        },
+      }),
+
+      this.prisma.order.count({
+        where: {
+          ...customerWhere,
+          status: OrderStatus.DELIVERED,
+        },
+      }),
+
+      this.prisma.order.count({
+        where: {
+          ...customerWhere,
+          status: {
+            in: [OrderStatus.CANCELLED, OrderStatus.EXPIRED],
+          },
+        },
+      }),
     ]);
 
     return {
@@ -91,6 +155,7 @@ export class CustomerOrderService {
 
         status: order.status,
         paymentStatus: order.paymentStatus,
+        inventoryStatus: order.inventoryStatus,
         paymentMethodCode: order.paymentMethodCode,
         currencyCode: order.currencyCode,
 
@@ -102,6 +167,7 @@ export class CustomerOrderService {
         itemCount: order._count.items,
         previewItems: order.items,
 
+        expiresAt: order.expiresAt,
         createdAt: order.createdAt,
         paidAt: order.paidAt,
         processingStartedAt: order.processingStartedAt,
@@ -116,7 +182,56 @@ export class CustomerOrderService {
         total,
         totalPages: Math.max(Math.ceil(total / limit), 1),
       },
+
+      statusCounts: {
+        ALL: allCount,
+        PENDING_PAYMENT: pendingPaymentCount,
+        PROCESSING: processingCount,
+        SHIPPED: shippedCount,
+        DELIVERED: deliveredCount,
+        CANCELLED: cancelledCount,
+      },
     };
+  }
+
+  private createStatusWhere(selectedStatus: CustomerOrderStatusFilter): Prisma.OrderWhereInput {
+    switch (selectedStatus) {
+      case CustomerOrderStatusFilter.PENDING_PAYMENT:
+        return {
+          status: OrderStatus.PENDING_PAYMENT,
+        };
+
+      // PAID برای سازگاری با لینک‌ها یا درخواست‌های قدیمی نگه داشته شده است.
+      // در رابط جدید، PAID و PROCESSING هر دو داخل تب «در حال پردازش» هستند.
+      case CustomerOrderStatusFilter.PAID:
+      case CustomerOrderStatusFilter.PROCESSING:
+        return {
+          status: {
+            in: [OrderStatus.PAID, OrderStatus.PROCESSING],
+          },
+        };
+
+      case CustomerOrderStatusFilter.SHIPPED:
+        return {
+          status: OrderStatus.SHIPPED,
+        };
+
+      case CustomerOrderStatusFilter.DELIVERED:
+        return {
+          status: OrderStatus.DELIVERED,
+        };
+
+      case CustomerOrderStatusFilter.CANCELLED:
+        return {
+          status: {
+            in: [OrderStatus.CANCELLED, OrderStatus.EXPIRED],
+          },
+        };
+
+      case CustomerOrderStatusFilter.ALL:
+      default:
+        return {};
+    }
   }
 
   async findOrderById(customerUserId: string, orderId: string) {
@@ -131,6 +246,7 @@ export class CustomerOrderService {
 
         status: true,
         paymentStatus: true,
+        inventoryStatus: true,
         paymentMethodCode: true,
         currencyCode: true,
 
@@ -220,7 +336,7 @@ export class CustomerOrderService {
     });
 
     if (!order) {
-      // عمدی: نباید مشخص شود سفارش متعلق به کاربر دیگری است
+      // عمدی: نباید مشخص شود سفارش متعلق به کاربر دیگری است.
       throw new NotFoundException('Order not found');
     }
 
@@ -231,6 +347,7 @@ export class CustomerOrderService {
 
         status: order.status,
         paymentStatus: order.paymentStatus,
+        inventoryStatus: order.inventoryStatus,
         paymentMethodCode: order.paymentMethodCode,
         currencyCode: order.currencyCode,
 

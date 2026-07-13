@@ -198,7 +198,7 @@ export function AdminBlogPostsPageClient() {
       <PageHeader
         title='مقالات بلاگ'
         description='فهرست، وضعیت انتشار و تنظیمات محتوایی مقالات بلاگ را مدیریت کنید'
-        leading={<BookOpenText className='size-5 lg:size-8' />}
+        icon={<BookOpenText className='size-5 lg:size-8' />}
         addButtonLabel='مقاله جدید'
         onAddClick={() => {
           router.push('/admin/blog/posts/new');

@@ -210,7 +210,30 @@ export function ProductsTable({
         header: 'موجودی',
         minWidth: '80px',
         align: 'center',
-        cell: (row) => <StockStatusBadge stockStatus={row.stockStatus} />,
+        cell: (row) => {
+          const isTracked = row.stockStatus !== 'CHECK_AVAILABILITY';
+
+          const isLowStock =
+            row.stockStatus === 'IN_STOCK' && row.stockQuantity <= row.lowStockThreshold;
+
+          return (
+            <div className='flex flex-col items-center gap-1.5'>
+              <StockStatusBadge stockStatus={row.stockStatus} />
+
+              {isTracked ? (
+                <span className='text-xs font-bold text-foreground-secondary'>
+                  {toPersianDigits(row.stockQuantity)} عدد
+                </span>
+              ) : null}
+
+              {isLowStock ? (
+                <span className='rounded-full bg-warning-soft px-2 py-0.5 text-[10px] font-bold text-warning'>
+                  کم‌موجود
+                </span>
+              ) : null}
+            </div>
+          );
+        },
       },
       {
         key: 'status',

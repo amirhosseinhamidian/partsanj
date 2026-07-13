@@ -46,6 +46,8 @@ export type AdminProductListItem = ProductSeoFields & {
   isSaleActive: boolean;
   stockStatus: StockStatus;
   status: ProductStatus;
+  stockQuantity: number;
+  lowStockThreshold: number;
   isPublished: boolean;
   isTorobEnabled: boolean;
   showOnHome: boolean;
@@ -97,6 +99,8 @@ export type ProductInput = {
   priceToman?: number;
   stockStatus?: StockStatus;
   status?: ProductStatus;
+  stockQuantity?: number;
+  lowStockThreshold?: number;
 
   isPublished?: boolean;
   isTorobEnabled?: boolean;
@@ -213,6 +217,8 @@ export type AdminProductDetail = ProductSeoFields & {
   isSaleActive: boolean;
   stockStatus: StockStatus;
   status: ProductStatus;
+  stockQuantity: number;
+  lowStockThreshold: number;
 
   isPublished: boolean;
   isTorobEnabled: boolean;

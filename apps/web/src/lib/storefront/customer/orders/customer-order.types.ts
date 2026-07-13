@@ -7,6 +7,15 @@ export type CustomerOrderStatus =
   | 'CANCELLED'
   | 'EXPIRED';
 
+export type CustomerOrderStatusFilter =
+  | 'ALL'
+  | 'PENDING_PAYMENT'
+  | 'PAID'
+  | 'PROCESSING'
+  | 'SHIPPED'
+  | 'DELIVERED'
+  | 'CANCELLED';
+
 export type CustomerOrderPaymentStatus =
   | 'UNPAID'
   | 'PENDING'
@@ -15,6 +24,8 @@ export type CustomerOrderPaymentStatus =
   | 'REFUNDED'
   | 'PARTIALLY_REFUNDED';
 
+export type CustomerOrderInventoryStatus = 'NOT_RESERVED' | 'RESERVED' | 'COMMITTED' | 'RELEASED';
+
 export type CustomerOrderTimelineCode =
   | 'ORDER_CREATED'
   | 'PAYMENT_CONFIRMED'
@@ -22,6 +33,23 @@ export type CustomerOrderTimelineCode =
   | 'ORDER_SHIPPED'
   | 'ORDER_DELIVERED'
   | 'ORDER_CANCELLED';
+
+export type CustomerOrderStatusTab =
+  | 'ALL'
+  | 'PENDING_PAYMENT'
+  | 'PROCESSING'
+  | 'SHIPPED'
+  | 'DELIVERED'
+  | 'CANCELLED';
+
+export type CustomerOrderStatusCounts = {
+  ALL: number;
+  PENDING_PAYMENT: number;
+  PROCESSING: number;
+  SHIPPED: number;
+  DELIVERED: number;
+  CANCELLED: number;
+};
 
 export type CustomerOrderTimelineItem = {
   code: CustomerOrderTimelineCode;
@@ -72,6 +100,7 @@ export type CustomerOrderListItem = {
 
   status: CustomerOrderStatus;
   paymentStatus: CustomerOrderPaymentStatus;
+  inventoryStatus: CustomerOrderInventoryStatus;
 
   paymentMethodCode: string;
   currencyCode: string;
@@ -84,6 +113,7 @@ export type CustomerOrderListItem = {
   itemCount: number;
   previewItems: CustomerOrderPreviewItem[];
 
+  expiresAt: string | null;
   createdAt: string;
   paidAt: string | null;
   processingStartedAt: string | null;
@@ -102,6 +132,7 @@ export type CustomerOrderListMeta = {
 export type CustomerOrdersListResponse = {
   data: CustomerOrderListItem[];
   meta: CustomerOrderListMeta;
+  statusCounts: CustomerOrderStatusCounts;
 };
 
 export type CustomerOrderDetail = {
@@ -110,6 +141,7 @@ export type CustomerOrderDetail = {
 
   status: CustomerOrderStatus;
   paymentStatus: CustomerOrderPaymentStatus;
+  inventoryStatus: CustomerOrderInventoryStatus;
 
   paymentMethodCode: string;
   currencyCode: string;
@@ -123,6 +155,7 @@ export type CustomerOrderDetail = {
   shippingDistrict: string | null;
   shippingAddressLine: string;
   shippingPostalCode: string;
+
   shippingPlaque: string | null;
   shippingFloor: string | null;
   shippingUnit: string | null;
@@ -162,4 +195,5 @@ export type CustomerOrderDetailResponse = {
 export type FindCustomerOrdersInput = {
   page?: number;
   limit?: number;
+  status?: CustomerOrderStatusFilter;
 };
