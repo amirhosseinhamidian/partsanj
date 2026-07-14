@@ -1,9 +1,14 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-const ACCESS_COOKIE = 'partsanj_admin_access_token';
+import {
+  createRequestId,
+  REQUEST_ID_HEADER,
+} from '@/lib/api/request-id';
 
+const ACCESS_COOKIE = 'partsanj_admin_access_token';
 const ADMIN_PREFIX = '/admin';
+const API_PREFIX = '/api';
 const ADMIN_LOGIN_PATH = '/admin/login';
 const MAINTENANCE_PATH = '/maintenance';
 
@@ -27,12 +32,43 @@ function getApiBaseUrl(): string {
  * بررسی می‌کند pathname دقیقاً خود مسیر باشد
  * یا یکی از زیرمسیرهای آن.
  *
- * /admin           → true
- * /admin/products  → true
- * /administrator   → false
+ * /admin → true
+ * /admin/products → true
+ * /administrator → false
  */
-function isPathWithin(pathname: string, basePath: string): boolean {
-  return pathname === basePath || pathname.startsWith(`${basePath}/`);
+function isPathWithin(
+  pathname: string,
+  basePath: string,
+): boolean {
+  return (
+    pathname === basePath ||
+    pathname.startsWith(`${basePath}/`)
+  );
+}
+
+/**
+ * برای هر درخواست BFF یک شناسه جدید می‌سازیم.
+ *
+ * شناسه ورودی کاربر عمداً overwrite می‌شود تا client نتواند
+ * correlation id دلخواه یا تکراری وارد logهای سیستم کند.
+ */
+function createApiRequestIdResponse(
+  request: NextRequest,
+): NextResponse {
+  const requestId = createRequestId();
+  const requestHeaders = new Headers(request.headers);
+
+  requestHeaders.set(REQUEST_ID_HEADER, requestId);
+
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
+
+  response.headers.set(REQUEST_ID_HEADER, requestId);
+
+  return response;
 }
 
 /**
@@ -44,23 +80,24 @@ function isPathWithin(pathname: string, basePath: string): boolean {
  */
 async function getStoreEnabled(): Promise<boolean> {
   try {
-    const response = await fetch(`${getApiBaseUrl()}/api/v1/settings`, {
-      method: 'GET',
-
-      headers: {
-        Accept: 'application/json',
+    const response = await fetch(
+      `${getApiBaseUrl()}/api/v1/settings`,
+      {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+        },
+        cache: 'no-store',
+        signal: AbortSignal.timeout(1500),
       },
-
-      cache: 'no-store',
-
-      signal: AbortSignal.timeout(1500),
-    });
+    );
 
     if (!response.ok) {
       return true;
     }
 
-    const result = (await response.json()) as PublicSettingsResponse;
+    const result =
+      (await response.json()) as PublicSettingsResponse;
 
     return result.data?.storeEnabled !== false;
   } catch {
@@ -68,7 +105,9 @@ async function getStoreEnabled(): Promise<boolean> {
   }
 }
 
-function handleAdminAuthentication(request: NextRequest): NextResponse {
+function handleAdminAuthentication(
+  request: NextRequest,
+): NextResponse {
   const { pathname, search } = request.nextUrl;
 
   /**
@@ -78,7 +117,9 @@ function handleAdminAuthentication(request: NextRequest): NextResponse {
     return NextResponse.next();
   }
 
-  const hasAccessToken = Boolean(request.cookies.get(ACCESS_COOKIE)?.value);
+  const hasAccessToken = Boolean(
+    request.cookies.get(ACCESS_COOKIE)?.value,
+  );
 
   if (hasAccessToken) {
     return NextResponse.next();
@@ -88,8 +129,10 @@ function handleAdminAuthentication(request: NextRequest): NextResponse {
 
   loginUrl.pathname = ADMIN_LOGIN_PATH;
   loginUrl.search = '';
-
-  loginUrl.searchParams.set('next', `${pathname}${search}`);
+  loginUrl.searchParams.set(
+    'next',
+    `${pathname}${search}`,
+  );
 
   return NextResponse.redirect(loginUrl);
 }
@@ -97,7 +140,9 @@ function handleAdminAuthentication(request: NextRequest): NextResponse {
 /**
  * محتوای صفحه /maintenance را با حفظ URL فعلی نمایش می‌دهد.
  */
-function createMaintenanceRewrite(request: NextRequest): NextResponse {
+function createMaintenanceRewrite(
+  request: NextRequest,
+): NextResponse {
   const maintenanceUrl = request.nextUrl.clone();
 
   maintenanceUrl.pathname = MAINTENANCE_PATH;
@@ -106,7 +151,6 @@ function createMaintenanceRewrite(request: NextRequest): NextResponse {
   return NextResponse.rewrite(maintenanceUrl, {
     status: 503,
     statusText: 'Service Unavailable',
-
     headers: {
       /**
        * به خزنده‌ها و کلاینت‌ها پیشنهاد می‌کند
@@ -117,14 +161,14 @@ function createMaintenanceRewrite(request: NextRequest): NextResponse {
       /**
        * پاسخ تعمیرات نباید cache شود.
        */
-      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+      'Cache-Control':
+        'no-store, no-cache, must-revalidate, max-age=0',
 
       /**
        * حتی اگر متادیتای صفحه بارگذاری نشود،
        * پاسخ HTTP به موتور جست‌وجو noindex می‌دهد.
        */
       'X-Robots-Tag': 'noindex, nofollow',
-
       'X-Maintenance-Mode': 'true',
     },
   });
@@ -132,6 +176,15 @@ function createMaintenanceRewrite(request: NextRequest): NextResponse {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  /**
+   * درخواست‌های BFF:
+   * شناسه در request داخلی Next قرار می‌گیرد و در response
+   * نیز برای خطایابی از DevTools قابل مشاهده است.
+   */
+  if (isPathWithin(pathname, API_PREFIX)) {
+    return createApiRequestIdResponse(request);
+  }
 
   /**
    * پنل ادمین در حالت تعمیرات همچنان باز می‌ماند
@@ -152,10 +205,13 @@ export async function proxy(request: NextRequest) {
   /**
    * فقط درخواست‌های صفحه‌ای GET و HEAD بررسی می‌شوند.
    *
-   * APIها از matcher خارج هستند و درخواست‌های POST
-   * مانند Server Action نیز وارد صفحه تعمیرات نمی‌شوند.
+   * درخواست‌های API در ابتدای تابع مدیریت شده‌اند و
+   * درخواست‌های POST مانند Server Action وارد تعمیرات نمی‌شوند.
    */
-  if (request.method === 'GET' || request.method === 'HEAD') {
+  if (
+    request.method === 'GET' ||
+    request.method === 'HEAD'
+  ) {
     const storeEnabled = await getStoreEnabled();
 
     if (!storeEnabled) {
@@ -169,9 +225,14 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     /**
+     * تمام Route Handlerهای BFF برای ایجاد Request ID.
+     */
+    '/api/:path*',
+
+    /**
      * تمام صفحات به‌جز:
      *
-     * - API
+     * - API؛ چون matcher جداگانه بالا دارد
      * - فایل‌های داخلی Next.js
      * - Image Optimization
      * - metadata files

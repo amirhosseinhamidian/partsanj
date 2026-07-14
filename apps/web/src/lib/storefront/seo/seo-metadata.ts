@@ -89,7 +89,7 @@ export function buildSeoMetadata({
     privatePage,
   });
 
-  const canonical = canonicalPath ? toAbsolutePublicUrl(canonicalPath) : undefined;
+  const canonical = !privatePage && canonicalPath ? toAbsolutePublicUrl(canonicalPath) : undefined;
 
   const imageUrl = openGraphImage?.url ? toAbsolutePublicUrl(openGraphImage.url) : undefined;
 

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 
 import { getStorefrontSiteSettings } from '@/lib/storefront/settings/site-settings.server';
+import { ReactNode } from 'react';
 
 type TermsNavigationItem = {
   id: string;

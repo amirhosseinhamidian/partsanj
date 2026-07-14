@@ -1,19 +1,46 @@
-import { ApiRequestError } from '@/lib/api/api-error';
 import { NextResponse } from 'next/server';
 
-export function apiErrorResponse(error: unknown): NextResponse {
-  if (error instanceof ApiRequestError) {
-    const message = error.status >= 500 ? 'سرویس اصلی در حال حاضر پاسخ‌گو نیست' : error.message;
+import { ApiRequestError } from '@/lib/api/api-error';
+import { REQUEST_ID_HEADER } from '@/lib/api/request-id';
 
-    return NextResponse.json(
+export function apiErrorResponse(
+  error: unknown,
+): NextResponse {
+  if (error instanceof ApiRequestError) {
+    const message =
+      error.status >= 500
+        ? 'سرویس اصلی در حال حاضر پاسخ‌گو نیست'
+        : error.message;
+
+    if (error.status >= 500) {
+      console.error('Upstream API error:', {
+        status: error.status,
+        code: error.code,
+        requestId: error.requestId,
+      });
+    }
+
+    const response = NextResponse.json(
       {
         message,
         code: error.code,
+        requestId: error.requestId,
       },
       {
         status: error.status,
       },
     );
+
+    response.headers.set('Cache-Control', 'no-store');
+
+    if (error.requestId) {
+      response.headers.set(
+        REQUEST_ID_HEADER,
+        error.requestId,
+      );
+    }
+
+    return response;
   }
 
   console.error('Unexpected API route error:', error);
@@ -25,6 +52,9 @@ export function apiErrorResponse(error: unknown): NextResponse {
     },
     {
       status: 500,
+      headers: {
+        'Cache-Control': 'no-store',
+      },
     },
   );
 }

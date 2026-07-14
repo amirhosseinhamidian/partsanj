@@ -10,15 +10,13 @@ import { getHomeBlogPosts } from '@/lib/storefront/home/home-blog-posts.server';
 import { getHomeMainCategories } from '@/lib/storefront/home/home-categories.server';
 import { getHomeFeaturedProducts } from '@/lib/storefront/home/home-featured-products.server';
 import { buildSeoMetadata } from '@/lib/storefront/seo/seo-metadata';
+import { StorefrontStructuredData } from '@/lib/storefront/seo/storefront-structured-data';
 import { getStorefrontSiteSettings } from '@/lib/storefront/settings/site-settings.server';
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getStorefrontSiteSettings();
-
   const siteName = settings.siteName?.trim() || 'پارت‌سنج';
-
   const title = settings.defaultSeoTitle?.trim() || siteName;
-
   const description =
     settings.defaultSeoDescription?.trim() ||
     settings.siteTagline?.trim() ||
@@ -27,7 +25,6 @@ export async function generateMetadata(): Promise<Metadata> {
   return buildSeoMetadata({
     title: siteName,
     seoTitle: title,
-
     description,
     canonicalPath: '/',
     globalNoIndex: settings.noIndexSite,
@@ -44,14 +41,18 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const [homeCategories, featuredProducts, homeBlogPosts] = await Promise.all([
-    getHomeMainCategories(),
-    getHomeFeaturedProducts(),
-    getHomeBlogPosts(),
-  ]);
+  const [homeCategories, featuredProducts, homeBlogPosts, settings] =
+    await Promise.all([
+      getHomeMainCategories(),
+      getHomeFeaturedProducts(),
+      getHomeBlogPosts(),
+      getStorefrontSiteSettings(),
+    ]);
 
   return (
     <>
+      <StorefrontStructuredData settings={settings} />
+
       <HomeHero />
 
       <div id='home-main-categories' className='scroll-mt-28'>
@@ -59,11 +60,8 @@ export default async function Home() {
       </div>
 
       <HomeBenefits className='mt-10' />
-
       <HomeFeaturedProducts products={featuredProducts} className='mt-10' />
-
       <HomePurchaseProcess className='mt-10' />
-
       <HomeBlogGuide posts={homeBlogPosts} className='mt-12' />
     </>
   );

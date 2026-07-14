@@ -1,7 +1,12 @@
-import { ApiRequestError } from '@/lib/api/api-error';
-import { nestApiWithResponse, type NestApiResponse } from '@/lib/api/nest-api';
-import { getAccessToken } from '@/lib/auth/session';
 import { NextResponse } from 'next/server';
+
+import { ApiRequestError } from '@/lib/api/api-error';
+import {
+  nestApiWithResponse,
+  type NestApiResponse,
+} from '@/lib/api/nest-api';
+import { REQUEST_ID_HEADER } from '@/lib/api/request-id';
+import { getAccessToken } from '@/lib/auth/session';
 
 export const PAYMENT_API_PATH = '/api/v1/payments';
 
@@ -31,12 +36,20 @@ export async function paymentNestApi<T>(
   });
 }
 
-export function createPaymentProxyResponse<T>(result: NestApiResponse<T>) {
+export function createPaymentProxyResponse<T>(
+  result: NestApiResponse<T>,
+): NextResponse {
   const response = NextResponse.json(result.payload, {
     status: result.status,
   });
 
   response.headers.set('Cache-Control', 'no-store');
+
+  const requestId = result.headers.get(REQUEST_ID_HEADER);
+
+  if (requestId) {
+    response.headers.set(REQUEST_ID_HEADER, requestId);
+  }
 
   return response;
 }
