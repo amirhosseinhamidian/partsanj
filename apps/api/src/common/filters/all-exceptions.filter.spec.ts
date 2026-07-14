@@ -1,5 +1,16 @@
-import { ArgumentsHost, BadRequestException, ConflictException } from '@nestjs/common';
-import { describe, expect, it, jest } from '@jest/globals';
+import {
+  ArgumentsHost,
+  BadRequestException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
+import {
+  afterEach,
+  describe,
+  expect,
+  it,
+  jest,
+} from '@jest/globals';
 import type { Request, Response } from 'express';
 
 import { AllExceptionsFilter } from './all-exceptions.filter.js';
@@ -26,7 +37,9 @@ function createTestContext(): TestContext {
     header: jest
       .fn()
       .mockImplementation((name: string) =>
-        name.toLowerCase() === 'x-request-id' ? 'req_test_123' : undefined,
+        name.toLowerCase() === 'x-request-id'
+          ? 'req_test_123'
+          : undefined,
       ),
     user: {
       id: 'user_123',
@@ -57,6 +70,10 @@ function createTestContext(): TestContext {
 }
 
 describe('AllExceptionsFilter', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it('preserves business exception code and message', () => {
     const filter = new AllExceptionsFilter();
     const context = createTestContext();
@@ -90,7 +107,10 @@ describe('AllExceptionsFilter', () => {
       new BadRequestException({
         statusCode: 400,
         error: 'Bad Request',
-        message: ['quantity must not be less than 1', 'addressId must be a UUID'],
+        message: [
+          'quantity must not be less than 1',
+          'addressId must be a UUID',
+        ],
       }),
       context.host,
     );
@@ -103,18 +123,27 @@ describe('AllExceptionsFilter', () => {
         code: 'VALIDATION_ERROR',
         message: 'اطلاعات ارسال‌شده معتبر نیست.',
         details: {
-          errors: ['quantity must not be less than 1', 'addressId must be a UUID'],
+          errors: [
+            'quantity must not be less than 1',
+            'addressId must be a UUID',
+          ],
         },
       }),
     );
   });
 
   it('does not expose unexpected error details', () => {
+    const errorSpy = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+
     const filter = new AllExceptionsFilter();
     const context = createTestContext();
 
     filter.catch(
-      new Error('DATABASE_URL=postgresql://secret-user:secret-pass@host/db'),
+      new Error(
+        'DATABASE_URL=postgresql://secret-user:secret-pass@host/db',
+      ),
       context.host,
     );
 
@@ -126,21 +155,45 @@ describe('AllExceptionsFilter', () => {
       expect.objectContaining({
         statusCode: 500,
         code: 'INTERNAL_SERVER_ERROR',
-        message: 'خطای غیرمنتظره‌ای رخ داد. لطفاً دوباره تلاش کنید.',
+        message:
+          'خطای غیرمنتظره‌ای رخ داد. لطفاً دوباره تلاش کنید.',
       }),
     );
 
-    expect(JSON.stringify(responseBody)).not.toContain('secret-pass');
+    expect(JSON.stringify(responseBody)).not.toContain(
+      'secret-pass',
+    );
+
+    const loggedPayload = errorSpy.mock.calls[0]?.[0];
+
+    expect(JSON.stringify(loggedPayload)).not.toContain(
+      'secret-user',
+    );
+    expect(JSON.stringify(loggedPayload)).not.toContain(
+      'secret-pass',
+    );
+    expect(JSON.stringify(loggedPayload)).toContain(
+      '[REDACTED_DATABASE_URL]',
+    );
   });
 
   it('returns request id in response headers', () => {
     const filter = new AllExceptionsFilter();
     const context = createTestContext();
 
-    filter.catch(new BadRequestException('درخواست نامعتبر است'), context.host);
+    filter.catch(
+      new BadRequestException('درخواست نامعتبر است'),
+      context.host,
+    );
 
-    expect(context.setHeader).toHaveBeenCalledWith('x-request-id', 'req_test_123');
+    expect(context.setHeader).toHaveBeenCalledWith(
+      'x-request-id',
+      'req_test_123',
+    );
 
-    expect(context.setHeader).toHaveBeenCalledWith('cache-control', 'no-store');
+    expect(context.setHeader).toHaveBeenCalledWith(
+      'cache-control',
+      'no-store',
+    );
   });
 });

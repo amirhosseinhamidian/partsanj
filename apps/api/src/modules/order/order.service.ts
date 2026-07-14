@@ -4,6 +4,7 @@ import {
   ConflictException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -18,8 +19,11 @@ import {
   ProductStatus,
   StockStatus,
 } from '../../generated/prisma/client.js';
+
+import { createLogContext } from '../../common/logging/logging.utils.js';
 import { getComputedProductPricing } from '../catalog/catalog-pricing.utils.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { OrderSmsOutboxService } from '../order-sms/order-sms-outbox.service.js';
 import type { CreateOrderFromCartDto } from './dto/create-order-from-cart.dto.js';
 import { reserveOrderInventory } from './order-inventory.utils.js';
 
@@ -54,10 +58,13 @@ type PreparedOrderItem = {
 
 @Injectable()
 export class OrderService {
+  private readonly logger = new Logger(OrderService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-  ) {}
+  
+    private readonly orderSmsOutbox: OrderSmsOutboxService,) {}
 
   async createFromCart(userId: string, dto: CreateOrderFromCartDto) {
     let serializationAttempts = 0;
@@ -65,12 +72,27 @@ export class OrderService {
 
     while (true) {
       try {
-        return await this.prisma.$transaction(
+        const order = await this.prisma.$transaction(
           (transaction) => this.createFromCartInTransaction(transaction, userId, dto),
           {
             isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
           },
         );
+
+        this.logger.log(
+          createLogContext('order_created', {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            userId,
+            itemCount: order.itemCount,
+            payableToman: order.payableToman,
+            status: order.status,
+            paymentStatus: order.paymentStatus,
+            inventoryStatus: OrderInventoryStatus.RESERVED,
+          }),
+        );
+
+        return order;
       } catch (error) {
         if (this.isSerializationConflict(error)) {
           serializationAttempts += 1;
@@ -469,6 +491,15 @@ export class OrderService {
         },
       },
     });
+
+    await this.orderSmsOutbox.enqueuePaymentReminder(
+      transaction,
+      {
+        orderId: order.id,
+        recipient: address.recipientMobile,
+        createdAt: now,
+      },
+    );
 
     await transaction.cart.update({
       where: {

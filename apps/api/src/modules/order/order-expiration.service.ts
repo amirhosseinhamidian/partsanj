@@ -1,6 +1,12 @@
 import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OrderPaymentStatus, OrderStatus } from '../../generated/prisma/client.js';
+
+import {
+  createErrorDetails,
+  createLogContext,
+} from '../../common/logging/logging.utils.js';
+import { captureServerException } from '../../common/monitoring/sentry-monitoring.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { expireOrderIfDue } from './order-inventory.utils.js';
 
@@ -22,6 +28,14 @@ export class OrderExpirationService implements OnModuleInit, OnModuleDestroy {
   onModuleInit() {
     const intervalMs = this.getSweepIntervalMs();
 
+    this.logger.log(
+      createLogContext('order_expiration_sweeper_started', {
+        intervalMs,
+        batchSize: this.getSweepBatchSize(),
+        paymentCallbackGraceMinutes: this.getPaymentCallbackGraceMinutes(),
+      }),
+    );
+
     void this.expireDueOrders();
 
     this.sweepTimer = setInterval(() => {
@@ -36,6 +50,10 @@ export class OrderExpirationService implements OnModuleInit, OnModuleDestroy {
       clearInterval(this.sweepTimer);
       this.sweepTimer = null;
     }
+
+    this.logger.log(
+      createLogContext('order_expiration_sweeper_stopped'),
+    );
   }
 
   private async expireDueOrders() {
@@ -70,25 +88,68 @@ export class OrderExpirationService implements OnModuleInit, OnModuleDestroy {
         },
       });
 
+      let expiredCount = 0;
+      let skippedCount = 0;
+      let failedCount = 0;
+
       for (const order of orders) {
         try {
-          await this.prisma.$transaction((transaction) =>
+          const expired = await this.prisma.$transaction((transaction) =>
             expireOrderIfDue(transaction, order.id, now, {
               activePaymentGraceCutoff,
             }),
           );
+
+          if (expired) {
+            expiredCount += 1;
+
+            this.logger.log(
+              createLogContext('order_expired', {
+                orderId: order.id,
+              }),
+            );
+          } else {
+            skippedCount += 1;
+          }
         } catch (error) {
+          failedCount += 1;
+
           this.logger.error(
-            `Failed to expire order ${order.id}`,
-            error instanceof Error ? error.stack : undefined,
+            createLogContext('order_expiration_failed', {
+              orderId: order.id,
+              error: createErrorDetails(error),
+            }),
           );
+
+          captureServerException(error, {
+            event: 'order_expiration_failed',
+            context: {
+              orderId: order.id,
+            },
+          });
         }
+      }
+
+      if (orders.length > 0) {
+        this.logger.log(
+          createLogContext('order_expiration_sweep_completed', {
+            candidateCount: orders.length,
+            expiredCount,
+            skippedCount,
+            failedCount,
+          }),
+        );
       }
     } catch (error) {
       this.logger.error(
-        'Failed to sweep expired orders',
-        error instanceof Error ? error.stack : undefined,
+        createLogContext('order_expiration_sweep_failed', {
+          error: createErrorDetails(error),
+        }),
       );
+
+      captureServerException(error, {
+        event: 'order_expiration_sweep_failed',
+      });
     } finally {
       this.isSweepRunning = false;
     }

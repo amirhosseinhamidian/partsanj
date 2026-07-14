@@ -1,11 +1,46 @@
+import * as Sentry from '@sentry/nextjs';
 import { NextResponse } from 'next/server';
 
 import { ApiRequestError } from '@/lib/api/api-error';
 import { REQUEST_ID_HEADER } from '@/lib/api/request-id';
 
+function reportRouteHandlerError(error: unknown): void {
+  if (
+    error instanceof ApiRequestError &&
+    error.status < 500
+  ) {
+    return;
+  }
+
+  Sentry.withScope((scope) => {
+    scope.setTag('service', 'partsanj-web');
+    scope.setTag('surface', 'next-route-handler');
+
+    if (error instanceof ApiRequestError) {
+      scope.setTag('upstream', 'partsanj-api');
+      scope.setTag(
+        'error_code',
+        error.code ?? 'UPSTREAM_ERROR',
+      );
+      scope.setContext('upstream_response', {
+        statusCode: error.status,
+        requestId: error.requestId,
+      });
+    }
+
+    Sentry.captureException(
+      error instanceof Error
+        ? error
+        : new Error('Unknown Route Handler error'),
+    );
+  });
+}
+
 export function apiErrorResponse(
   error: unknown,
 ): NextResponse {
+  reportRouteHandlerError(error);
+
   if (error instanceof ApiRequestError) {
     const message =
       error.status >= 500

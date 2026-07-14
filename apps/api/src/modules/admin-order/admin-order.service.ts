@@ -12,6 +12,7 @@ import {
   OrderStatus,
   Prisma,
 } from '../../generated/prisma/client.js';
+import { OrderSmsOutboxService } from '../order-sms/order-sms-outbox.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { releaseOrderInventory } from '../order/order-inventory.utils.js';
 import { CancelAdminOrderDto } from './dto/cancel-admin-order.dto.js';
@@ -38,7 +39,10 @@ type OrderMutationRecord = {
 
 @Injectable()
 export class AdminOrderService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly orderSmsOutbox: OrderSmsOutboxService,
+  ) {}
 
   async findOrders(query: FindAdminOrdersQueryDto) {
     const page = query.page ?? 1;
@@ -546,6 +550,10 @@ export class AdminOrderService {
           },
         },
       });
+    await this.orderSmsOutbox.enqueueOrderShipped(
+      transaction,
+      orderId,
+    );
     });
 
     return this.findOrderById(orderId);

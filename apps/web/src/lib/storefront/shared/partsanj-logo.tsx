@@ -95,9 +95,9 @@ function DefaultLogo({ compact }: { compact: boolean }) {
       <span className='relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-[14px] bg-foreground text-background shadow-panel'>
         <Settings2 aria-hidden='true' className='size-8' />
 
-        <span className='absolute -start-1 -bottom-1 grid size-5 place-items-center rounded-full bg-brand text-brand-foreground'>
+        {/* <span className='absolute -start-1 -bottom-1 grid size-5 place-items-center rounded-full bg-brand text-brand-foreground'>
           <Wrench aria-hidden='true' className='size-3' />
-        </span>
+        </span> */}
       </span>
 
       {!compact ? (

@@ -5,6 +5,13 @@ import {
   OrderStatus,
   PaymentAttemptStatus,
 } from '../../generated/prisma/client.js';
+
+import {
+  createErrorDetails,
+  createLogContext,
+} from '../../common/logging/logging.utils.js';
+import { captureServerException } from '../../common/monitoring/sentry-monitoring.js';
+import { OrderSmsOutboxService } from '../order-sms/order-sms-outbox.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 import type {
   PaymentCallbackDecision,
@@ -37,7 +44,8 @@ export class PaymentCallbackService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly providerRegistry: PaymentProviderRegistry,
-  ) {}
+  
+    private readonly orderSmsOutbox: OrderSmsOutboxService,) {}
 
   async handleCallback(
     providerCode: PaymentProviderCode,
@@ -85,6 +93,17 @@ export class PaymentCallbackService {
       orderId: attempt.orderId,
       attemptId: attempt.id,
     };
+
+    this.logger.log(
+      createLogContext('payment_callback_received', {
+        provider: providerCode,
+        orderId: attempt.orderId,
+        orderNumber: attempt.order.orderNumber,
+        paymentAttemptId: attempt.id,
+        callbackDecision: decision.kind,
+        currentAttemptStatus: attempt.status,
+      }),
+    );
 
     if (
       attempt.status === PaymentAttemptStatus.VERIFIED ||
@@ -140,7 +159,12 @@ export class PaymentCallbackService {
     }
 
     if (decision.kind === 'cancelled') {
-      return this.markAttemptCancelled(attempt.id, attempt.orderId, decision);
+      return this.markAttemptCancelled(
+        providerCode,
+        attempt.id,
+        attempt.orderId,
+        decision,
+      );
     }
 
     const callbackReceived = await this.markCallbackReceived(attempt.id, decision);
@@ -180,6 +204,7 @@ export class PaymentCallbackService {
   }
 
   private async markAttemptCancelled(
+    providerCode: PaymentProviderCode,
     paymentAttemptId: string,
     orderId: string,
     decision: Extract<PaymentCallbackDecision, { kind: 'cancelled' }>,
@@ -227,6 +252,15 @@ export class PaymentCallbackService {
       return this.resolveCurrentOutcome(paymentAttemptId);
     }
 
+    this.logger.log(
+      createLogContext('payment_cancelled', {
+        provider: providerCode,
+        orderId,
+        paymentAttemptId,
+        failureCode: decision.code,
+      }),
+    );
+
     return {
       orderId,
       attemptId: paymentAttemptId,
@@ -252,9 +286,26 @@ export class PaymentCallbackService {
       });
     } catch (error) {
       this.logger.error(
-        `Verify payment failed for attempt ${attempt.id}`,
-        error instanceof Error ? error.stack : undefined,
+        createLogContext('payment_verification_request_failed', {
+          provider: providerCode,
+          orderId: attempt.orderId,
+          orderNumber: attempt.orderNumber,
+          paymentAttemptId: attempt.id,
+          error: createErrorDetails(error),
+        }),
       );
+
+      captureServerException(error, {
+        event: 'payment_verification_request_failed',
+        tags: {
+          provider: providerCode,
+        },
+        context: {
+          orderId: attempt.orderId,
+          orderNumber: attempt.orderNumber,
+          paymentAttemptId: attempt.id,
+        },
+      });
 
       return {
         orderId: attempt.orderId,
@@ -264,13 +315,14 @@ export class PaymentCallbackService {
     }
 
     if (verification.kind === 'verified') {
-      return this.markAttemptVerified(attempt, verification);
+      return this.markAttemptVerified(providerCode, attempt, verification);
     }
 
-    return this.markAttemptFailed(attempt, verification);
+    return this.markAttemptFailed(providerCode, attempt, verification);
   }
 
   private async markAttemptVerified(
+    providerCode: PaymentProviderCode,
     attempt: VerificationCandidate,
     verification: Extract<PaymentVerificationResult, { kind: 'verified' }>,
   ): Promise<PaymentCallbackOutcome> {
@@ -334,12 +386,28 @@ export class PaymentCallbackService {
         });
       }
 
+      await this.orderSmsOutbox.enqueuePaymentSucceeded(
+        transaction,
+        attempt.orderId,
+      );
+
       return true;
     });
 
     if (!changed) {
       return this.resolveCurrentOutcome(attempt.id);
     }
+
+    this.logger.log(
+      createLogContext('payment_verified', {
+        provider: providerCode,
+        orderId: attempt.orderId,
+        orderNumber: attempt.orderNumber,
+        paymentAttemptId: attempt.id,
+        providerReferenceId: verification.providerReferenceId,
+        amountToman: attempt.amountToman,
+      }),
+    );
 
     return {
       orderId: attempt.orderId,
@@ -349,6 +417,7 @@ export class PaymentCallbackService {
   }
 
   private async markAttemptFailed(
+    providerCode: PaymentProviderCode,
     attempt: VerificationCandidate,
     verification: Extract<PaymentVerificationResult, { kind: 'failed' }>,
   ): Promise<PaymentCallbackOutcome> {
@@ -389,6 +458,16 @@ export class PaymentCallbackService {
     if (!changed) {
       return this.resolveCurrentOutcome(attempt.id);
     }
+
+    this.logger.warn(
+      createLogContext('payment_verification_rejected', {
+        provider: providerCode,
+        orderId: attempt.orderId,
+        orderNumber: attempt.orderNumber,
+        paymentAttemptId: attempt.id,
+        failureCode: verification.code,
+      }),
+    );
 
     return {
       orderId: attempt.orderId,

@@ -12,6 +12,8 @@ import type { Request, Response } from 'express';
 
 import { Prisma } from '../../generated/prisma/client.js';
 import { normalizeRequestId, REQUEST_ID_HEADER } from '../http/request-id.js';
+import { createErrorDetails } from '../logging/logging.utils.js';
+import { captureServerException } from '../monitoring/sentry-monitoring.js';
 
 type ApiErrorResponse = {
   statusCode: number;
@@ -270,15 +272,27 @@ export class AllExceptionsFilter implements ExceptionFilter {
       path,
       statusCode: normalizedException.statusCode,
       code: normalizedException.code,
+      durationMs: request.requestDurationMs,
       userId: this.resolveUserId(request),
     };
 
     if (normalizedException.statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) {
       this.logger.error({
         ...baseLog,
-        error: {
-          name: originalException instanceof Error ? originalException.name : 'UnknownError',
-          stack: normalizedException.stack ?? this.resolveExceptionStack(originalException),
+        error: createErrorDetails(originalException),
+      });
+
+      captureServerException(originalException, {
+        event: 'request_failed',
+        requestId,
+        tags: {
+          method: request.method,
+          error_code: normalizedException.code,
+          status_code: normalizedException.statusCode,
+        },
+        context: {
+          path,
+          durationMs: request.requestDurationMs,
         },
       });
 

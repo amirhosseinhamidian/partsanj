@@ -9,6 +9,7 @@ import { VehicleAdminModule } from './modules/vehicles/admin/vehicle-admin.modul
 import { VehiclesModule } from './modules/vehicles/vehicles.module.js';
 import { CartModule } from './modules/cart/cart.module.js';
 import { CustomerAddressModule } from './modules/customer-address/customer-address.module.js';
+import { OrderSmsModule } from './modules/order-sms/order-sms.module.js';
 import { OrderModule } from './modules/order/order.module.js';
 import { PaymentModule } from './modules/payment/payment.module.js';
 import { AdminOrderModule } from './modules/admin-order/admin-order.module.js';
@@ -35,6 +36,7 @@ import { AdminDashboardModule } from './modules/admin-dashboard/admin-dashboard.
     VehiclesModule,
     CartModule,
     CustomerAddressModule,
+    OrderSmsModule,
     OrderModule,
     PaymentModule,
     AdminOrderModule,

@@ -6,6 +6,12 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
+import {
+  createErrorDetails,
+  createLogContext,
+  maskMobile,
+} from '../../common/logging/logging.utils.js';
+
 type KavenegarEntry = {
   messageid?: number | string;
 };
@@ -41,7 +47,13 @@ export class KavenegarService {
         );
       }
 
-      this.logger.warn(`[Development only] OTP for ${mobile}: ${code}`);
+      this.logger.warn(
+        createLogContext('otp_console_delivery_used', {
+          provider: 'console',
+          mobile: maskMobile(mobile),
+          code,
+        }),
+      );
 
       return {};
     }
@@ -66,8 +78,14 @@ export class KavenegarService {
       response = await fetch(url, {
         signal: AbortSignal.timeout(10_000),
       });
-    } catch {
-      this.logger.error('Kavenegar request failed');
+    } catch (error) {
+      this.logger.error(
+        createLogContext('otp_delivery_request_failed', {
+          provider: 'kavenegar',
+          mobile: maskMobile(mobile),
+          error: createErrorDetails(error),
+        }),
+      );
 
       throw new ServiceUnavailableException('Unable to send verification code');
     }
@@ -75,15 +93,32 @@ export class KavenegarService {
     const payload = (await response.json().catch(() => null)) as KavenegarResponse | null;
 
     if (!response.ok || payload?.return?.status !== 200) {
-      this.logger.error(`Kavenegar lookup failed with HTTP ${response.status}`);
+      this.logger.error(
+        createLogContext('otp_delivery_provider_rejected', {
+          provider: 'kavenegar',
+          mobile: maskMobile(mobile),
+          httpStatus: response.status,
+          providerStatus: payload?.return?.status,
+          providerMessage: payload?.return?.message,
+        }),
+      );
 
       throw new ServiceUnavailableException('Unable to send verification code');
     }
 
     const entry = Array.isArray(payload.entries) ? payload.entries[0] : payload.entries;
+    const providerMessageId = entry?.messageid ? String(entry.messageid) : undefined;
+
+    this.logger.log(
+      createLogContext('otp_delivery_succeeded', {
+        provider: 'kavenegar',
+        mobile: maskMobile(mobile),
+        providerMessageId,
+      }),
+    );
 
     return {
-      providerMessageId: entry?.messageid ? String(entry.messageid) : undefined,
+      providerMessageId,
     };
   }
 }

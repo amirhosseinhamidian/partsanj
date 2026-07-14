@@ -27,7 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
   const shouldNoIndex = settings.noIndexSite;
 
-  const faviconUrl = settings.faviconUrl?.trim() || '/images/branding/favicon-default.ico';
+  const faviconUrl = settings.faviconUrl?.trim() || '/images/branding/favicon.ico';
 
   return {
     metadataBase: new URL(settings.siteBaseUrl),

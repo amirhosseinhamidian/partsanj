@@ -2,9 +2,13 @@ packages:
   - 'apps/*'
   - 'packages/*'
 
+overrides:
+  import-in-the-middle: 3.2.0
+
 allowBuilds:
   '@prisma/engines': true
   '@scarf/scarf': true
+  '@sentry/cli': true
   esbuild: true
   prisma: true
   sharp: true

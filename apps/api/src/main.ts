@@ -1,3 +1,5 @@
+import './instrument.js';
+
 import { ConsoleLogger, ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
@@ -5,7 +7,9 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 import { AppModule } from './app.module.js';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
+import { HttpLoggingInterceptor } from './common/interceptors/http-logging.interceptor.js';
 import { requestIdMiddleware } from './common/middleware/request-id.middleware.js';
+import { captureServerException } from './common/monitoring/sentry-monitoring.js';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -56,6 +60,7 @@ async function bootstrap(): Promise<void> {
   });
 
   app.useGlobalFilters(new AllExceptionsFilter());
+  app.useGlobalInterceptors(new HttpLoggingInterceptor());
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -97,7 +102,7 @@ async function bootstrap(): Promise<void> {
   });
 }
 
-bootstrap().catch((error: unknown) => {
+bootstrap().catch(async (error: unknown) => {
   applicationLogger.error({
     event: 'application_bootstrap_failed',
     service: 'partsanj-api',
@@ -107,6 +112,14 @@ bootstrap().catch((error: unknown) => {
       stack: error instanceof Error ? error.stack : String(error),
     },
   });
+
+  captureServerException(error, {
+    event: 'application_bootstrap_failed',
+    level: 'fatal',
+  });
+
+  const Sentry = await import('@sentry/nestjs');
+  await Sentry.flush(2_000);
 
   process.exit(1);
 });

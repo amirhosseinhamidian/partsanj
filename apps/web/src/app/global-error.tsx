@@ -1,5 +1,8 @@
 'use client';
 
+
+import * as Sentry from '@sentry/nextjs';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { AlertOctagon, Home, RefreshCw } from 'lucide-react';
 
@@ -13,6 +16,17 @@ type GlobalErrorPageProps = {
 };
 
 export default function GlobalErrorPage({ error, reset }: GlobalErrorPageProps) {
+  useEffect(() => {
+    Sentry.captureException(error, {
+      tags: {
+        surface: 'global-error-boundary',
+      },
+      extra: {
+        digest: error.digest,
+      },
+    });
+  }, [error]);
+
   return (
     <html lang='fa' dir='rtl'>
       <head>

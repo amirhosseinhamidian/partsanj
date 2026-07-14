@@ -336,7 +336,7 @@ export function StorefrontCategoryMobileMenu({
             return (
               <details
                 key={category.id}
-                defaultOpen={isCurrentRoot || hasCurrentChild}
+                open={isCurrentRoot || hasCurrentChild}
                 className='group rounded-control'
               >
                 <summary

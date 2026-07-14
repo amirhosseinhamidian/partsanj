@@ -1,5 +1,8 @@
 'use client';
 
+
+import * as Sentry from '@sentry/nextjs';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, Home, RefreshCw, Search } from 'lucide-react';
 
@@ -11,6 +14,17 @@ type ErrorPageProps = {
 };
 
 export default function ErrorPage({ error, reset }: ErrorPageProps) {
+  useEffect(() => {
+    Sentry.captureException(error, {
+      tags: {
+        surface: 'app-error-boundary',
+      },
+      extra: {
+        digest: error.digest,
+      },
+    });
+  }, [error]);
+
   return (
     <>
       <title>خطای غیرمنتظره | پارت‌سنج</title>

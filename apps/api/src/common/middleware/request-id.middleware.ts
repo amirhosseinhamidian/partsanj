@@ -10,6 +10,7 @@ import {
   normalizeRequestId,
   REQUEST_ID_HEADER,
 } from '../http/request-id.js';
+import { runWithRequestContext } from '../request-context/request-context.js';
 
 export function requestIdMiddleware(
   request: Request,
@@ -29,5 +30,5 @@ export function requestIdMiddleware(
   // شناسه در تمام پاسخ‌ها، حتی پاسخ‌های موفق، برگردانده می‌شود.
   response.setHeader(REQUEST_ID_HEADER, requestId);
 
-  next();
+  runWithRequestContext(requestId, next);
 }

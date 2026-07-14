@@ -9,6 +9,18 @@ const SECRET_ASSIGNMENT_PATTERN =
 const JWT_PATTERN =
   /\beyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\b/g;
 
+const DATABASE_URL_ASSIGNMENT_PATTERN =
+  /\b(?:DATABASE_URL|DIRECT_URL)\s*=\s*[^\s]+/gi;
+
+const URL_CREDENTIALS_PATTERN =
+  /(\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis):\/\/)([^:\s/@]+):([^@\s/]+)@/gi;
+
+const IRANIAN_MOBILE_PATTERN =
+  /\b(?:\+98|0098|98|0)?9\d{9}\b/g;
+
+const PAYMENT_CARD_PATTERN =
+  /\b(?:\d[ -]?){15}\d\b/g;
+
 function sanitizeLogText(value: string): string {
   return value
     .replace(
@@ -19,7 +31,17 @@ function sanitizeLogText(value: string): string {
       SECRET_ASSIGNMENT_PATTERN,
       '$1$2[REDACTED]',
     )
-    .replace(JWT_PATTERN, '[REDACTED_JWT]');
+    .replace(
+      DATABASE_URL_ASSIGNMENT_PATTERN,
+      'DATABASE_URL=[REDACTED_DATABASE_URL]',
+    )
+    .replace(
+      URL_CREDENTIALS_PATTERN,
+      '$1[REDACTED]:[REDACTED]@',
+    )
+    .replace(JWT_PATTERN, '[REDACTED_JWT]')
+    .replace(IRANIAN_MOBILE_PATTERN, '[REDACTED_MOBILE]')
+    .replace(PAYMENT_CARD_PATTERN, '[REDACTED_CARD]');
 }
 
 export function createLogContext(

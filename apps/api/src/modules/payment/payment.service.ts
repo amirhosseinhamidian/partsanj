@@ -2,6 +2,7 @@ import {
   ConflictException,
   HttpException,
   Injectable,
+  Logger,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -13,6 +14,12 @@ import {
   PaymentAttemptStatus,
   Prisma,
 } from '../../generated/prisma/client.js';
+
+import {
+  createErrorDetails,
+  createLogContext,
+} from '../../common/logging/logging.utils.js';
+import { captureServerException } from '../../common/monitoring/sentry-monitoring.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { expireOrderIfDue } from '../order/order-inventory.utils.js';
 import type { PaymentProviderCode } from './payment-provider.contract.js';
@@ -37,6 +44,8 @@ type CreatePaymentAttemptResult =
 
 @Injectable()
 export class PaymentService {
+  private readonly logger = new Logger(PaymentService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
@@ -64,6 +73,17 @@ export class PaymentService {
     }
 
     const { attempt } = result;
+
+    this.logger.log(
+      createLogContext('payment_attempt_created', {
+        orderId: attempt.orderId,
+        orderNumber: attempt.orderNumber,
+        paymentAttemptId: attempt.id,
+        provider: attempt.providerCode,
+        amountToman: attempt.amountToman,
+        userId,
+      }),
+    );
 
     try {
       const initiation = await provider.initiatePayment({
@@ -109,12 +129,33 @@ export class PaymentService {
         });
       });
 
+      this.logger.log(
+        createLogContext('payment_redirect_created', {
+          orderId: attempt.orderId,
+          orderNumber: attempt.orderNumber,
+          paymentAttemptId: attempt.id,
+          provider: attempt.providerCode,
+          amountToman: attempt.amountToman,
+        }),
+      );
+
       return {
         attemptId: attempt.id,
         providerCode: attempt.providerCode,
         redirectUrl: initiation.redirectUrl,
       };
     } catch (error) {
+      this.logger.error(
+        createLogContext('payment_initiation_failed', {
+          orderId: attempt.orderId,
+          orderNumber: attempt.orderNumber,
+          paymentAttemptId: attempt.id,
+          provider: attempt.providerCode,
+          amountToman: attempt.amountToman,
+          error: createErrorDetails(error),
+        }),
+      );
+
       await this.markAttemptAsFailed(attempt.id, attempt.orderId, error);
 
       throw error;
@@ -320,7 +361,7 @@ export class PaymentService {
     const failure = this.getFailureDetails(error);
 
     try {
-      await this.prisma.$transaction(async (transaction) => {
+      const changed = await this.prisma.$transaction(async (transaction) => {
         const updateResult = await transaction.paymentAttempt.updateMany({
           where: {
             id: paymentAttemptId,
@@ -341,7 +382,7 @@ export class PaymentService {
         });
 
         if (!updateResult.count) {
-          return;
+          return false;
         }
 
         await transaction.order.updateMany({
@@ -354,9 +395,41 @@ export class PaymentService {
             paymentStatus: OrderPaymentStatus.FAILED,
           },
         });
+
+        return true;
       });
-    } catch {
-      // خطای اصلی Provider باید به کاربر برگردد
+
+      if (changed) {
+        this.logger.warn(
+          createLogContext('payment_attempt_marked_failed', {
+            orderId,
+            paymentAttemptId,
+            failureCode: failure.code,
+          }),
+        );
+      }
+    } catch (persistenceError) {
+      this.logger.error(
+        createLogContext('payment_failure_persistence_failed', {
+          orderId,
+          paymentAttemptId,
+          originalFailureCode: failure.code,
+          error: createErrorDetails(persistenceError),
+        }),
+      );
+
+      captureServerException(persistenceError, {
+        event: 'payment_failure_persistence_failed',
+        tags: {
+          original_failure_code: failure.code,
+        },
+        context: {
+          orderId,
+          paymentAttemptId,
+        },
+      });
+
+      // خطای اصلی Provider باید به کاربر برگردد.
     }
   }
 

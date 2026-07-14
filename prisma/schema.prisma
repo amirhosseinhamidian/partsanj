@@ -128,6 +128,21 @@ enum OrderItemFitmentStatus {
   NOT_CONFIRMED
 }
 
+enum OrderSmsType {
+  CUSTOMER_PAYMENT_REMINDER
+  CUSTOMER_PAYMENT_SUCCESS
+  CUSTOMER_ORDER_SHIPPED
+  ADMIN_NEW_PAID_ORDER
+}
+
+enum SmsOutboxStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+  CANCELLED
+}
+
 enum BlogPostStatus {
   DRAFT
   PUBLISHED
@@ -578,6 +593,7 @@ model Order {
 
   items           OrderItem[]
   paymentAttempts PaymentAttempt[]
+  smsOutbox       OrderSmsOutbox[]
 
   shippingCarrier String?
   trackingCode    String?
@@ -683,6 +699,28 @@ model PaymentAttempt {
   @@index([status, createdAt])
   @@index([providerTransactionId])
   @@index([status, callbackReceivedAt])
+}
+
+model OrderSmsOutbox {
+  id               String          @id @default(uuid())
+  orderId          String
+  order            Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  type             OrderSmsType
+  recipient        String
+  status           SmsOutboxStatus @default(PENDING)
+  dueAt            DateTime
+  attempts         Int             @default(0)
+  lockedAt         DateTime?
+  provider         String          @default("KAVENEGAR")
+  providerMessageId String?
+  lastError        String?
+  sentAt           DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@unique([orderId, type, recipient])
+  @@index([status, dueAt])
+  @@index([orderId, createdAt])
 }
 
 model BlogCategory {
