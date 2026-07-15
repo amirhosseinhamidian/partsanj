@@ -253,7 +253,9 @@ export function TiptapEditor<TDocument extends TiptapEditorDocument = TiptapEdit
     onUpdate: ({ editor: currentEditor }) => {
       setLinkError(null);
 
-      onChangeRef.current?.(currentEditor.getJSON() as TDocument);
+      const document = currentEditor.getJSON() as unknown as TDocument;
+
+      onChangeRef.current?.(document);
 
       setToolbarVersion((current) => current + 1);
     },

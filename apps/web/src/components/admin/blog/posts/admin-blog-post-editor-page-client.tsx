@@ -304,6 +304,7 @@ export function AdminBlogPostEditorPageClient({ blogPostId }: AdminBlogPostEdito
       return;
     }
 
+    const currentBlogPostId = blogPostId;
     const controller = new AbortController();
 
     async function loadPost() {
@@ -311,7 +312,7 @@ export function AdminBlogPostEditorPageClient({ blogPostId }: AdminBlogPostEdito
       setLoadError(null);
 
       try {
-        const result = await getAdminBlogPost(blogPostId, controller.signal);
+        const result = await getAdminBlogPost(currentBlogPostId, controller.signal);
 
         const nextDraft = createDraft(result.data);
 

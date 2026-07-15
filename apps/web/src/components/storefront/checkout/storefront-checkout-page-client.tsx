@@ -325,7 +325,13 @@ export function StorefrontCheckoutPageClient() {
       router.replace(`/orders/${response.data.id}`);
     } catch (error) {
       if (error instanceof ClientApiError && error.status === 401) {
-        setIsAuthRequired(true);
+        openLogin({
+          returnTo: '/checkout',
+        });
+
+        setOrderError('برای ادامه ثبت سفارش، دوباره وارد حساب کاربری شوید');
+
+        return;
       }
 
       setOrderError(getErrorMessage(error));

@@ -393,7 +393,6 @@ function ProductCompatibilityStatus({
 
 export function StorefrontProductDetailPageClient({
   slug,
-  settings,
 }: StorefrontProductDetailPageClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -685,7 +684,6 @@ export function StorefrontProductDetailPageClient({
             product={product}
             selectedVehicle={selectedVehicle}
             onSelectVehicle={() => setIsCompatibilityDialogOpen(true)}
-            settings={settings}
           />
         </section>
       </div>

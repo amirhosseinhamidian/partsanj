@@ -80,8 +80,8 @@ function getInitialForm(
   };
 }
 
-function normalizeOptionalText(value: string): string | null {
-  return value.trim() || null;
+function normalizeOptionalText(value?: string | null): string | undefined {
+  return value?.trim() || undefined;
 }
 
 function normalizeMobile(value: string): string | null {
@@ -381,7 +381,7 @@ export function CustomerAddressFormSheet({
                   {({ id, labelId, describedBy }) => (
                     <Input
                       id={id}
-                      value={form.district}
+                      value={form.district ?? ''}
                       placeholder='مثلاً تهرانپارس'
                       aria-labelledby={labelId}
                       aria-describedby={describedBy}
@@ -435,7 +435,7 @@ export function CustomerAddressFormSheet({
                   {({ id, labelId, describedBy }) => (
                     <Input
                       id={id}
-                      value={form.plaque}
+                      value={form.plaque ?? ''}
                       aria-labelledby={labelId}
                       aria-describedby={describedBy}
                       onChange={(event) => {
@@ -449,7 +449,7 @@ export function CustomerAddressFormSheet({
                   {({ id, labelId, describedBy }) => (
                     <Input
                       id={id}
-                      value={form.floor}
+                      value={form.floor ?? ''}
                       aria-labelledby={labelId}
                       aria-describedby={describedBy}
                       onChange={(event) => {
@@ -463,7 +463,7 @@ export function CustomerAddressFormSheet({
                   {({ id, labelId, describedBy }) => (
                     <Input
                       id={id}
-                      value={form.unit}
+                      value={form.unit ?? ''}
                       aria-labelledby={labelId}
                       aria-describedby={describedBy}
                       onChange={(event) => {
@@ -479,7 +479,7 @@ export function CustomerAddressFormSheet({
                   <Textarea
                     id={id}
                     rows={3}
-                    value={form.deliveryNotes}
+                    value={form.deliveryNotes ?? ''}
                     placeholder='مثلاً ساعت مناسب تحویل یا توضیحات تکمیلی'
                     aria-labelledby={labelId}
                     aria-describedby={describedBy}

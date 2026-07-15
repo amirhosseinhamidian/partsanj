@@ -17,11 +17,12 @@ import type {
   CustomerOrderListItem,
   CustomerOrdersListResponse,
   CustomerOrderStatusCounts,
-  CustomerOrderStatusFilter,
+  CustomerOrderStatusTab,
 } from '@/lib/storefront/customer/orders/customer-order.types';
 import { ChevronLeft, CircleAlert, ImageOff, PackageOpen, RefreshCw, Truck } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { toPersianDigits } from '@/lib/utils/digits';
 
 const PAGE_SIZE = 10;
 
@@ -35,7 +36,7 @@ const EMPTY_STATUS_COUNTS: CustomerOrderStatusCounts = {
 };
 
 const ORDER_STATUS_TABS: Array<{
-  value: CustomerOrderStatusFilter;
+  value: CustomerOrderStatusTab;
   label: string;
   emptyTitle: string;
   emptyDescription: string;
@@ -145,10 +146,10 @@ function CustomerOrdersStatusTabs({
   disabled,
   onStatusChange,
 }: {
-  activeStatus: CustomerOrderStatusFilter;
+  activeStatus: CustomerOrderStatusTab;
   counts: CustomerOrderStatusCounts;
   disabled: boolean;
-  onStatusChange: (status: CustomerOrderStatusFilter) => void;
+  onStatusChange: (status: CustomerOrderStatusTab) => void;
 }) {
   return (
     <div className='[scrollbar-width:none] overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden'>
@@ -184,7 +185,7 @@ function CustomerOrdersStatusTabs({
                   isActive ? 'bg-white/20 text-white' : 'bg-surface-muted text-foreground-muted',
                 ].join(' ')}
               >
-                {new Intl.NumberFormat('fa-IR').format(counts[tab.value])}
+                {toPersianDigits(counts[tab.value])}
               </span>
             </button>
           );
@@ -340,7 +341,7 @@ export function CustomerOrdersPageClient() {
   const [result, setResult] = useState<CustomerOrdersListResponse | null>(null);
 
   const [page, setPage] = useState(1);
-  const [activeStatus, setActiveStatus] = useState<CustomerOrderStatusFilter>('ALL');
+  const [activeStatus, setActiveStatus] = useState<CustomerOrderStatusTab>('ALL');
   const [statusCounts, setStatusCounts] = useState<CustomerOrderStatusCounts>(EMPTY_STATUS_COUNTS);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -373,7 +374,7 @@ export function CustomerOrdersPageClient() {
   }, [activeStatus, page]);
 
   const handleStatusChange = useCallback(
-    (status: CustomerOrderStatusFilter) => {
+    (status: CustomerOrderStatusTab) => {
       if (status === activeStatus) {
         return;
       }

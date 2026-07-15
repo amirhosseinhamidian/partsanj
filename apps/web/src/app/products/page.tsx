@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-
+import { Suspense } from 'react';
 import { StorefrontProductsPageClient } from '@/components/storefront/catalog/storefront-products-page-client';
 import { buildSeoMetadata } from '@/lib/storefront/seo/seo-metadata';
 import { getStorefrontSiteSettings } from '@/lib/storefront/settings/site-settings.server';
@@ -102,6 +102,28 @@ export async function generateMetadata({ searchParams }: ProductsPageProps): Pro
   });
 }
 
+function ProductsPageFallback() {
+  return (
+    <main className='mx-auto w-full max-w-7xl px-4 py-8'>
+      <div className='space-y-6'>
+        <div className='h-28 animate-pulse rounded-card bg-surface-muted' />
+
+        <div className='h-20 animate-pulse rounded-card bg-surface-muted' />
+
+        <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
+          {Array.from({ length: 8 }).map((_, index) => (
+            <div key={index} className='h-80 animate-pulse rounded-card bg-surface-muted' />
+          ))}
+        </div>
+      </div>
+    </main>
+  );
+}
+
 export default function ProductsPage() {
-  return <StorefrontProductsPageClient />;
+  return (
+    <Suspense fallback={<ProductsPageFallback />}>
+      <StorefrontProductsPageClient />
+    </Suspense>
+  );
 }

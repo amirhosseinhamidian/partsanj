@@ -90,7 +90,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(functi
 
   const didMountRef = useRef(false);
   const skipNextDebouncedSearchRef = useRef(false);
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchTimerRef = useRef<number | null>(null);
 
   const onSearchRef = useRef(onSearch);
 
@@ -105,8 +105,8 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(functi
   const canClear = clearable && Boolean(currentValue) && !disabled;
 
   const clearSearchTimer = useCallback(() => {
-    if (searchTimerRef.current) {
-      clearTimeout(searchTimerRef.current);
+    if (searchTimerRef.current !== null) {
+      window.clearTimeout(searchTimerRef.current);
       searchTimerRef.current = null;
     }
   }, []);

@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 
@@ -14,6 +15,10 @@ type StorefrontShellProps = {
   children: ReactNode;
   settings: StorefrontSiteSettings;
 };
+
+function StorefrontHeaderFallback() {
+  return <div aria-hidden='true' className='min-h-18 border-b border-border bg-surface' />;
+}
 
 export function StorefrontShell({ children, settings }: StorefrontShellProps) {
   const pathname = usePathname();
@@ -47,10 +52,12 @@ export function StorefrontShell({ children, settings }: StorefrontShellProps) {
     <StorefrontSettingsProvider settings={settings}>
       <StorefrontCartProvider>
         <StorefrontCustomerAuthProvider>
-          <StorefrontHeader
-            logoLightUrl={settings.logoLightUrl}
-            logoDarkUrl={settings.logoDarkUrl}
-          />
+          <Suspense fallback={<StorefrontHeaderFallback />}>
+            <StorefrontHeader
+              logoLightUrl={settings.logoLightUrl}
+              logoDarkUrl={settings.logoDarkUrl}
+            />
+          </Suspense>
           {children}
           <StorefrontFooter
             logoLightUrl={settings.logoLightUrl}

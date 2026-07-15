@@ -6,7 +6,7 @@ import type {
   AdminBlogCategoryListQuery,
 } from '@/lib/admin/blog/categories/admin-blog-category.types';
 import { useAdminBlogCategories } from '@/lib/admin/blog/categories/use-admin-blog-categories';
-import { CircleAlert, FolderTree, Plus, RefreshCw } from 'lucide-react';
+import { CircleAlert, FolderTree, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -14,7 +14,6 @@ import {
   type AdminBlogCategoriesFiltersDraft,
 } from './admin-blog-categories-filter-bar';
 import { AdminBlogCategoriesTable } from './admin-blog-categories-table';
-import { toPersianDigits } from '@/lib/utils/digits';
 import { AdminBlogCategoryFormSheet } from './admin-blog-category-form-sheet';
 import { PageHeader } from '@/components/ui/page-header';
 

@@ -82,6 +82,7 @@ function resolveInitialSelection({
 
   if (initialSelection?.variantId) {
     if (
+      storedSelection &&
       isCompleteVehicleSelectionInput(storedSelection) &&
       storedSelection.variantId === initialSelection.variantId
     ) {
