@@ -166,7 +166,7 @@ export default async function ProductDetailPage({
         <ProductStructuredData product={product} settings={settings} />
       ) : null}
 
-      <StorefrontProductDetailPageClient slug={slug} settings={settings} />
+      <StorefrontProductDetailPageClient slug={slug}/>
     </>
   );
 }

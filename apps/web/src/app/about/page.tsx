@@ -120,7 +120,7 @@ export default function AboutPage() {
         <div className='relative mx-auto max-w-7xl'>
           <AboutHero />
 
-          <AboutStats />
+          {/* <AboutStats /> */}
 
           <AboutValues />
 
