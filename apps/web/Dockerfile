@@ -45,7 +45,7 @@ ENV PARTSANJ_AUTH_ME_PATH=${PARTSANJ_AUTH_ME_PATH}
 ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
 ENV SITE_URL=${SITE_URL}
 
-RUN pnpm --filter @partsanj/web build
+RUN pnpm --filter @partsanj/web exec next build --webpack
 
 RUN pnpm \
     --filter @partsanj/web \
