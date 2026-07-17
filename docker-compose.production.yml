@@ -23,7 +23,7 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: "3"
+        max-file: '3'
     security_opt:
       - no-new-privileges:true
 
@@ -42,7 +42,7 @@ services:
         condition: service_healthy
     networks:
       - backend
-    restart: "no"
+    restart: 'no'
     security_opt:
       - no-new-privileges:true
 
@@ -57,7 +57,7 @@ services:
     env_file:
       - ${PARTSANJ_CONFIG_DIR:-/opt/partsanj/config}/api.env
     ports:
-      - "127.0.0.1:3001:3001"
+      - '127.0.0.1:3001:3001'
     depends_on:
       postgres:
         condition: service_healthy
@@ -83,7 +83,7 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: "3"
+        max-file: '3'
     security_opt:
       - no-new-privileges:true
 
@@ -105,7 +105,7 @@ services:
     env_file:
       - ${PARTSANJ_CONFIG_DIR:-/opt/partsanj/config}/web.env
     ports:
-      - "127.0.0.1:3000:3000"
+      - '127.0.0.1:3000:3000'
     depends_on:
       api:
         condition: service_healthy
@@ -131,12 +131,13 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: "3"
+        max-file: '3'
     security_opt:
       - no-new-privileges:true
 
 volumes:
   partsanj_postgres_data:
+    external: true
     name: partsanj_postgres_data
 
 networks:
