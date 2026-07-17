@@ -1,0 +1,145 @@
+name: partsanj
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    env_file:
+      - ${PARTSANJ_CONFIG_DIR:-/opt/partsanj/config}/postgres.env
+    volumes:
+      - partsanj_postgres_data:/var/lib/postgresql
+    networks:
+      - backend
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+
+  migrate:
+    image: ${PARTSANJ_MIGRATE_IMAGE:-partsanj-migrate:production}
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: migrate
+    profiles:
+      - tools
+    env_file:
+      - ${PARTSANJ_CONFIG_DIR:-/opt/partsanj/config}/api.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+
+  api:
+    image: ${PARTSANJ_API_IMAGE:-partsanj-api:production}
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: runner
+    restart: unless-stopped
+    init: true
+    env_file:
+      - ${PARTSANJ_CONFIG_DIR:-/opt/partsanj/config}/api.env
+    ports:
+      - "127.0.0.1:3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:3001/api/v1/health')
+          .then((response) => {
+            if (!response.ok) process.exit(1);
+          })
+          .catch(() => process.exit(1))
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+
+  web:
+    image: ${PARTSANJ_WEB_IMAGE:-partsanj-web:production}
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: runner
+      args:
+        PARTSANJ_API_URL: https://api.partsanj.ir
+        PARTSANJ_AUTH_REQUEST_OTP_PATH: /api/v1/auth/otp/request
+        PARTSANJ_AUTH_VERIFY_OTP_PATH: /api/v1/auth/otp/verify
+        PARTSANJ_AUTH_ME_PATH: /api/v1/auth/me
+        NEXT_PUBLIC_SITE_URL: https://partsanj.ir
+        SITE_URL: https://partsanj.ir
+    restart: unless-stopped
+    init: true
+    env_file:
+      - ${PARTSANJ_CONFIG_DIR:-/opt/partsanj/config}/web.env
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - backend
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:3000/')
+          .then((response) => {
+            if (!response.ok) process.exit(1);
+          })
+          .catch(() => process.exit(1))
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  partsanj_postgres_data:
+    name: partsanj_postgres_data
+
+networks:
+  backend:
+    name: partsanj_backend
+    driver: bridge

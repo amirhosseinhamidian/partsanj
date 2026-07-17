@@ -13,3 +13,14 @@ allowBuilds:
   prisma: true
   sharp: true
   unrs-resolver: true
+
+# CI builds use a committed and reviewed lockfile.
+# This avoids the slow registry metadata policy scan on the Iran VPS.
+trustLockfile: true
+
+# More tolerant registry settings for local/VPS fallback builds.
+networkConcurrency: 8
+fetchRetries: 5
+fetchRetryMintimeout: 10000
+fetchRetryMaxtimeout: 120000
+fetchTimeout: 300000
