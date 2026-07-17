@@ -4,26 +4,45 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
-permissions:
-  contents: read
-  packages: write
+  workflow_dispatch:
 
 concurrency:
   group: partsanj-production
   cancel-in-progress: false
 
-env:
-  PARTSANJ_API_IMAGE: ghcr.io/amirhosseinhamidian/partsanj-api:${{ github.sha }}
-  PARTSANJ_WEB_IMAGE: ghcr.io/amirhosseinhamidian/partsanj-web:${{ github.sha }}
-  PARTSANJ_MIGRATE_IMAGE: ghcr.io/amirhosseinhamidian/partsanj-migrate:${{ github.sha }}
-
 jobs:
-  build-and-deploy:
-    name: Build and deploy
+  build:
+    name: Build ${{ matrix.name }}
+
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        include:
+          - name: API
+            image: partsanj-api
+            dockerfile: apps/api/Dockerfile
+            target: runner
+            cache_scope: partsanj-api
+
+          - name: Migration
+            image: partsanj-migrate
+            dockerfile: apps/api/Dockerfile
+            target: migrate
+            cache_scope: partsanj-migrate
+
+          - name: Web
+            image: partsanj-web
+            dockerfile: apps/web/Dockerfile
+            target: runner
+            cache_scope: partsanj-web
 
     steps:
       - name: Checkout repository
@@ -32,58 +51,135 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Login to GitHub Container Registry
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Build and push production images
-        run: |
-          docker compose \
-            -f docker-compose.production.yml \
-            --profile tools \
-            build --push \
-            api web migrate
+      - name: Build and push ${{ matrix.name }}
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
+          platforms: linux/amd64
+          push: true
+          provenance: false
 
-      - name: Configure SSH
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:production
+
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+          cache-from: |
+            type=gha,scope=${{ matrix.cache_scope }}
+
+          cache-to: |
+            type=gha,mode=max,scope=${{ matrix.cache_scope }}
+
+  deploy:
+    name: Deploy to production
+
+    needs:
+      - build
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Verify release images exist
+        shell: bash
         run: |
+          set -Eeuo pipefail
+
+          API_IMAGE="ghcr.io/${{ github.repository_owner }}/partsanj-api:${{ github.sha }}"
+          WEB_IMAGE="ghcr.io/${{ github.repository_owner }}/partsanj-web:${{ github.sha }}"
+          MIGRATE_IMAGE="ghcr.io/${{ github.repository_owner }}/partsanj-migrate:${{ github.sha }}"
+
+          echo "Checking API image:"
+          echo "$API_IMAGE"
+          docker buildx imagetools inspect "$API_IMAGE"
+
+          echo "Checking Web image:"
+          echo "$WEB_IMAGE"
+          docker buildx imagetools inspect "$WEB_IMAGE"
+
+          echo "Checking migration image:"
+          echo "$MIGRATE_IMAGE"
+          docker buildx imagetools inspect "$MIGRATE_IMAGE"
+
+          echo "All release images exist in GHCR."
+
+      - name: Configure deployment SSH
+        shell: bash
+        env:
+          PROD_SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+          PROD_KNOWN_HOSTS: ${{ secrets.PROD_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+
           install -m 700 -d "$HOME/.ssh"
 
-          printf '%s\n' \
-            "${{ secrets.PROD_SSH_PRIVATE_KEY }}" \
+          printf '%s\n' "$PROD_SSH_PRIVATE_KEY" \
             > "$HOME/.ssh/id_ed25519"
 
-          chmod 600 "$HOME/.ssh/id_ed25519"
-
-          printf '%s\n' \
-            "${{ secrets.PROD_KNOWN_HOSTS }}" \
+          printf '%s\n' "$PROD_KNOWN_HOSTS" \
             > "$HOME/.ssh/known_hosts"
 
+          chmod 600 "$HOME/.ssh/id_ed25519"
           chmod 600 "$HOME/.ssh/known_hosts"
 
-      - name: Deploy release to production
+      - name: Deploy release on VPS
+        shell: bash
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_PORT: ${{ secrets.PROD_PORT }}
+          PROD_USER: ${{ secrets.PROD_USER }}
         run: |
-          printf '%s\n' "${{ github.token }}" |
-          ssh \
-            -i "$HOME/.ssh/id_ed25519" \
-            -p "${{ secrets.PROD_PORT }}" \
-            -o BatchMode=yes \
-            -o IdentitiesOnly=yes \
-            -o StrictHostKeyChecking=yes \
-            "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}" \
-            "deploy ${{ github.sha }} ${{ github.actor }}"
+          set -Eeuo pipefail
+
+          printf '%s\n' "$GHCR_TOKEN" |
+            ssh \
+              -i "$HOME/.ssh/id_ed25519" \
+              -p "$PROD_PORT" \
+              -o BatchMode=yes \
+              -o IdentitiesOnly=yes \
+              -o StrictHostKeyChecking=yes \
+              "$PROD_USER@$PROD_HOST" \
+              "deploy $GITHUB_SHA $GITHUB_ACTOR"
 
       - name: Verify public endpoints
+        shell: bash
         run: |
+          set -Eeuo pipefail
+
           curl \
             --fail \
             --silent \
             --show-error \
-            --retry 10 \
+            --retry 12 \
             --retry-delay 5 \
             --retry-all-errors \
+            --max-time 15 \
             https://api.partsanj.ir/api/v1/health \
             > /dev/null
 
@@ -91,8 +187,11 @@ jobs:
             --fail \
             --silent \
             --show-error \
-            --retry 10 \
+            --retry 12 \
             --retry-delay 5 \
             --retry-all-errors \
+            --max-time 15 \
             https://partsanj.ir \
             > /dev/null
+
+          echo "Production endpoints are healthy."
