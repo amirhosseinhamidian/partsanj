@@ -392,6 +392,31 @@ export function StorefrontFooter({ logoLightUrl, logoDarkUrl }: StorefrontFooter
                 ورود به حساب کاربری
               </Link>
             </div>
+
+            <div className='mt-6'>
+              <p className='text-xs font-bold text-foreground-muted'>نماد اعتماد الکترونیکی</p>
+
+              <a
+                referrerPolicy='origin'
+                target='_blank'
+                rel='noopener noreferrer'
+                href='https://trustseal.enamad.ir/?id=6937477&Code=3mFvy0fA2rHoD3qOn8naXI4VVDVqfxJG'
+                aria-label='مشاهده اعتبار نماد اعتماد الکترونیکی پارت‌سنج'
+                title='نماد اعتماد الکترونیکی پارت‌سنج'
+                className='mt-3 inline-flex rounded-card border border-border bg-white p-2 transition-colors hover:border-brand/40'
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  referrerPolicy='origin'
+                  src='https://trustseal.enamad.ir/logo.aspx?id=6937477&Code=3mFvy0fA2rHoD3qOn8naXI4VVDVqfxJG'
+                  alt='نماد اعتماد الکترونیکی پارت‌سنج'
+                  width={125}
+                  height={136}
+                  loading='lazy'
+                  className='h-28 w-auto object-contain'
+                />
+              </a>
+            </div>
           </section>
         </div>
 
