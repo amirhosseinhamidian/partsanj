@@ -56,6 +56,10 @@ services:
     init: true
     env_file:
       - ${PARTSANJ_CONFIG_DIR:-/opt/partsanj/config}/api.env
+    volumes:
+      - type: bind
+        source: /opt/partsanj/uploads
+        target: /app/uploads
     ports:
       - '127.0.0.1:3001:3001'
     depends_on:
