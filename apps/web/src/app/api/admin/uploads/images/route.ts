@@ -17,7 +17,7 @@ export async function POST(request: Request) {
       {
         method: 'POST',
         body: formData,
-        timeoutMs: UPLOAD_REQUEST_TIMEOUT_MS,
+        signal: AbortSignal.timeout(UPLOAD_REQUEST_TIMEOUT_MS),
       },
     );
 
