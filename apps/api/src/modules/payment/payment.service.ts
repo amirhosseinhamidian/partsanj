@@ -15,10 +15,7 @@ import {
   Prisma,
 } from '../../generated/prisma/client.js';
 
-import {
-  createErrorDetails,
-  createLogContext,
-} from '../../common/logging/logging.utils.js';
+import { createErrorDetails, createLogContext } from '../../common/logging/logging.utils.js';
 import { captureServerException } from '../../common/monitoring/sentry-monitoring.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { expireOrderIfDue } from '../order/order-inventory.utils.js';
@@ -446,11 +443,11 @@ export class PaymentService {
   }
 
   private getDefaultProviderCode(): PaymentProviderCode {
-    const providerCode = (this.configService.get<string>('PAYMENT_DEFAULT_PROVIDER') ?? 'ZARINPAL')
+    const providerCode = (this.configService.get<string>('PAYMENT_DEFAULT_PROVIDER') ?? 'ZIBAL')
       .trim()
       .toUpperCase();
 
-    if (providerCode !== 'ZARINPAL') {
+    if (providerCode !== 'ZARINPAL' && providerCode !== 'ZIBAL') {
       throw new ServiceUnavailableException({
         code: 'PAYMENT_PROVIDER_UNSUPPORTED',
         message: 'درگاه پرداخت پیش‌فرض پشتیبانی نمی‌شود',
@@ -502,7 +499,7 @@ export class PaymentService {
     };
   }
 
-  private getProviderCallbackUrl(providerCode: PaymentProviderCode) {
+  private getProviderCallbackUrl(providerCode: PaymentProviderCode): string {
     const apiPublicUrl = this.configService.get<string>('API_PUBLIC_URL')?.trim();
 
     if (!apiPublicUrl) {
@@ -512,13 +509,16 @@ export class PaymentService {
       });
     }
 
-    const callbackPath = providerCode === 'ZARINPAL' ? '/api/v1/payments/callbacks/zarinpal' : null;
+    let callbackPath: string;
 
-    if (!callbackPath) {
-      throw new ServiceUnavailableException({
-        code: 'PAYMENT_CALLBACK_PROVIDER_UNSUPPORTED',
-        message: 'آدرس Callback برای این درگاه تعریف نشده است',
-      });
+    switch (providerCode) {
+      case 'ZARINPAL':
+        callbackPath = '/api/v1/payments/callbacks/zarinpal';
+        break;
+
+      case 'ZIBAL':
+        callbackPath = '/api/v1/payments/callbacks/zibal';
+        break;
     }
 
     try {

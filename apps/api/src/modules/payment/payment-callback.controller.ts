@@ -1,6 +1,7 @@
 import { Controller, Get, Logger, Query, Redirect } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { PaymentCallbackQuery } from './payment-provider.contract.js';
+
+import type { PaymentCallbackQuery, PaymentProviderCode } from './payment-provider.contract.js';
 import { PaymentCallbackService, type PaymentCallbackOutcome } from './payment-callback.service.js';
 
 @Controller({
@@ -12,21 +13,43 @@ export class PaymentCallbackController {
 
   constructor(
     private readonly paymentCallbackService: PaymentCallbackService,
+
     private readonly configService: ConfigService,
   ) {}
 
   @Get('zarinpal')
   @Redirect('/', 302)
   async handleZarinpalCallback(@Query() query: PaymentCallbackQuery) {
+    return this.handleProviderCallback('ZARINPAL', query);
+  }
+
+  @Get('zibal')
+  @Redirect('/', 302)
+  async handleZibalCallback(@Query() query: PaymentCallbackQuery) {
+    return this.handleProviderCallback('ZIBAL', query);
+  }
+
+  private async handleProviderCallback(
+    providerCode: PaymentProviderCode,
+    query: PaymentCallbackQuery,
+  ) {
     let outcome: PaymentCallbackOutcome;
 
     try {
-      outcome = await this.paymentCallbackService.handleCallback('ZARINPAL', query);
+      outcome = await this.paymentCallbackService.handleCallback(providerCode, query);
     } catch (error) {
-      this.logger.error(
-        'Unexpected Zarinpal callback error',
-        error instanceof Error ? error.stack : undefined,
-      );
+      this.logger.error({
+        event: 'unexpected_payment_callback_error',
+        providerCode,
+        error:
+          error instanceof Error
+            ? {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              }
+            : String(error),
+      });
 
       outcome = {
         state: 'pending',
@@ -39,7 +62,7 @@ export class PaymentCallbackController {
     };
   }
 
-  private buildStorefrontRedirectUrl(outcome: PaymentCallbackOutcome) {
+  private buildStorefrontRedirectUrl(outcome: PaymentCallbackOutcome): string {
     const storefrontPublicUrl = this.configService.get<string>('STOREFRONT_PUBLIC_URL')?.trim();
 
     if (!storefrontPublicUrl) {

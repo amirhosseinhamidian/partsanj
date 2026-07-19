@@ -1,6 +1,6 @@
 import type { Prisma } from '../../generated/prisma/client.js';
 
-export type PaymentProviderCode = 'ZARINPAL';
+export type PaymentProviderCode = 'ZARINPAL' | 'ZIBAL';
 
 export type PaymentCallbackQuery = Record<string, string | string[] | undefined>;
 

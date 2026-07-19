@@ -30,6 +30,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useStorefrontCustomerAuth } from '../customer-auth/storefront-customer-auth-provider';
 import { toPersianDigits } from '@/lib/utils/digits';
 import { formatPrice } from '@/lib/utils/price';
+import { storefrontPaymentApi } from '@/lib/api/storefront-payment-client';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof ClientApiError) {
@@ -254,6 +255,26 @@ function CheckoutSummary({
   );
 }
 
+function getTrustedPaymentRedirectUrl(value: string): string {
+  let url: URL;
+
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error('آدرس درگاه پرداخت معتبر نیست');
+  }
+
+  if (
+    url.protocol !== 'https:' ||
+    url.hostname !== 'gateway.zibal.ir' ||
+    !url.pathname.startsWith('/start/')
+  ) {
+    throw new Error('آدرس بازگشتی درگاه پرداخت قابل اعتماد نیست');
+  }
+
+  return url.toString();
+}
+
 export function StorefrontCheckoutPageClient() {
   const router = useRouter();
   const { toast } = useToast();
@@ -308,33 +329,62 @@ export function StorefrontCheckoutPageClient() {
     setOrderError(null);
     setIsCreatingOrder(true);
 
+    let createdOrderId: string | null = null;
+
     try {
-      const response = await storefrontOrderApi.createFromCart({
+      const orderResponse = await storefrontOrderApi.createFromCart({
         shippingAddressId: selectedAddress.id,
+
         customerNote: customerNote.trim() || null,
       });
 
+      createdOrderId = orderResponse.data.id;
+
+      /*
+       * پس از ایجاد سفارش، سبد خرید Checkout شده است.
+       */
       await reloadCart();
 
-      toast({
-        position: 'top-left',
-        variant: 'success',
-        title: 'سفارش با موفقیت ثبت شد',
-      });
+      const paymentResponse = await storefrontPaymentApi.startOrderPayment(createdOrderId);
 
-      router.replace(`/orders/${response.data.id}`);
+      const redirectUrl = getTrustedPaymentRedirectUrl(paymentResponse.data.redirectUrl);
+
+      /*
+       * انتقال مستقیم مرورگر به صفحه زیبال.
+       */
+      window.location.assign(redirectUrl);
     } catch (error) {
       if (error instanceof ClientApiError && error.status === 401) {
         openLogin({
           returnTo: '/checkout',
         });
 
-        setOrderError('برای ادامه ثبت سفارش، دوباره وارد حساب کاربری شوید');
+        setOrderError('برای ادامه پرداخت، دوباره وارد حساب کاربری شوید');
 
         return;
       }
 
-      setOrderError(getErrorMessage(error));
+      const errorMessage = getErrorMessage(error);
+
+      /*
+       * اگر سفارش ساخته شده ولی ارتباط با درگاه شکست خورده،
+       * کاربر به جزئیات حساب منتقل می‌شود تا بتواند مجدداً
+       * پرداخت را شروع کند.
+       */
+      if (createdOrderId) {
+        toast({
+          position: 'top-left',
+          variant: 'danger',
+          title: 'اتصال به درگاه انجام نشد',
+          description: errorMessage,
+        });
+
+        router.replace(`/account/orders/${encodeURIComponent(createdOrderId)}`);
+
+        return;
+      }
+
+      setOrderError(errorMessage);
     } finally {
       setIsCreatingOrder(false);
     }
@@ -594,7 +644,11 @@ export function StorefrontCheckoutPageClient() {
             iconEnd={<ChevronLeft />}
             onClick={() => void handleCreateOrder()}
           >
-            {isCustomerAuthenticated ? 'ثبت سفارش' : 'ورود و ادامه'}
+            {isCreatingOrder
+              ? 'در حال اتصال به درگاه...'
+              : isCustomerAuthenticated
+                ? 'ثبت سفارش و پرداخت'
+                : 'ورود و ادامه'}
           </Button>
         </div>
       </div>

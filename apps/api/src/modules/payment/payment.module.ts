@@ -6,6 +6,7 @@ import { PaymentProviderRegistry } from './providers/payment-provider.registry.j
 import { ZarinpalPaymentProvider } from './providers/zarinpal-payment.provider.js';
 import { PaymentCallbackController } from './payment-callback.controller.js';
 import { PaymentCallbackService } from './payment-callback.service.js';
+import { ZibalPaymentProvider } from './providers/zibal-payment.provider.js';
 
 @Module({
   imports: [AuthModule],
@@ -15,6 +16,7 @@ import { PaymentCallbackService } from './payment-callback.service.js';
     PaymentCallbackService,
     PaymentProviderRegistry,
     ZarinpalPaymentProvider,
+    ZibalPaymentProvider,
   ],
   exports: [PaymentService],
 })
