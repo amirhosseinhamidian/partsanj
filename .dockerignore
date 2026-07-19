@@ -1,0 +1,43 @@
+# Version control
+.git
+.github
+
+# Dependencies and package-manager caches
+node_modules
+**/node_modules
+.pnpm-store
+**/.pnpm-store
+
+# Build outputs
+.next
+**/.next
+dist
+**/dist
+out
+**/out
+coverage
+**/coverage
+.turbo
+**/.turbo
+
+# Runtime uploads and generated files
+/uploads
+/apps/api/uploads
+/apps/api/src/generated
+
+# Environment files
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Operating system and IDE files
+.DS_Store
+.idea
+.vscode

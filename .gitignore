@@ -14,3 +14,6 @@ apps/*/.env.*
 !apps/*/.env.example
 
 apps/api/src/generated/
+
+# Local API uploads
+apps/api/uploads/
