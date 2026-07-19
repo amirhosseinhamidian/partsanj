@@ -11,24 +11,23 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { fileTypeFromBuffer } from 'file-type';
-import sharp, { type Metadata } from 'sharp';
+import { ALLOWED_IMAGE_MIME_TYPES, parseMaxImageBytes } from './upload.constants.js';
 import {
-  ALLOWED_IMAGE_MIME_TYPES,
-  MAX_INPUT_IMAGE_DIMENSION,
-  MAX_INPUT_IMAGE_PIXELS,
-  MAX_OUTPUT_IMAGE_DIMENSION,
-  OUTPUT_WEBP_QUALITY,
-  THUMBNAIL_IMAGE_DIMENSION,
-  parseMaxImageBytes,
-} from './upload.constants.js';
+  IMAGE_PROCESSOR,
+  ImageProcessorError,
+  type ImageProcessor,
+  type ImageProcessorErrorCode,
+  type ProcessedImageSet,
+} from './image-processing/image-processor.js';
 import { UploadPurpose } from './upload-purpose.enum.js';
 import { STORAGE_PROVIDER, type StorageProvider } from './storage/storage-provider.js';
 
-type ProcessedImage = {
-  body: Buffer;
-  width: number;
-  height: number;
-  sizeBytes: number;
+const IMAGE_PROCESSING_MESSAGES: Record<ImageProcessorErrorCode, string> = {
+  UPLOAD_INVALID_IMAGE: 'فایل ارسال‌شده یک تصویر معتبر نیست.',
+  UPLOAD_IMAGE_DIMENSIONS_UNAVAILABLE: 'ابعاد تصویر قابل تشخیص نیست.',
+  UPLOAD_IMAGE_DIMENSIONS_TOO_LARGE: 'ابعاد تصویر بیشتر از حد مجاز است.',
+  UPLOAD_ANIMATED_IMAGE_NOT_ALLOWED: 'تصاویر متحرک در حال حاضر مجاز نیستند.',
+  UPLOAD_IMAGE_PROCESSING_FAILED: 'پردازش تصویر ارسال‌شده امکان‌پذیر نیست.',
 };
 
 export type UploadedImageResponse = {
@@ -58,6 +57,10 @@ export class UploadsService {
   constructor(
     @Inject(STORAGE_PROVIDER)
     private readonly storageProvider: StorageProvider,
+
+    @Inject(IMAGE_PROCESSOR)
+    private readonly imageProcessor: ImageProcessor,
+
     configService: ConfigService,
   ) {
     this.maxImageBytes = parseMaxImageBytes(configService.get<string>('UPLOAD_MAX_IMAGE_BYTES'));
@@ -76,28 +79,25 @@ export class UploadsService {
 
     this.assertDetectedMimeType(file.mimetype, detectedType.mime);
 
-    const metadata = await this.readImageMetadata(file.buffer);
-
-    this.assertImageMetadata(metadata);
-
-    const [processedImage, thumbnail] = await this.processImage(file.buffer);
+    const processedImages = await this.processImage(file.buffer, uploadedById, purpose);
 
     const imageId = randomUUID();
     const objectDirectory = this.createObjectDirectory(purpose);
 
     const imageKey = `${objectDirectory}/${imageId}.webp`;
+
     const thumbnailKey = `${objectDirectory}/${imageId}-thumb.webp`;
 
     try {
       const results = await Promise.allSettled([
         this.storageProvider.putObject({
           key: imageKey,
-          body: processedImage.body,
+          body: processedImages.main.body,
           contentType: 'image/webp',
         }),
         this.storageProvider.putObject({
           key: thumbnailKey,
-          body: thumbnail.body,
+          body: processedImages.thumbnail.body,
           contentType: 'image/webp',
         }),
       ]);
@@ -117,14 +117,7 @@ export class UploadsService {
         event: 'image_upload_storage_failed',
         uploadedById,
         purpose,
-        error:
-          error instanceof Error
-            ? {
-                name: error.name,
-                message: error.message,
-                stack: error.stack,
-              }
-            : String(error),
+        error: this.serializeError(error),
       });
 
       throw new ServiceUnavailableException({
@@ -140,7 +133,7 @@ export class UploadsService {
       imageId,
       imageKey,
       originalSizeBytes: file.size,
-      outputSizeBytes: processedImage.sizeBytes,
+      outputSizeBytes: processedImages.main.sizeBytes,
     });
 
     return {
@@ -154,13 +147,49 @@ export class UploadsService {
       sourceMimeType: detectedType.mime,
       mimeType: 'image/webp',
       originalSizeBytes: file.size,
-      sizeBytes: processedImage.sizeBytes,
-      width: processedImage.width,
-      height: processedImage.height,
-      thumbnailSizeBytes: thumbnail.sizeBytes,
-      thumbnailWidth: thumbnail.width,
-      thumbnailHeight: thumbnail.height,
+      sizeBytes: processedImages.main.sizeBytes,
+      width: processedImages.main.width,
+      height: processedImages.main.height,
+      thumbnailSizeBytes: processedImages.thumbnail.sizeBytes,
+      thumbnailWidth: processedImages.thumbnail.width,
+      thumbnailHeight: processedImages.thumbnail.height,
     };
+  }
+
+  private async processImage(
+    buffer: Buffer,
+    uploadedById: string,
+    purpose: UploadPurpose,
+  ): Promise<ProcessedImageSet> {
+    try {
+      return await this.imageProcessor.process(buffer);
+    } catch (error) {
+      if (error instanceof ImageProcessorError) {
+        this.logger.warn({
+          event: 'image_upload_processing_rejected',
+          uploadedById,
+          purpose,
+          code: error.code,
+        });
+
+        throw new BadRequestException({
+          code: error.code,
+          message: IMAGE_PROCESSING_MESSAGES[error.code],
+        });
+      }
+
+      this.logger.error({
+        event: 'image_upload_processor_failed',
+        uploadedById,
+        purpose,
+        error: this.serializeError(error),
+      });
+
+      throw new ServiceUnavailableException({
+        code: 'UPLOAD_PROCESSOR_UNAVAILABLE',
+        message: 'سرویس پردازش تصویر در حال حاضر در دسترس نیست.',
+      });
+    }
   }
 
   private assertFileExists(
@@ -178,7 +207,7 @@ export class UploadsService {
     if (file.size > this.maxImageBytes) {
       throw new PayloadTooLargeException({
         code: 'UPLOAD_FILE_TOO_LARGE',
-        message: `حجم تصویر نباید بیشتر از ${this.maxImageBytes} بایت باشد.`,
+        message: `حجم تصویر نباید بیشتر از ` + `${this.maxImageBytes} بایت باشد.`,
       });
     }
   }
@@ -192,7 +221,7 @@ export class UploadsService {
     }
   }
 
-  private async detectFileType(buffer: Buffer): Promise<{ ext: string; mime: string }> {
+  private async detectFileType(buffer: Buffer): Promise<{ mime: string }> {
     const detectedType = await fileTypeFromBuffer(buffer);
 
     if (!detectedType || !ALLOWED_IMAGE_MIME_TYPES.has(detectedType.mime)) {
@@ -202,7 +231,9 @@ export class UploadsService {
       });
     }
 
-    return detectedType;
+    return {
+      mime: detectedType.mime,
+    };
   }
 
   private assertDetectedMimeType(declaredMimeType: string, detectedMimeType: string): void {
@@ -210,110 +241,6 @@ export class UploadsService {
       throw new UnsupportedMediaTypeException({
         code: 'UPLOAD_MIME_TYPE_MISMATCH',
         message: 'نوع اعلام‌شده فایل با محتوای واقعی آن مطابقت ندارد.',
-      });
-    }
-  }
-
-  private async readImageMetadata(buffer: Buffer): Promise<Metadata> {
-    try {
-      return await sharp(buffer, {
-        failOn: 'error',
-        limitInputPixels: MAX_INPUT_IMAGE_PIXELS,
-        animated: false,
-      }).metadata();
-    } catch {
-      throw new BadRequestException({
-        code: 'UPLOAD_INVALID_IMAGE',
-        message: 'فایل ارسال‌شده یک تصویر معتبر نیست.',
-      });
-    }
-  }
-
-  private assertImageMetadata(metadata: Metadata): void {
-    if (!metadata.width || !metadata.height) {
-      throw new BadRequestException({
-        code: 'UPLOAD_IMAGE_DIMENSIONS_UNAVAILABLE',
-        message: 'ابعاد تصویر قابل تشخیص نیست.',
-      });
-    }
-
-    if (metadata.width > MAX_INPUT_IMAGE_DIMENSION || metadata.height > MAX_INPUT_IMAGE_DIMENSION) {
-      throw new BadRequestException({
-        code: 'UPLOAD_IMAGE_DIMENSIONS_TOO_LARGE',
-        message: `طول یا عرض تصویر نباید بیشتر از ${MAX_INPUT_IMAGE_DIMENSION} پیکسل باشد.`,
-      });
-    }
-
-    if (metadata.pages && metadata.pages > 1) {
-      throw new BadRequestException({
-        code: 'UPLOAD_ANIMATED_IMAGE_NOT_ALLOWED',
-        message: 'تصاویر متحرک در حال حاضر مجاز نیستند.',
-      });
-    }
-  }
-
-  private async processImage(buffer: Buffer): Promise<[ProcessedImage, ProcessedImage]> {
-    try {
-      const source = sharp(buffer, {
-        failOn: 'error',
-        limitInputPixels: MAX_INPUT_IMAGE_PIXELS,
-        animated: false,
-      }).rotate();
-
-      const [mainResult, thumbnailResult] = await Promise.all([
-        source
-          .clone()
-          .resize({
-            width: MAX_OUTPUT_IMAGE_DIMENSION,
-            height: MAX_OUTPUT_IMAGE_DIMENSION,
-            fit: 'inside',
-            withoutEnlargement: true,
-          })
-          .webp({
-            quality: OUTPUT_WEBP_QUALITY,
-            effort: 4,
-            smartSubsample: true,
-          })
-          .toBuffer({
-            resolveWithObject: true,
-          }),
-
-        source
-          .clone()
-          .resize({
-            width: THUMBNAIL_IMAGE_DIMENSION,
-            height: THUMBNAIL_IMAGE_DIMENSION,
-            fit: 'inside',
-            withoutEnlargement: true,
-          })
-          .webp({
-            quality: 76,
-            effort: 4,
-            smartSubsample: true,
-          })
-          .toBuffer({
-            resolveWithObject: true,
-          }),
-      ]);
-
-      return [
-        {
-          body: mainResult.data,
-          width: mainResult.info.width,
-          height: mainResult.info.height,
-          sizeBytes: mainResult.info.size,
-        },
-        {
-          body: thumbnailResult.data,
-          width: thumbnailResult.info.width,
-          height: thumbnailResult.info.height,
-          sizeBytes: thumbnailResult.info.size,
-        },
-      ];
-    } catch {
-      throw new BadRequestException({
-        code: 'UPLOAD_IMAGE_PROCESSING_FAILED',
-        message: 'پردازش تصویر ارسال‌شده امکان‌پذیر نیست.',
       });
     }
   }
@@ -333,5 +260,17 @@ export class UploadsService {
       .slice(0, 255);
 
     return sanitizedName || 'image';
+  }
+
+  private serializeError(error: unknown): unknown {
+    if (error instanceof Error) {
+      return {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      };
+    }
+
+    return String(error);
   }
 }

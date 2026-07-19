@@ -67,6 +67,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         dumb-init \
+        imagemagick \
+    && convert -version \
+    && convert -list format | grep -Eq '^[[:space:]]*WEBP\*?[[:space:]]+WEBP[[:space:]]+rw\+' \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system --gid 1001 partsanj \
     && useradd \

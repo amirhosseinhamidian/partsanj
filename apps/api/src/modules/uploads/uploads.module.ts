@@ -5,6 +5,8 @@ import { AuthModule } from '../auth/auth.module.js';
 import { parseMaxImageBytes } from './upload.constants.js';
 import { UploadsController } from './uploads.controller.js';
 import { UploadsService } from './uploads.service.js';
+import { IMAGE_PROCESSOR } from './image-processing/image-processor.js';
+import { ImageMagickImageProcessor } from './image-processing/image-magick-image-processor.js';
 import { LocalStorageProvider } from './storage/local-storage.provider.js';
 import { STORAGE_PROVIDER } from './storage/storage-provider.js';
 
@@ -27,10 +29,17 @@ import { STORAGE_PROVIDER } from './storage/storage-provider.js';
   controllers: [UploadsController],
   providers: [
     UploadsService,
+
     LocalStorageProvider,
     {
       provide: STORAGE_PROVIDER,
       useExisting: LocalStorageProvider,
+    },
+
+    ImageMagickImageProcessor,
+    {
+      provide: IMAGE_PROCESSOR,
+      useExisting: ImageMagickImageProcessor,
     },
   ],
 })
