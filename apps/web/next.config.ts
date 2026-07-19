@@ -2,18 +2,33 @@ import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '3001',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'partsanj.ir',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.partsanj.ir',
+        pathname: '/uploads/**',
+      },
+    ],
+  },
 };
 
 const sentryOrg = process.env.SENTRY_ORG?.trim();
 const sentryProject = process.env.SENTRY_PROJECT_WEB?.trim();
 const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN?.trim();
 
-const shouldUploadSentrySourceMaps = Boolean(
-  sentryOrg &&
-    sentryProject &&
-    sentryAuthToken,
-);
+const shouldUploadSentrySourceMaps = Boolean(sentryOrg && sentryProject && sentryAuthToken);
 
 export default shouldUploadSentrySourceMaps
   ? withSentryConfig(nextConfig, {

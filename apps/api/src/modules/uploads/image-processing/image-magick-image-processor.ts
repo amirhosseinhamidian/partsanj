@@ -30,6 +30,16 @@ type CommandResult = {
   stderr: string;
 };
 
+type ImageMagickCommand = {
+  executable: string;
+  prefixArguments: string[];
+};
+
+type ImageMagickCommands = {
+  convert: ImageMagickCommand;
+  identify: ImageMagickCommand;
+};
+
 const COMMAND_TIMEOUT_MS = 30_000;
 const COMMAND_MAX_BUFFER_BYTES = 1024 * 1024;
 const THUMBNAIL_WEBP_QUALITY = 76;
@@ -45,6 +55,7 @@ export class ImageMagickImageProcessor implements ImageProcessor, OnModuleInit {
    * memory and CPU resources.
    */
   private processingQueue: Promise<void> = Promise.resolve();
+  private imageMagickCommands!: ImageMagickCommands;
 
   constructor(configService: ConfigService) {
     const uploadDirectory = configService.get<string>('UPLOAD_DIR')?.trim();
@@ -56,6 +67,87 @@ export class ImageMagickImageProcessor implements ImageProcessor, OnModuleInit {
     this.temporaryDirectory = resolve(uploadDirectory, 'tmp');
   }
 
+  private async resolveImageMagickCommands(): Promise<ImageMagickCommands> {
+    try {
+      /*
+       * ImageMagick 7, normally installed on macOS with Homebrew.
+       *
+       * Conversion:
+       *   magick input.jpg output.webp
+       *
+       * Identification:
+       *   magick identify input.jpg
+       */
+      await this.execute('magick', ['-version'], 10_000);
+
+      return {
+        convert: {
+          executable: 'magick',
+          prefixArguments: [],
+        },
+        identify: {
+          executable: 'magick',
+          prefixArguments: ['identify'],
+        },
+      };
+    } catch (magickError) {
+      try {
+        /*
+         * ImageMagick 6, commonly available through the Debian
+         * imagemagick package.
+         */
+        await Promise.all([
+          this.execute('convert', ['-version'], 10_000),
+          this.execute('identify', ['-version'], 10_000),
+        ]);
+
+        return {
+          convert: {
+            executable: 'convert',
+            prefixArguments: [],
+          },
+          identify: {
+            executable: 'identify',
+            prefixArguments: [],
+          },
+        };
+      } catch (legacyError) {
+        this.logger.error({
+          event: 'image_magick_command_not_found',
+          magickError: this.serializeCommandError(magickError),
+          legacyError: this.serializeCommandError(legacyError),
+        });
+
+        throw new Error(
+          'ImageMagick command-line tools are not installed or are not available in PATH',
+        );
+      }
+    }
+  }
+
+  private executeImageMagick(
+    command: ImageMagickCommand,
+    argumentsList: string[],
+    timeout = COMMAND_TIMEOUT_MS,
+  ): Promise<CommandResult> {
+    return this.execute(
+      command.executable,
+      [...command.prefixArguments, ...argumentsList],
+      timeout,
+    );
+  }
+
+  private serializeCommandError(error: unknown): unknown {
+    if (error instanceof Error) {
+      return {
+        name: error.name,
+        message: error.message,
+      };
+    }
+
+    return String(error);
+  }
+
   async onModuleInit(): Promise<void> {
     await mkdir(this.temporaryDirectory, {
       recursive: true,
@@ -64,15 +156,29 @@ export class ImageMagickImageProcessor implements ImageProcessor, OnModuleInit {
 
     await access(this.temporaryDirectory, fsConstants.R_OK | fsConstants.W_OK);
 
-    await this.execute('convert', ['-version'], 10_000);
+    this.imageMagickCommands = await this.resolveImageMagickCommands();
 
-    const formats = await this.execute('convert', ['-list', 'format'], 10_000);
+    const version = await this.executeImageMagick(
+      this.imageMagickCommands.convert,
+      ['-version'],
+      10_000,
+    );
+
+    const formats = await this.executeImageMagick(
+      this.imageMagickCommands.identify,
+      ['-list', 'format'],
+      10_000,
+    );
 
     if (!/^[\s]*WEBP\*?[\s]+WEBP[\s]+rw\+/m.test(formats.stdout)) {
       throw new Error('ImageMagick was installed without writable WebP support');
     }
 
-    this.logger.log('ImageMagick image processor initialized successfully');
+    this.logger.log({
+      event: 'image_magick_initialized',
+      executable: this.imageMagickCommands.convert.executable,
+      version: version.stdout.split(/\r?\n/)[0],
+    });
   }
 
   async process(buffer: Buffer): Promise<ProcessedImageSet> {
@@ -158,7 +264,7 @@ export class ImageMagickImageProcessor implements ImageProcessor, OnModuleInit {
   }
 
   private async identifyImage(imagePath: string): Promise<IdentifiedImage> {
-    const result = await this.execute('identify', [
+    const result = await this.executeImageMagick(this.imageMagickCommands.identify, [
       ...this.createResourceLimitArguments(),
       '-ping',
       '-format',
@@ -227,7 +333,7 @@ export class ImageMagickImageProcessor implements ImageProcessor, OnModuleInit {
     maximumDimension: number,
     quality: number,
   ): Promise<void> {
-    await this.execute('convert', [
+    await this.executeImageMagick(this.imageMagickCommands.convert, [
       ...this.createResourceLimitArguments(),
       `${inputPath}[0]`,
       '-auto-orient',

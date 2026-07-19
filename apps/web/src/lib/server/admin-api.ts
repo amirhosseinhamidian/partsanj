@@ -5,6 +5,7 @@ import { nestApi } from '@/lib/api/nest-api';
 import { getAccessToken } from '@/lib/auth/session';
 
 export const ADMIN_CATALOG_API_PATH = '/api/v1/admin/catalog';
+export const ADMIN_UPLOADS_API_PATH = '/api/v1/admin/uploads';
 
 export async function adminNestApi<T>(path: string, init: RequestInit = {}): Promise<T> {
   const accessToken = await getAccessToken('admin');

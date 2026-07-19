@@ -19,6 +19,7 @@ import type { AuthenticatedUser } from '../auth/types/authenticated-user.type.js
 import { UploadImageDto } from './dto/upload-image.dto.js';
 import { UploadPurpose } from './upload-purpose.enum.js';
 import { UploadsService } from './uploads.service.js';
+import type { UploadedImageResponse } from './uploads.service.js';
 
 @ApiTags('Admin Uploads')
 @ApiBearerAuth('access-token')
@@ -68,11 +69,15 @@ export class UploadsController {
     status: 415,
     description: 'Unsupported or spoofed image format',
   })
-  uploadImage(
+  async uploadImage(
     @UploadedFile() file: Express.Multer.File | undefined,
     @Body() dto: UploadImageDto,
     @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.uploadsService.uploadImage(file, dto.purpose, user.id);
+  ): Promise<{ data: UploadedImageResponse }> {
+    const uploadedImage = await this.uploadsService.uploadImage(file, dto.purpose, user.id);
+
+    return {
+      data: uploadedImage,
+    };
   }
 }

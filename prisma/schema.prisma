@@ -149,13 +149,28 @@ enum BlogPostStatus {
   ARCHIVED
 }
 
+enum MediaAssetPurpose {
+  PRODUCT
+  BLOG
+  CATEGORY
+  BRAND
+  VEHICLE
+  GENERAL
+}
+
+enum MediaAssetStatus {
+  READY
+  DELETED
+  ERROR
+}
+
 model User {
-  id               String   @id @default(uuid())
-  mobile           String   @unique
+  id               String    @id @default(uuid())
+  mobile           String    @unique
   firstName        String?
   lastName         String?
-  role             UserRole @default(CUSTOMER)
-  isActive         Boolean  @default(true)
+  role             UserRole  @default(CUSTOMER)
+  isActive         Boolean   @default(true)
   mobileVerifiedAt DateTime?
   lastLoginAt      DateTime?
 
@@ -165,9 +180,10 @@ model User {
   orders           Order[]           @relation("CustomerOrders")
   customerVehicles CustomerVehicle[] @relation("UserCustomerVehicles")
 
-  productAuditLogs ProductAuditLog[]
-  adminAuditLogs   AdminAuditLog[]
-  blogPosts BlogPost[] @relation("BlogPostAuthor")
+  productAuditLogs    ProductAuditLog[]
+  adminAuditLogs      AdminAuditLog[]
+  blogPosts           BlogPost[]        @relation("BlogPostAuthor")
+  uploadedMediaAssets MediaAsset[]      @relation("MediaAssetUploader")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -206,13 +222,13 @@ model Brand {
 }
 
 model Category {
-  id        String  @id @default(uuid())
-  name      String
-  slug      String  @unique
-  parentId  String?
-  isActive  Boolean @default(true)
-  sortOrder Int     @default(0)
-  showOnHome  Boolean @default(false)
+  id         String  @id @default(uuid())
+  name       String
+  slug       String  @unique
+  parentId   String?
+  isActive   Boolean @default(true)
+  sortOrder  Int     @default(0)
+  showOnHome Boolean @default(false)
 
   imageUrl String?
   imageAlt String?
@@ -241,16 +257,16 @@ model Product {
   saleStartsAt   DateTime?
   saleEndsAt     DateTime?
 
-  stockStatus    StockStatus   @default(CHECK_AVAILABILITY)
-  stockQuantity    Int         @default(0)
-  lowStockThreshold Int        @default(5)
+  stockStatus       StockStatus @default(CHECK_AVAILABILITY)
+  stockQuantity     Int         @default(0)
+  lowStockThreshold Int         @default(5)
 
   status         ProductStatus @default(DRAFT)
   isPublished    Boolean       @default(false)
   isTorobEnabled Boolean       @default(false)
 
-  showOnHome   Boolean @default(false)
-  homeSortOrder Int    @default(0)
+  showOnHome    Boolean @default(false)
+  homeSortOrder Int     @default(0)
 
   seoTitle       String? @db.VarChar(120)
   seoDescription String? @db.VarChar(320)
@@ -300,10 +316,10 @@ model ProductCode {
 }
 
 model ProductImage {
-  id        String @id @default(uuid())
+  id        String  @id @default(uuid())
   url       String
   alt       String?
-  sortOrder Int    @default(0)
+  sortOrder Int     @default(0)
   productId String
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -311,6 +327,41 @@ model ProductImage {
   createdAt DateTime @default(now())
 
   @@unique([productId, sortOrder])
+}
+
+model MediaAsset {
+  id      String            @id @default(uuid())
+  purpose MediaAssetPurpose
+  status  MediaAssetStatus  @default(READY)
+
+  objectKey          String @unique @db.VarChar(1024)
+  publicUrl          String @db.VarChar(2048)
+  thumbnailObjectKey String @unique @db.VarChar(1024)
+  thumbnailPublicUrl String @db.VarChar(2048)
+
+  originalName   String @db.VarChar(255)
+  sourceMimeType String @db.VarChar(100)
+  mimeType       String @db.VarChar(100)
+
+  originalSizeBytes Int
+  sizeBytes         Int
+  width             Int
+  height            Int
+
+  thumbnailSizeBytes Int
+  thumbnailWidth     Int
+  thumbnailHeight    Int
+
+  uploadedById String
+  uploadedBy   User   @relation("MediaAssetUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([purpose, createdAt])
+  @@index([status, createdAt])
+  @@index([uploadedById, createdAt])
 }
 
 model Cart {
@@ -322,7 +373,7 @@ model Cart {
   guestTokenHash String?
 
   expiresAt      DateTime?
-  lastActivityAt DateTime @default(now())
+  lastActivityAt DateTime  @default(now())
   mergedAt       DateTime?
 
   user            User?      @relation(fields: [userId], references: [id], onDelete: Restrict)
@@ -419,7 +470,7 @@ model VehicleModel {
   sortOrder Int     @default(0)
   imageUrl  String?
 
-  make     VehicleMake     @relation(fields: [makeId], references: [id], onDelete: Restrict)
+  make     VehicleMake      @relation(fields: [makeId], references: [id], onDelete: Restrict)
   variants VehicleVariant[]
 
   createdAt DateTime @default(now())
@@ -520,7 +571,7 @@ model CustomerVehicle {
   label            String?
   isDefault        Boolean @default(false)
 
-  user User @relation("UserCustomerVehicles", fields: [userId], references: [id], onDelete: Restrict)
+  user           User           @relation("UserCustomerVehicles", fields: [userId], references: [id], onDelete: Restrict)
   vehicleVariant VehicleVariant @relation("VehicleVariantCustomerVehicles", fields: [vehicleVariantId], references: [id], onDelete: Restrict)
 
   createdAt DateTime @default(now())
@@ -583,13 +634,13 @@ model Order {
   customerNote String?
   adminNote    String?
 
-  expiresAt              DateTime?
-  paidAt                 DateTime?
-  cancelledAt            DateTime?
-  processingStartedAt    DateTime?
-  shippedAt              DateTime?
-  deliveredAt            DateTime?
-  cancellationReason     String?
+  expiresAt           DateTime?
+  paidAt              DateTime?
+  cancelledAt         DateTime?
+  processingStartedAt DateTime?
+  shippedAt           DateTime?
+  deliveredAt         DateTime?
+  cancellationReason  String?
 
   items           OrderItem[]
   paymentAttempts PaymentAttempt[]
@@ -702,21 +753,21 @@ model PaymentAttempt {
 }
 
 model OrderSmsOutbox {
-  id               String          @id @default(uuid())
-  orderId          String
-  order            Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  type             OrderSmsType
-  recipient        String
-  status           SmsOutboxStatus @default(PENDING)
-  dueAt            DateTime
-  attempts         Int             @default(0)
-  lockedAt         DateTime?
-  provider         String          @default("KAVENEGAR")
+  id                String          @id @default(uuid())
+  orderId           String
+  order             Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  type              OrderSmsType
+  recipient         String
+  status            SmsOutboxStatus @default(PENDING)
+  dueAt             DateTime
+  attempts          Int             @default(0)
+  lockedAt          DateTime?
+  provider          String          @default("KAVENEGAR")
   providerMessageId String?
-  lastError        String?
-  sentAt           DateTime?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  lastError         String?
+  sentAt            DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
   @@unique([orderId, type, recipient])
   @@index([status, dueAt])
@@ -724,10 +775,10 @@ model OrderSmsOutbox {
 }
 
 model BlogCategory {
-  id          String @id @default(uuid())
+  id String @id @default(uuid())
 
-  name        String @db.VarChar(100)
-  slug        String @unique @db.VarChar(180)
+  name        String  @db.VarChar(100)
+  slug        String  @unique @db.VarChar(180)
   description String? @db.VarChar(700)
 
   isActive  Boolean @default(true)
@@ -757,8 +808,8 @@ model BlogPost {
   categoryId   String
   authorUserId String
 
-  title   String @db.VarChar(200)
-  slug    String @unique @db.VarChar(220)
+  title   String  @db.VarChar(200)
+  slug    String  @unique @db.VarChar(220)
   excerpt String? @db.VarChar(700)
 
   // خروجی ساخت‌یافته Editor، مثل TipTap JSON
@@ -767,8 +818,8 @@ model BlogPost {
   coverImageUrl String? @db.VarChar(2048)
   coverImageAlt String? @db.VarChar(255)
 
-  showOnHome   Boolean @default(false)
-  homeSortOrder Int    @default(0)
+  showOnHome    Boolean @default(false)
+  homeSortOrder Int     @default(0)
 
   status      BlogPostStatus @default(DRAFT)
   publishedAt DateTime?
@@ -783,9 +834,9 @@ model BlogPost {
   openGraphImageUrl    String? @db.VarChar(2048)
   openGraphImageAlt    String? @db.VarChar(255)
 
-  category BlogCategory @relation("BlogCategoryPosts",fields: [categoryId],references: [id],onDelete: Restrict)
+  category BlogCategory @relation("BlogCategoryPosts", fields: [categoryId], references: [id], onDelete: Restrict)
 
-  authorUser User @relation("BlogPostAuthor",fields: [authorUserId],references: [id],onDelete: Restrict)
+  authorUser User @relation("BlogPostAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -819,13 +870,13 @@ model SiteSetting {
   defaultOgImageUrl     String? @db.VarChar(2048)
   noIndexSite           Boolean @default(false)
 
-  storeEnabled   Boolean @default(true)
+  storeEnabled    Boolean @default(true)
   orderingEnabled Boolean @default(true)
   showPrices      Boolean @default(true)
 
-  defaultShippingCostToman  Int?
+  defaultShippingCostToman   Int?
   freeShippingThresholdToman Int?
-  orderExpirationMinutes     Int @default(30)
+  orderExpirationMinutes     Int  @default(30)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { randomUUID } from 'node:crypto';
 import { basename } from 'node:path';
 import {
@@ -21,6 +22,8 @@ import {
 } from './image-processing/image-processor.js';
 import { UploadPurpose } from './upload-purpose.enum.js';
 import { STORAGE_PROVIDER, type StorageProvider } from './storage/storage-provider.js';
+import { MediaAssetPurpose, MediaAssetStatus } from '../../generated/prisma/client.js';
+import { PrismaService } from '../database/prisma.service.js';
 
 const IMAGE_PROCESSING_MESSAGES: Record<ImageProcessorErrorCode, string> = {
   UPLOAD_INVALID_IMAGE: 'فایل ارسال‌شده یک تصویر معتبر نیست.',
@@ -61,6 +64,8 @@ export class UploadsService {
     @Inject(IMAGE_PROCESSOR)
     private readonly imageProcessor: ImageProcessor,
 
+    private readonly prisma: PrismaService,
+
     configService: ConfigService,
   ) {
     this.maxImageBytes = parseMaxImageBytes(configService.get<string>('UPLOAD_MAX_IMAGE_BYTES'));
@@ -87,6 +92,10 @@ export class UploadsService {
     const imageKey = `${objectDirectory}/${imageId}.webp`;
 
     const thumbnailKey = `${objectDirectory}/${imageId}-thumb.webp`;
+
+    const imageUrl = this.storageProvider.getPublicUrl(imageKey);
+
+    const thumbnailUrl = this.storageProvider.getPublicUrl(thumbnailKey);
 
     try {
       const results = await Promise.allSettled([
@@ -126,6 +135,59 @@ export class UploadsService {
       });
     }
 
+    try {
+      await this.prisma.mediaAsset.create({
+        data: {
+          id: imageId,
+          purpose: this.mapUploadPurpose(purpose),
+          status: MediaAssetStatus.READY,
+
+          objectKey: imageKey,
+          publicUrl: imageUrl,
+
+          thumbnailObjectKey: thumbnailKey,
+          thumbnailPublicUrl: thumbnailUrl,
+
+          originalName: this.sanitizeOriginalName(file.originalname),
+          sourceMimeType: detectedType.mime,
+          mimeType: 'image/webp',
+
+          originalSizeBytes: file.size,
+          sizeBytes: processedImages.main.sizeBytes,
+          width: processedImages.main.width,
+          height: processedImages.main.height,
+
+          thumbnailSizeBytes: processedImages.thumbnail.sizeBytes,
+          thumbnailWidth: processedImages.thumbnail.width,
+          thumbnailHeight: processedImages.thumbnail.height,
+
+          uploadedById,
+        },
+      });
+    } catch (error) {
+      /*
+       * Files must not remain on disk if their database record
+       * could not be created.
+       */
+      await Promise.allSettled([
+        this.storageProvider.deleteObject(imageKey),
+        this.storageProvider.deleteObject(thumbnailKey),
+      ]);
+
+      this.logger.error({
+        event: 'image_upload_metadata_failed',
+        uploadedById,
+        purpose,
+        imageId,
+        error: this.serializeError(error),
+      });
+
+      throw new ServiceUnavailableException({
+        code: 'UPLOAD_METADATA_UNAVAILABLE',
+        message: 'ثبت اطلاعات تصویر در حال حاضر امکان‌پذیر نیست.',
+      });
+    }
+
     this.logger.log({
       event: 'image_uploaded',
       uploadedById,
@@ -140,9 +202,9 @@ export class UploadsService {
       id: imageId,
       purpose,
       key: imageKey,
-      url: this.storageProvider.getPublicUrl(imageKey),
+      url: imageUrl,
       thumbnailKey,
-      thumbnailUrl: this.storageProvider.getPublicUrl(thumbnailKey),
+      thumbnailUrl,
       originalName: this.sanitizeOriginalName(file.originalname),
       sourceMimeType: detectedType.mime,
       mimeType: 'image/webp',
@@ -272,5 +334,27 @@ export class UploadsService {
     }
 
     return String(error);
+  }
+
+  private mapUploadPurpose(purpose: UploadPurpose): MediaAssetPurpose {
+    switch (purpose) {
+      case UploadPurpose.PRODUCT:
+        return MediaAssetPurpose.PRODUCT;
+
+      case UploadPurpose.BLOG:
+        return MediaAssetPurpose.BLOG;
+
+      case UploadPurpose.CATEGORY:
+        return MediaAssetPurpose.CATEGORY;
+
+      case UploadPurpose.BRAND:
+        return MediaAssetPurpose.BRAND;
+
+      case UploadPurpose.VEHICLE:
+        return MediaAssetPurpose.VEHICLE;
+
+      case UploadPurpose.GENERAL:
+        return MediaAssetPurpose.GENERAL;
+    }
   }
 }

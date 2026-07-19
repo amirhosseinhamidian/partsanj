@@ -24,6 +24,7 @@ import type {
   UpdateSiteSettingsPayload,
 } from '@/lib/admin/settings/site-settings.types';
 import { toPersianDigits } from '@/lib/utils/digits';
+import { AdminSingleImageUploadField } from '../uploads/admin-single-image-upload-field';
 
 type SiteSettingsPageClientProps = {
   initialSettings: SiteSettings;
@@ -469,48 +470,48 @@ export function SiteSettingsPageClient({ initialSettings }: SiteSettingsPageClie
             <div className='grid gap-5 md:grid-cols-2'>
               <FormField label='لوگوی حالت روشن' error={errors.logoLightUrl}>
                 {({ id, labelId, describedBy, invalid }) => (
-                  <Input
-                    id={id}
-                    dir='ltr'
-                    aria-labelledby={labelId}
-                    aria-describedby={describedBy}
-                    aria-invalid={invalid}
-                    disabled={isSaving}
+                  <AdminSingleImageUploadField
+                    purpose='general'
                     value={values.logoLightUrl}
-                    onChange={(event) => setField('logoLightUrl', event.target.value)}
-                    placeholder='https://cdn.partsanj.com/logo-light.svg'
+                    onChange={(url) => {
+                      setField('logoLightUrl', url);
+                    }}
+                    alt='لوگوی روشن پارت‌سنج'
+                    disabled={isSaving}
+                    previewClassName='size-32'
+                    uploadTitle='آپلود لوگوی روشن'
                   />
                 )}
               </FormField>
 
               <FormField label='لوگوی حالت تیره' error={errors.logoDarkUrl}>
                 {({ id, labelId, describedBy, invalid }) => (
-                  <Input
-                    id={id}
-                    dir='ltr'
-                    aria-labelledby={labelId}
-                    aria-describedby={describedBy}
-                    aria-invalid={invalid}
-                    disabled={isSaving}
+                  <AdminSingleImageUploadField
+                    purpose='general'
                     value={values.logoDarkUrl}
-                    onChange={(event) => setField('logoDarkUrl', event.target.value)}
-                    placeholder='https://cdn.partsanj.com/logo-dark.svg'
+                    onChange={(url) => {
+                      setField('logoDarkUrl', url);
+                    }}
+                    alt='لوگوی تیره پارت‌سنج'
+                    disabled={isSaving}
+                    previewClassName='size-32'
+                    uploadTitle='آپلود لوگوی تیره'
                   />
                 )}
               </FormField>
 
-              <FormField label='Favicon' error={errors.faviconUrl} className='md:col-span-2'>
+              <FormField label='Favicon' error={errors.faviconUrl}>
                 {({ id, labelId, describedBy, invalid }) => (
-                  <Input
-                    id={id}
-                    dir='ltr'
-                    aria-labelledby={labelId}
-                    aria-describedby={describedBy}
-                    aria-invalid={invalid}
-                    disabled={isSaving}
+                  <AdminSingleImageUploadField
+                    purpose='general'
                     value={values.faviconUrl}
-                    onChange={(event) => setField('faviconUrl', event.target.value)}
-                    placeholder='https://cdn.partsanj.com/favicon.ico'
+                    onChange={(url) => {
+                      setField('faviconUrl', url);
+                    }}
+                    alt='لوگوی favicon پارت‌سنج'
+                    disabled={isSaving}
+                    previewClassName='size-32'
+                    uploadTitle='آپلود لوگوی favicon'
                   />
                 )}
               </FormField>
@@ -563,16 +564,16 @@ export function SiteSettingsPageClient({ initialSettings }: SiteSettingsPageClie
 
               <FormField label='تصویر پیش‌فرض Open Graph' error={errors.defaultOgImageUrl}>
                 {({ id, labelId, describedBy, invalid }) => (
-                  <Input
-                    id={id}
-                    dir='ltr'
-                    aria-labelledby={labelId}
-                    aria-describedby={describedBy}
-                    aria-invalid={invalid}
-                    disabled={isSaving}
+                  <AdminSingleImageUploadField
+                    purpose='general'
                     value={values.defaultOgImageUrl}
-                    onChange={(event) => setField('defaultOgImageUrl', event.target.value)}
-                    placeholder='https://cdn.partsanj.com/og-default.jpg'
+                    onChange={(url) => {
+                      setField('defaultOgImageUrl', url);
+                    }}
+                    alt='تصویر پیش‌فرض Open Graph'
+                    disabled={isSaving}
+                    previewClassName='h-28 w-full'
+                    uploadTitle='آپلود تصویر پیش فرض Open Graph'
                   />
                 )}
               </FormField>

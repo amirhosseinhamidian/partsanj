@@ -22,6 +22,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { isValidRemoteImageUrl, normalizeImageUrl } from '@/lib/utils/image-url';
 import { useEffect, useState, type FormEvent } from 'react';
+import { AdminSingleImageUploadField } from '@/components/admin/uploads/admin-single-image-upload-field';
 
 type FormValues = {
   name: string;
@@ -74,6 +75,7 @@ export function BrandFormSheet({ open, onOpenChange, brand, onSubmit }: BrandFor
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   useEffect(() => {
     if (!open) {
@@ -84,6 +86,7 @@ export function BrandFormSheet({ open, onOpenChange, brand, onSubmit }: BrandFor
     setErrors({});
     setSubmitError(null);
     setIsSaving(false);
+    setIsUploadingLogo(false);
   }, [brand, open]);
 
   function setField<TKey extends keyof FormValues>(key: TKey, value: FormValues[TKey]) {
@@ -249,34 +252,25 @@ export function BrandFormSheet({ open, onOpenChange, brand, onSubmit }: BrandFor
               </FormField>
 
               <FormField
-                label='آدرس لوگوی برند'
-                helperText='فعلاً URL لوگو را وارد کنید؛ بعداً سیستم Upload همین مقدار را ثبت می‌کند'
+                label='لوگوی برند'
+                helperText='تصویر را آپلود کنید یا URL کامل آن را وارد کنید'
                 error={errors.logoUrl}
               >
-                {({ id, labelId, describedBy, invalid }) => (
-                  <div className='space-y-3'>
-                    <Input
-                      id={id}
-                      type='url'
-                      dir='ltr'
-                      inputMode='url'
-                      aria-labelledby={labelId}
-                      aria-describedby={describedBy}
-                      aria-invalid={invalid}
-                      disabled={isSaving}
-                      maxLength={2048}
-                      value={values.logoUrl}
-                      onChange={(event) => setField('logoUrl', event.target.value)}
-                      onBlur={() => setField('logoUrl', normalizeImageUrl(values.logoUrl))}
-                      placeholder='https://cdn.example.com/brands/bosch-logo.webp'
-                    />
-
-                    <ImageUrlPreview
-                      src={values.logoUrl}
-                      alt={values.name ? `لوگوی ${values.name}` : 'پیش‌نمایش لوگوی برند'}
-                      className='h-36 w-full'
-                    />
-                  </div>
+                {({ id }) => (
+                  <AdminSingleImageUploadField
+                    inputId={id}
+                    purpose='brands'
+                    value={values.logoUrl}
+                    onChange={(url) => {
+                      setField('logoUrl', url);
+                    }}
+                    alt={values.name ? `لوگوی ${values.name}` : 'پیش‌نمایش لوگوی برند'}
+                    disabled={isSaving}
+                    onUploadingChange={setIsUploadingLogo}
+                    previewClassName='h-36 w-full'
+                    inputPlaceholder='https://partsanj.ir/uploads/brands/...'
+                    uploadTitle='آپلود لوگوی برند'
+                  />
                 )}
               </FormField>
 
@@ -301,12 +295,12 @@ export function BrandFormSheet({ open, onOpenChange, brand, onSubmit }: BrandFor
 
           <SheetFooter className='z-10 shrink-0 border-t border-border bg-surface px-6 py-4'>
             <SheetClose asChild>
-              <Button type='button' variant='outline' disabled={isSaving}>
+              <Button type='button' variant='outline' disabled={isSaving || isUploadingLogo}>
                 انصراف
               </Button>
             </SheetClose>
 
-            <Button type='submit' isLoading={isSaving} disabled={isSaving}>
+            <Button type='submit' isLoading={isSaving} disabled={isSaving || isUploadingLogo}>
               {isEditing ? 'ذخیره تغییرات' : 'ایجاد برند'}
             </Button>
           </SheetFooter>

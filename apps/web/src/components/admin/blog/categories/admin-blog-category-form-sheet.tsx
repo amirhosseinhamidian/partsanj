@@ -35,6 +35,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { AdminSingleImageUploadField } from '../../uploads/admin-single-image-upload-field';
 
 type BlogCategoryFormMode = 'create' | 'edit';
 
@@ -831,30 +832,26 @@ export function AdminBlogCategoryFormSheet({
                     )}
                   </FormField>
 
-                  <FormField
-                    label='آدرس تصویر Open Graph'
-                    helperText='تصویری که هنگام اشتراک‌گذاری لینک نمایش داده می‌شود'
-                    error={errors.openGraphImageUrl}
-                    className='md:col-span-2'
-                  >
-                    {({ id, labelId, describedBy, invalid }) => (
-                      <Input
-                        id={id}
-                        type='url'
-                        dir='ltr'
-                        aria-labelledby={labelId}
-                        aria-describedby={describedBy}
-                        aria-invalid={invalid}
-                        disabled={isSaving || !openGraphOpen}
-                        maxLength={2048}
-                        value={values.openGraphImageUrl}
-                        onChange={(event) => {
-                          setField('openGraphImageUrl', event.target.value);
-                        }}
-                        placeholder='https://cdn.partsanj.ir/blog/category-cover.jpg'
-                      />
-                    )}
-                  </FormField>
+                  <AdminSingleImageUploadField
+                    purpose='blog'
+                    value={values.openGraphImageUrl}
+                    onChange={(url) => {
+                      setField('openGraphImageUrl', url);
+                    }}
+                    onUploaded={() => {
+                      if (!values.openGraphImageAlt.trim()) {
+                        setField('openGraphImageAlt', values.name.trim() || 'تصویر دسته‌بندی بلاگ');
+                      }
+                    }}
+                    alt={
+                      values.openGraphImageAlt.trim() ||
+                      values.name.trim() ||
+                      'تصویر Open Graph دسته‌بندی بلاگ'
+                    }
+                    disabled={isSaving || !openGraphOpen}
+                    previewClassName='aspect-[1.91/1] w-full'
+                    uploadTitle='آپلود تصویر Open Graph'
+                  />
 
                   <FormField
                     label='متن جایگزین تصویر Open Graph'

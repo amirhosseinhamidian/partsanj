@@ -12,7 +12,11 @@ import { adminCategoriesApi } from '@/lib/api/admin-categories-client';
 import { adminProductsApi } from '@/lib/api/admin-products-client';
 import { ClientApiError } from '@/lib/api/web-client';
 import { ArchiveProductDialog } from '@/components/admin/catalog/products/archive-product-dialog';
-import { ProductEditorForm } from '@/components/admin/catalog/products/product-editor-form';
+import {
+  ProductEditorForm,
+  type ProductImageUploadResult,
+} from '@/components/admin/catalog/products/product-editor-form';
+import { adminUploadsApi } from '@/lib/api/admin-uploads-client';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -105,6 +109,24 @@ export function ProductEditorPageClient({ productId }: ProductEditorPageClientPr
     setProduct(result.data);
   }
 
+  async function handleUploadImages(files: File[]): Promise<ProductImageUploadResult[]> {
+    const uploadedImages: ProductImageUploadResult[] = [];
+
+    /*
+     * Uploads are intentionally sequential because the VPS has
+     * limited CPU and ImageMagick processing is serialized.
+     */
+    for (const file of files) {
+      const response = await adminUploadsApi.uploadImage(file, 'products');
+
+      uploadedImages.push({
+        url: response.data.url,
+      });
+    }
+
+    return uploadedImages;
+  }
+
   const title = isEditing ? (product?.name ?? 'ویرایش محصول') : 'افزودن محصول';
 
   const description = isEditing
@@ -166,6 +188,7 @@ export function ProductEditorPageClient({ productId }: ProductEditorPageClientPr
           categories={categories}
           onSubmit={handleSave}
           onRequestArchive={isEditing ? () => setArchiveDialogOpen(true) : undefined}
+          onUploadImages={handleUploadImages}
         />
       ) : null}
 

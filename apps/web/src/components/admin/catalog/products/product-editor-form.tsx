@@ -26,6 +26,7 @@ import { FileUpload, type FileUploadRejection } from '@/components/ui/file-uploa
 import { SortableImageList, type SortableImageItem } from '@/components/ui/sortable-image-list';
 import { JalaliDatePicker } from '@/components/ui/jalali-date-picker';
 import { toPersianDigits } from '@/lib/utils/digits';
+import { AdminSingleImageUploadField } from '../../uploads/admin-single-image-upload-field';
 
 const MAX_CODES = 20;
 const MAX_IMAGES = 10;
@@ -1511,25 +1512,26 @@ export function ProductEditorForm({
                     )}
                   </FormField>
 
-                  <FormField
-                    label='تصویر Open Graph'
-                    helperText='URL تصویر عمومی با http یا https'
-                    error={errors.openGraphImageUrl}
-                  >
-                    {({ id, labelId, describedBy, invalid }) => (
-                      <Input
-                        id={id}
-                        dir='ltr'
-                        aria-labelledby={labelId}
-                        aria-describedby={describedBy}
-                        aria-invalid={invalid}
-                        disabled={isSaving}
-                        value={values.openGraphImageUrl}
-                        onChange={(event) => setField('openGraphImageUrl', event.target.value)}
-                        placeholder='https://cdn.partsanj.com/products/product-og.jpg'
-                      />
-                    )}
-                  </FormField>
+                  <AdminSingleImageUploadField
+                    purpose='products'
+                    value={values.openGraphImageUrl}
+                    onChange={(url) => {
+                      setField('openGraphImageUrl', url);
+                    }}
+                    onUploaded={() => {
+                      if (!values.openGraphImageAlt.trim()) {
+                        setField('openGraphImageAlt', values.name.trim() || 'تصویر محصول');
+                      }
+                    }}
+                    alt={
+                      values.openGraphImageAlt.trim() ||
+                      values.name.trim() ||
+                      'تصویر Open Graph محصول'
+                    }
+                    disabled={isSaving}
+                    previewClassName='aspect-[1.91/1] w-full'
+                    uploadTitle='آپلود تصویر Open Graph'
+                  />
                 </div>
 
                 <div className='mt-5'>

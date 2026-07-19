@@ -27,6 +27,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { ImageUrlPreview } from '@/components/ui/image-url-preview';
 
 import { isValidRemoteImageUrl, normalizeImageUrl } from '@/lib/utils/image-url';
+import { AdminSingleImageUploadField } from '../uploads/admin-single-image-upload-field';
 
 type VehicleModelFormValues = {
   makeId: string;
@@ -97,6 +98,7 @@ export function VehicleModelFormSheet({
 
   const [errors, setErrors] = useState<VehicleModelFormErrors>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingVehicleModelImage, setIsUploadingVehicleModelImage] = useState(false);
 
   const hasVariants = (model?._count.variants ?? 0) > 0;
 
@@ -108,6 +110,7 @@ export function VehicleModelFormSheet({
     setValues(getInitialValues(model));
     setErrors({});
     setIsSaving(false);
+    setIsUploadingVehicleModelImage(false);
   }, [model, open]);
 
   const makeOptions = useMemo(
@@ -315,34 +318,25 @@ export function VehicleModelFormSheet({
             </FormField>
 
             <FormField
-              label='آدرس تصویر خودرو'
-              helperText='یک تصویر استاندارد از مدل خودرو وارد کنید؛ Variantها از همین تصویر استفاده می‌کنند'
+              label='تصویر مدل خودرو'
+              helperText='یک تصویر استاندارد از مدل خودرو انتخاب کنید'
               error={errors.imageUrl}
             >
-              {({ id, labelId, describedBy, invalid }) => (
-                <div className='space-y-3'>
-                  <Input
-                    id={id}
-                    type='url'
-                    dir='ltr'
-                    inputMode='url'
-                    aria-labelledby={labelId}
-                    aria-describedby={describedBy}
-                    aria-invalid={invalid}
-                    disabled={isSaving}
-                    maxLength={2048}
-                    value={values.imageUrl}
-                    onChange={(event) => setField('imageUrl', event.target.value)}
-                    onBlur={() => setField('imageUrl', normalizeImageUrl(values.imageUrl))}
-                    placeholder='https://cdn.example.com/peugeot-206.webp'
-                  />
-
-                  <ImageUrlPreview
-                    src={values.imageUrl}
-                    alt={values.name ? `تصویر ${values.name}` : 'پیش‌نمایش مدل خودرو'}
-                    className='aspect-video w-full'
-                  />
-                </div>
+              {({ id }) => (
+                <AdminSingleImageUploadField
+                  inputId={id}
+                  purpose='vehicles'
+                  value={values.imageUrl}
+                  onChange={(url) => {
+                    setField('imageUrl', url);
+                  }}
+                  alt={values.name ? `تصویر ${values.name}` : 'پیش‌نمایش مدل خودرو'}
+                  disabled={isSaving}
+                  onUploadingChange={setIsUploadingVehicleModelImage}
+                  previewClassName='aspect-video w-full'
+                  uploadTitle='آپلود تصویر مدل خودرو'
+                  inputPlaceholder='https://partsanj.ir/uploads/vehicles/...'
+                />
               )}
             </FormField>
 
@@ -391,13 +385,18 @@ export function VehicleModelFormSheet({
             <Button
               type='button'
               variant='outline'
-              disabled={isSaving}
+              disabled={isSaving || isUploadingVehicleModelImage}
               onClick={() => onOpenChange(false)}
             >
               انصراف
             </Button>
 
-            <Button type='submit' iconStart={<Save />} isLoading={isSaving} disabled={isSaving}>
+            <Button
+              type='submit'
+              iconStart={<Save />}
+              isLoading={isSaving}
+              disabled={isSaving || isUploadingVehicleModelImage}
+            >
               {isEditing ? 'ذخیره تغییرات' : 'ایجاد مدل خودرو'}
             </Button>
           </SheetFooter>

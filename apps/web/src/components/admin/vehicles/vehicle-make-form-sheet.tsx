@@ -25,6 +25,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { ImageUrlPreview } from '@/components/ui/image-url-preview';
 
 import { isValidRemoteImageUrl, normalizeImageUrl } from '@/lib/utils/image-url';
+import { AdminSingleImageUploadField } from '../uploads/admin-single-image-upload-field';
 
 type VehicleMakeFormValues = {
   name: string;
@@ -91,6 +92,7 @@ export function VehicleMakeFormSheet({
 
   const [errors, setErrors] = useState<VehicleMakeFormErrors>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingVehicleMakeLogo, setIsUploadingVehicleMakeLogo] = useState(false);
 
   useEffect(() => {
     if (!open) {
@@ -100,6 +102,7 @@ export function VehicleMakeFormSheet({
     setValues(getInitialValues(make));
     setErrors({});
     setIsSaving(false);
+    setIsUploadingVehicleMakeLogo(false);
   }, [make, open]);
 
   function setField<TKey extends keyof VehicleMakeFormValues>(
@@ -261,34 +264,25 @@ export function VehicleMakeFormSheet({
             </FormField>
 
             <FormField
-              label='آدرس لوگوی برند خودرو'
-              helperText='فعلاً URL تصویر را وارد کنید؛ بعداً Upload فایل همین URL را پر می‌کند'
+              label='لوگوی برند خودرو'
+              helperText='لوگوی برند خودرو را آپلود کنید یا URL آن را وارد کنید'
               error={errors.logoUrl}
             >
-              {({ id, labelId, describedBy, invalid }) => (
-                <div className='space-y-3'>
-                  <Input
-                    id={id}
-                    type='url'
-                    dir='ltr'
-                    inputMode='url'
-                    aria-labelledby={labelId}
-                    aria-describedby={describedBy}
-                    aria-invalid={invalid}
-                    disabled={isSaving}
-                    maxLength={2048}
-                    value={values.logoUrl}
-                    onChange={(event) => setField('logoUrl', event.target.value)}
-                    onBlur={() => setField('logoUrl', normalizeImageUrl(values.logoUrl))}
-                    placeholder='https://cdn.example.com/peugeot-logo.webp'
-                  />
-
-                  <ImageUrlPreview
-                    src={values.logoUrl}
-                    alt={values.name ? `لوگوی ${values.name}` : 'پیش‌نمایش لوگوی برند خودرو'}
-                    className='h-36 w-full'
-                  />
-                </div>
+              {({ id }) => (
+                <AdminSingleImageUploadField
+                  inputId={id}
+                  purpose='vehicles'
+                  value={values.logoUrl}
+                  onChange={(url) => {
+                    setField('logoUrl', url);
+                  }}
+                  alt={values.name ? `لوگوی ${values.name}` : 'پیش‌نمایش لوگوی برند خودرو'}
+                  disabled={isSaving}
+                  onUploadingChange={setIsUploadingVehicleMakeLogo}
+                  previewClassName='h-36 w-full'
+                  uploadTitle='آپلود لوگوی برند خودرو'
+                  inputPlaceholder='https://partsanj.ir/uploads/vehicles/...'
+                />
               )}
             </FormField>
 
@@ -337,13 +331,18 @@ export function VehicleMakeFormSheet({
             <Button
               type='button'
               variant='outline'
-              disabled={isSaving}
+              disabled={isSaving || isUploadingVehicleMakeLogo}
               onClick={() => onOpenChange(false)}
             >
               انصراف
             </Button>
 
-            <Button type='submit' iconStart={<Save />} isLoading={isSaving} disabled={isSaving}>
+            <Button
+              type='submit'
+              iconStart={<Save />}
+              isLoading={isSaving}
+              disabled={isSaving || isUploadingVehicleMakeLogo}
+            >
               {isEditing ? 'ذخیره تغییرات' : 'ایجاد برند خودرو'}
             </Button>
           </SheetFooter>

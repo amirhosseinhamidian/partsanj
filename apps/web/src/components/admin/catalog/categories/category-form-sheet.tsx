@@ -21,6 +21,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { useEffect, useMemo, useState } from 'react';
 import { FormField } from '@/components/ui/form-field';
+import { AdminSingleImageUploadField } from '../../uploads/admin-single-image-upload-field';
 
 type FormValues = {
   name: string;
@@ -122,6 +123,7 @@ export function CategoryFormSheet({
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingCategoryImage, setIsUploadingCategoryImage] = useState(false);
 
   useEffect(() => {
     if (!open) {
@@ -131,6 +133,7 @@ export function CategoryFormSheet({
     setValues(getInitialValues(category));
     setErrors({});
     setSubmitError(null);
+    setIsUploadingCategoryImage(false);
   }, [category, open]);
 
   const parentOptions = useMemo(() => {
@@ -313,31 +316,38 @@ export function CategoryFormSheet({
             </FormField>
 
             <div className='bg-muted/30 rounded-card border border-border p-4'>
-              <div className='mb-4'>
-                <p className='text-sm font-bold text-foreground'>تصویر شاخص دسته‌بندی</p>
-
-                <p className='mt-1 text-xs leading-5 text-foreground-secondary'>
-                  این تصویر در صفحه اصلی و بخش دسته‌بندی‌های فروشگاه نمایش داده می‌شود
-                </p>
-              </div>
-
               <div className='grid gap-4'>
                 <FormField
-                  label='آدرس تصویر'
-                  helperText='URL کامل تصویر را وارد کنید؛ مثال: https://cdn.partsanj.ir/categories/socket.webp'
+                  label='تصویر شاخص دسته‌بندی'
+                  helperText='این تصویر در صفحه اصلی و صفحات دسته‌بندی نمایش داده می‌شود'
                   error={errors.imageUrl}
                 >
-                  {({ id, labelId, describedBy, invalid }) => (
-                    <Input
-                      id={id}
-                      dir='ltr'
-                      aria-labelledby={labelId}
-                      aria-describedby={describedBy}
-                      aria-invalid={invalid}
+                  {({ id }) => (
+                    <AdminSingleImageUploadField
+                      inputId={id}
+                      purpose='categories'
                       value={values.imageUrl}
-                      onChange={(event) => setField('imageUrl', event.target.value)}
-                      onBlur={() => setField('imageUrl', values.imageUrl.trim())}
-                      placeholder='https://cdn.partsanj.ir/categories/socket.webp'
+                      onChange={(url) => {
+                        setField('imageUrl', url);
+                      }}
+                      onUploaded={() => {
+                        if (!values.imageAlt.trim()) {
+                          setField(
+                            'imageAlt',
+                            values.name.trim()
+                              ? `تصویر دسته‌بندی ${values.name.trim()}`
+                              : 'تصویر دسته‌بندی',
+                          );
+                        }
+                      }}
+                      alt={
+                        values.imageAlt.trim() || values.name.trim() || 'پیش‌نمایش تصویر دسته‌بندی'
+                      }
+                      disabled={isSaving}
+                      onUploadingChange={setIsUploadingCategoryImage}
+                      previewClassName='aspect-video w-full'
+                      inputPlaceholder='https://partsanj.ir/uploads/categories/...'
+                      uploadTitle='آپلود تصویر دسته‌بندی'
                     />
                   )}
                 </FormField>
@@ -462,12 +472,16 @@ export function CategoryFormSheet({
 
           <SheetFooter>
             <SheetClose asChild>
-              <Button type='button' variant='outline' disabled={isSaving}>
+              <Button
+                type='button'
+                variant='outline'
+                disabled={isSaving || isUploadingCategoryImage}
+              >
                 انصراف
               </Button>
             </SheetClose>
 
-            <Button type='submit' isLoading={isSaving}>
+            <Button type='submit' isLoading={isSaving || isUploadingCategoryImage}>
               {isEditing ? 'ذخیره تغییرات' : 'ایجاد دسته‌بندی'}
             </Button>
           </SheetFooter>

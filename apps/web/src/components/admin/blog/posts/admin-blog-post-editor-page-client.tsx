@@ -46,6 +46,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { TiptapEditor } from '@/components/ui/tiptap-editor';
 import { Badge } from '@/components/ui/badge';
+import { AdminSingleImageUploadField } from '../../uploads/admin-single-image-upload-field';
 
 type BlogPostDraft = {
   categoryId: string;
@@ -284,6 +285,10 @@ export function AdminBlogPostEditorPageClient({ blogPostId }: AdminBlogPostEdito
 
   const [seoOpen, setSeoOpen] = useState(false);
   const [openGraphOpen, setOpenGraphOpen] = useState(false);
+
+  const [uploadingBlogImageField, setUploadingBlogImageField] = useState<
+    'cover' | 'open-graph' | null
+  >(null);
 
   const { categories, isLoading: areCategoriesLoading } = useAdminBlogCategories({
     page: 1,
@@ -526,7 +531,7 @@ export function AdminBlogPostEditorPageClient({ blogPostId }: AdminBlogPostEdito
           <Button
             type='submit'
             iconStart={<Save className='size-4' />}
-            disabled={isSaving || !hasChanges}
+            disabled={isSaving || !hasChanges || uploadingBlogImageField !== null}
             isLoading={isSaving}
             loadingLabel='در حال ذخیره'
           >
@@ -749,22 +754,28 @@ export function AdminBlogPostEditorPageClient({ blogPostId }: AdminBlogPostEdito
         icon={ImageIcon}
       >
         <div className='grid gap-5 md:grid-cols-2'>
-          <FormField label='آدرس تصویر کاور' error={errors.coverImageUrl} className='md:col-span-2'>
-            {({ id, labelId, describedBy, invalid }) => (
-              <Input
-                id={id}
-                type='url'
-                dir='ltr'
-                aria-labelledby={labelId}
-                aria-describedby={describedBy}
-                aria-invalid={invalid}
-                disabled={isSaving}
+          <FormField label='تصویر کاور' error={errors.coverImageUrl} className='md:col-span-2'>
+            {({ id }) => (
+              <AdminSingleImageUploadField
+                inputId={id}
+                purpose='blog'
                 value={draft.coverImageUrl}
-                maxLength={2048}
-                onChange={(event) => {
-                  setField('coverImageUrl', event.target.value);
+                onChange={(url) => {
+                  setField('coverImageUrl', url);
                 }}
-                placeholder='https://cdn.partsanj.ir/blog/article-cover.jpg'
+                onUploaded={() => {
+                  if (!draft.coverImageAlt.trim()) {
+                    setField('coverImageAlt', draft.title.trim() || 'تصویر کاور مقاله');
+                  }
+                }}
+                alt={draft.coverImageAlt.trim() || draft.title.trim() || 'پیش‌نمایش تصویر کاور'}
+                disabled={isSaving}
+                onUploadingChange={(isUploading) => {
+                  setUploadingBlogImageField(isUploading ? 'cover' : null);
+                }}
+                previewClassName='aspect-video w-full'
+                uploadTitle='آپلود تصویر کاور مقاله'
+                inputPlaceholder='https://partsanj.ir/uploads/blog/...'
               />
             )}
           </FormField>
@@ -935,25 +946,35 @@ export function AdminBlogPostEditorPageClient({ blogPostId }: AdminBlogPostEdito
           </FormField>
 
           <FormField
-            label='آدرس تصویر Open Graph'
+            label='تصویر Open Graph'
             error={errors.openGraphImageUrl}
             className='md:col-span-2'
           >
-            {({ id, labelId, describedBy, invalid }) => (
-              <Input
-                id={id}
-                type='url'
-                dir='ltr'
-                aria-labelledby={labelId}
-                aria-describedby={describedBy}
-                aria-invalid={invalid}
-                disabled={isSaving || !openGraphOpen}
+            {({ id }) => (
+              <AdminSingleImageUploadField
+                inputId={id}
+                purpose='blog'
                 value={draft.openGraphImageUrl}
-                maxLength={2048}
-                onChange={(event) => {
-                  setField('openGraphImageUrl', event.target.value);
+                onChange={(url) => {
+                  setField('openGraphImageUrl', url);
                 }}
-                placeholder='https://cdn.partsanj.ir/blog/social-preview.jpg'
+                onUploaded={() => {
+                  if (!draft.openGraphImageAlt.trim()) {
+                    setField('openGraphImageAlt', draft.title.trim() || 'تصویر اشتراک‌گذاری مقاله');
+                  }
+                }}
+                alt={
+                  draft.openGraphImageAlt.trim() ||
+                  draft.title.trim() ||
+                  'پیش‌نمایش تصویر Open Graph'
+                }
+                disabled={isSaving || !openGraphOpen}
+                onUploadingChange={(isUploading) => {
+                  setUploadingBlogImageField(isUploading ? 'open-graph' : null);
+                }}
+                previewClassName='aspect-[1.91/1] w-full'
+                uploadTitle='آپلود تصویر Open Graph'
+                inputPlaceholder='https://partsanj.ir/uploads/blog/...'
               />
             )}
           </FormField>
