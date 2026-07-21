@@ -19,6 +19,7 @@ import type {
 import { PackageSearch, RefreshCw } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CatalogImportShortcutButton } from '@/components/admin/catalog/import/catalog-import-shortcut-button';
 
 const PAGE_SIZE = 24;
 
@@ -284,6 +285,7 @@ export function ProductsPageClient() {
         title='محصولات'
         description='اطلاعات فنی، قیمت، وضعیت موجودی و نمایش محصولات را مدیریت کنید'
         icon={<PackageSearch className='size-5 lg:size-8' />}
+        actions={<CatalogImportShortcutButton />}
         addButtonLabel='افزودن محصول'
         onAddClick={() => router.push('/admin/catalog/products/new')}
       />

@@ -16,4 +16,4 @@ apps/*/.env.*
 apps/api/src/generated/
 
 # Local API uploads
-apps/api/uploads/
+apps/api/uploads/.DS_Store
