@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { parse } from 'csv-parse/sync';
 import { randomUUID } from 'node:crypto';
 import { TextDecoder } from 'node:util';
@@ -151,9 +147,7 @@ export class CatalogCsvImportService {
     const matrix = this.parseCsvMatrix(file.buffer);
     const { headers, rows } = this.extractAndValidateRows(matrix);
 
-    const parsedRows = rows.map((row, index) =>
-      this.parseProductRow(row, headers, index + 2),
-    );
+    const parsedRows = rows.map((row, index) => this.parseProductRow(row, headers, index + 2));
 
     this.addWithinFileDuplicateErrors(parsedRows);
 
@@ -215,13 +209,9 @@ export class CatalogCsvImportService {
     ]);
 
     const brandBySlug = new Map(brands.map((brand) => [brand.slug, brand]));
-    const categoryBySlug = new Map(
-      categories.map((category) => [category.slug, category]),
-    );
+    const categoryBySlug = new Map(categories.map((category) => [category.slug, category]));
     const productBySku = new Map(existingProducts.map((product) => [product.sku, product]));
-    const productBySlug = new Map(
-      existingProducts.map((product) => [product.slug, product]),
-    );
+    const productBySlug = new Map(existingProducts.map((product) => [product.slug, product]));
 
     const missingBrands = new Map<string, MissingReferenceAccumulator>();
     const missingCategories = new Map<string, MissingReferenceAccumulator>();
@@ -327,7 +317,7 @@ export class CatalogCsvImportService {
       }
 
       const effectivePriceToman =
-        row.priceToman ?? (action === 'UPDATE' ? existingBySku?.priceToman ?? null : null);
+        row.priceToman ?? (action === 'UPDATE' ? (existingBySku?.priceToman ?? null) : null);
 
       if (row.salePriceToman !== null && effectivePriceToman === null) {
         this.addRowError(row, {
@@ -367,15 +357,11 @@ export class CatalogCsvImportService {
         normalized: {
           priceToman: row.priceToman,
           salePriceToman: row.salePriceToman,
-          stockQuantity:
-            row.stockQuantity ??
-            (action === 'CREATE' ? DEFAULT_STOCK_QUANTITY : null),
+          stockQuantity: row.stockQuantity ?? (action === 'CREATE' ? DEFAULT_STOCK_QUANTITY : null),
           stockStatus:
-            row.stockStatus ??
-            (action === 'CREATE' ? StockStatus.CHECK_AVAILABILITY : null),
+            row.stockStatus ?? (action === 'CREATE' ? StockStatus.CHECK_AVAILABILITY : null),
           lowStockThreshold:
-            row.lowStockThreshold ??
-            (action === 'CREATE' ? DEFAULT_LOW_STOCK_THRESHOLD : null),
+            row.lowStockThreshold ?? (action === 'CREATE' ? DEFAULT_LOW_STOCK_THRESHOLD : null),
           shortDescription: row.shortDescription,
           description: row.description,
         },
@@ -427,9 +413,7 @@ export class CatalogCsvImportService {
 
     const matrix = this.parseCsvMatrix(file.buffer);
     const { headers, rows } = this.extractAndValidateRows(matrix);
-    const parsedRows = rows.map((row, index) =>
-      this.parseProductRow(row, headers, index + 2),
-    );
+    const parsedRows = rows.map((row, index) => this.parseProductRow(row, headers, index + 2));
 
     const brandSlugs = this.uniqueNonEmpty(parsedRows.map((row) => row.brandSlug));
     const categorySlugs = this.uniqueNonEmpty(parsedRows.map((row) => row.categorySlug));
@@ -485,12 +469,8 @@ export class CatalogCsvImportService {
     ]);
 
     const brandBySlug = new Map(brands.map((brand) => [brand.slug, brand]));
-    const categoryBySlug = new Map(
-      categories.map((category) => [category.slug, category]),
-    );
-    const productBySku = new Map(
-      existingProducts.map((product) => [product.sku, product]),
-    );
+    const categoryBySlug = new Map(categories.map((category) => [category.slug, category]));
+    const productBySku = new Map(existingProducts.map((product) => [product.sku, product]));
 
     const batchId = randomUUID();
 
@@ -527,8 +507,7 @@ export class CatalogCsvImportService {
                 row.stockStatus ?? StockStatus.CHECK_AVAILABILITY,
                 stockQuantity,
               );
-              const lowStockThreshold =
-                row.lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD;
+              const lowStockThreshold = row.lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD;
 
               this.assertFinalProductValues({
                 priceToman: row.priceToman,
@@ -638,13 +617,8 @@ export class CatalogCsvImportService {
             const requestedStockStatus = this.hasCsvValue(row.raw.stock_status)
               ? (row.stockStatus ?? StockStatus.CHECK_AVAILABILITY)
               : existingProduct.stockStatus;
-            const stockStatus = this.resolveProductStockStatus(
-              requestedStockStatus,
-              stockQuantity,
-            );
-            const lowStockThreshold = this.hasCsvValue(
-              row.raw.low_stock_threshold,
-            )
+            const stockStatus = this.resolveProductStockStatus(requestedStockStatus, stockQuantity);
+            const lowStockThreshold = this.hasCsvValue(row.raw.low_stock_threshold)
               ? (row.lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD)
               : existingProduct.lowStockThreshold;
             const shortDescription = this.hasCsvValue(row.raw.short_description)
@@ -763,19 +737,14 @@ export class CatalogCsvImportService {
           mode,
           summary: {
             totalRows: importedProducts.length,
-            createdCount: importedProducts.filter((item) => item.action === 'CREATE')
-              .length,
-            updatedCount: importedProducts.filter((item) => item.action === 'UPDATE')
-              .length,
+            createdCount: importedProducts.filter((item) => item.action === 'CREATE').length,
+            updatedCount: importedProducts.filter((item) => item.action === 'UPDATE').length,
           },
           products: importedProducts,
         },
       };
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         throw new ConflictException({
           message: 'هنگام ثبت CSV، مقدار یکتای تکراری برای SKU یا slug ایجاد شد.',
           code: 'CSV_IMPORT_UNIQUE_CONFLICT',
@@ -806,9 +775,7 @@ export class CatalogCsvImportService {
     lowStockThreshold: number;
   }) {
     if (input.salePriceToman !== null && input.priceToman === null) {
-      throw new BadRequestException(
-        'قیمت فروش ویژه بدون قیمت اصلی قابل ثبت نیست.',
-      );
+      throw new BadRequestException('قیمت فروش ویژه بدون قیمت اصلی قابل ثبت نیست.');
     }
 
     if (
@@ -816,31 +783,19 @@ export class CatalogCsvImportService {
       input.priceToman !== null &&
       input.salePriceToman > input.priceToman
     ) {
-      throw new BadRequestException(
-        'قیمت فروش ویژه نمی‌تواند از قیمت اصلی بیشتر باشد.',
-      );
+      throw new BadRequestException('قیمت فروش ویژه نمی‌تواند از قیمت اصلی بیشتر باشد.');
     }
 
     if (input.stockQuantity < 0 || input.lowStockThreshold < 0) {
       throw new BadRequestException('مقادیر موجودی محصول معتبر نیستند.');
     }
 
-    if (
-      input.stockStatus === StockStatus.IN_STOCK &&
-      input.stockQuantity === 0
-    ) {
-      throw new BadRequestException(
-        'محصول موجود باید حداقل یک واحد موجودی داشته باشد.',
-      );
+    if (input.stockStatus === StockStatus.IN_STOCK && input.stockQuantity === 0) {
+      throw new BadRequestException('محصول موجود باید حداقل یک واحد موجودی داشته باشد.');
     }
 
-    if (
-      input.stockStatus === StockStatus.OUT_OF_STOCK &&
-      input.stockQuantity > 0
-    ) {
-      throw new BadRequestException(
-        'محصول ناموجود نمی‌تواند موجودی مثبت داشته باشد.',
-      );
+    if (input.stockStatus === StockStatus.OUT_OF_STOCK && input.stockQuantity > 0) {
+      throw new BadRequestException('محصول ناموجود نمی‌تواند موجودی مثبت داشته باشد.');
     }
   }
 
@@ -891,7 +846,7 @@ export class CatalogCsvImportService {
         skip_empty_lines: true,
         trim: true,
         relax_column_count: false,
-      }) as string[][];
+      });
 
       return records.filter((row) => row.some((cell) => cell.trim().length > 0));
     } catch (error) {
@@ -993,13 +948,7 @@ export class CatalogCsvImportService {
     this.validateRequiredString(row, 'sku', row.sku, MAX_SKU_LENGTH, 'SKU');
     this.validateRequiredString(row, 'name', row.name, MAX_NAME_LENGTH, 'نام محصول');
     this.validateRequiredString(row, 'slug', row.slug, MAX_SLUG_LENGTH, 'slug محصول');
-    this.validateRequiredString(
-      row,
-      'brand_slug',
-      row.brandSlug,
-      MAX_SLUG_LENGTH,
-      'slug برند',
-    );
+    this.validateRequiredString(row, 'brand_slug', row.brandSlug, MAX_SLUG_LENGTH, 'slug برند');
     this.validateRequiredString(
       row,
       'category_slug',
@@ -1013,12 +962,7 @@ export class CatalogCsvImportService {
     this.validateSlug(row, 'category_slug', row.categorySlug, 'slug دسته‌بندی');
 
     if (row.categoryParentSlug) {
-      this.validateSlug(
-        row,
-        'category_parent_slug',
-        row.categoryParentSlug,
-        'slug دسته‌بندی والد',
-      );
+      this.validateSlug(row, 'category_parent_slug', row.categoryParentSlug, 'slug دسته‌بندی والد');
     }
 
     if (row.brandName && row.brandName.length > MAX_NAME_LENGTH) {
@@ -1029,10 +973,7 @@ export class CatalogCsvImportService {
       this.addFieldTooLongError(row, 'category_name', row.categoryName, MAX_NAME_LENGTH);
     }
 
-    if (
-      row.shortDescription &&
-      row.shortDescription.length > MAX_SHORT_DESCRIPTION_LENGTH
-    ) {
+    if (row.shortDescription && row.shortDescription.length > MAX_SHORT_DESCRIPTION_LENGTH) {
       this.addFieldTooLongError(
         row,
         'short_description',
@@ -1042,19 +983,10 @@ export class CatalogCsvImportService {
     }
 
     if (row.description && row.description.length > MAX_DESCRIPTION_LENGTH) {
-      this.addFieldTooLongError(
-        row,
-        'description',
-        row.description,
-        MAX_DESCRIPTION_LENGTH,
-      );
+      this.addFieldTooLongError(row, 'description', row.description, MAX_DESCRIPTION_LENGTH);
     }
 
-    row.priceToman = this.parseOptionalNonNegativeInteger(
-      row,
-      'price_toman',
-      raw.price_toman,
-    );
+    row.priceToman = this.parseOptionalNonNegativeInteger(row, 'price_toman', raw.price_toman);
     row.salePriceToman = this.parseOptionalNonNegativeInteger(
       row,
       'sale_price_toman',
@@ -1313,9 +1245,7 @@ export class CatalogCsvImportService {
   }
 
   private findDuplicates(values: string[]) {
-    return Array.from(
-      new Set(values.filter((value, index) => values.indexOf(value) !== index)),
-    );
+    return Array.from(new Set(values.filter((value, index) => values.indexOf(value) !== index)));
   }
 
   private nullIfEmpty(value: string | undefined) {

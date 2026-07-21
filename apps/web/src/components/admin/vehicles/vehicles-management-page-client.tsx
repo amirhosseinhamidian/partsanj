@@ -66,7 +66,9 @@ export function VehiclesManagementPageClient() {
     }
   }, []);
 
-  useEffect(() => { void loadVehicleData(); }, [loadVehicleData]);
+  useEffect(() => {
+    void loadVehicleData();
+  }, [loadVehicleData]);
 
   return (
     <div dir='rtl' className='space-y-6 text-right'>
@@ -98,30 +100,48 @@ export function VehiclesManagementPageClient() {
       />
 
       {loadError ? (
-        <div role='alert' className='flex flex-col gap-3 rounded-card border border-danger/30 bg-danger-soft p-4 sm:flex-row sm:items-center sm:justify-between'>
+        <div
+          role='alert'
+          className='flex flex-col gap-3 rounded-card border border-danger/30 bg-danger-soft p-4 sm:flex-row sm:items-center sm:justify-between'
+        >
           <div className='flex gap-2 text-danger'>
             <TriangleAlert className='mt-0.5 size-5 shrink-0' />
             <p className='text-sm font-semibold'>{loadError}</p>
           </div>
-          <Button type='button' size='sm' variant='outline' iconStart={<RefreshCw />} onClick={() => void loadVehicleData()}>
+          <Button
+            type='button'
+            size='sm'
+            variant='outline'
+            iconStart={<RefreshCw />}
+            onClick={() => void loadVehicleData()}
+          >
             تلاش مجدد
           </Button>
         </div>
       ) : null}
 
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as VehicleManagementTab)}>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as VehicleManagementTab)}
+      >
         <TabsList aria-label='بخش‌های مدیریت خودرو'>
           <TabsTrigger value='variants'>
             تیپ / موتور
-            <span className='numeric text-xs text-foreground-muted'>{toPersianDigits(variants.length)}</span>
+            <span className='numeric text-xs text-foreground-muted'>
+              {toPersianDigits(variants.length)}
+            </span>
           </TabsTrigger>
           <TabsTrigger value='models'>
             مدل خودرو
-            <span className='numeric text-xs text-foreground-muted'>{toPersianDigits(models.length)}</span>
+            <span className='numeric text-xs text-foreground-muted'>
+              {toPersianDigits(models.length)}
+            </span>
           </TabsTrigger>
           <TabsTrigger value='makes'>
             برند خودرو
-            <span className='numeric text-xs text-foreground-muted'>{toPersianDigits(makes.length)}</span>
+            <span className='numeric text-xs text-foreground-muted'>
+              {toPersianDigits(makes.length)}
+            </span>
           </TabsTrigger>
         </TabsList>
 
@@ -129,10 +149,21 @@ export function VehiclesManagementPageClient() {
           <VehicleMakesTab makes={makes} loading={isLoading} onDataChanged={loadVehicleData} />
         </TabsContent>
         <TabsContent value='models' className='mt-5'>
-          <VehicleModelsTab models={models} makes={makes} loading={isLoading} onDataChanged={loadVehicleData} />
+          <VehicleModelsTab
+            models={models}
+            makes={makes}
+            loading={isLoading}
+            onDataChanged={loadVehicleData}
+          />
         </TabsContent>
         <TabsContent value='variants' className='mt-5'>
-          <VehicleVariantsTab variants={variants} models={models} makes={makes} loading={isLoading} onDataChanged={loadVehicleData} />
+          <VehicleVariantsTab
+            variants={variants}
+            models={models}
+            makes={makes}
+            loading={isLoading}
+            onDataChanged={loadVehicleData}
+          />
         </TabsContent>
       </Tabs>
     </div>

@@ -10,11 +10,7 @@ import { VehicleCsvImportService } from './vehicle-import/vehicle-csv-import.ser
 
 @Module({
   imports: [AuthModule],
-  controllers: [
-    CatalogAdminController,
-    CatalogCsvImportController,
-    VehicleCsvImportController,
-  ],
+  controllers: [CatalogAdminController, CatalogCsvImportController, VehicleCsvImportController],
   providers: [
     CatalogAdminService,
     CatalogCsvImportService,
