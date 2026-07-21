@@ -147,6 +147,43 @@ jobs:
           chmod 600 "$HOME/.ssh/id_ed25519"
           chmod 600 "$HOME/.ssh/known_hosts"
 
+      - name: Free VPS disk space before deploy
+        shell: bash
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_PORT: ${{ secrets.PROD_PORT }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+        run: |
+          set -Eeuo pipefail
+
+          ssh \
+            -i "$HOME/.ssh/id_ed25519" \
+            -p "$PROD_PORT" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            "$PROD_USER@$PROD_HOST" \
+            'bash -se' <<'REMOTE'
+          set -Eeuo pipefail
+
+          echo "Disk usage before pre-deploy cleanup:"
+          df -h /
+          docker system df || true
+
+          echo "Cleaning old Docker build cache..."
+          docker builder prune -a -f || true
+
+          echo "Cleaning unused Docker images older than 24 hours..."
+          docker image prune -a -f --filter "until=24h" || true
+
+          echo "Cleaning stopped containers older than 24 hours..."
+          docker container prune -f --filter "until=24h" || true
+
+          echo "Disk usage after pre-deploy cleanup:"
+          df -h /
+          docker system df || true
+          REMOTE
+
       - name: Deploy release on VPS
         shell: bash
         env:
@@ -195,3 +232,38 @@ jobs:
             > /dev/null
 
           echo "Production endpoints are healthy."
+
+      - name: Clean unused Docker resources on VPS
+        shell: bash
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_PORT: ${{ secrets.PROD_PORT }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+        run: |
+          set -Eeuo pipefail
+
+          ssh \
+            -i "$HOME/.ssh/id_ed25519" \
+            -p "$PROD_PORT" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            "$PROD_USER@$PROD_HOST" \
+            'bash -se' <<'REMOTE'
+          set -Eeuo pipefail
+
+          echo "Cleaning Docker resources after successful deploy..."
+
+          # VPS images are pulled from GHCR, so local build cache is not needed.
+          docker builder prune -a -f || true
+
+          # Keep only images currently used by running containers.
+          docker image prune -a -f || true
+
+          # Remove stopped containers left by previous deployments.
+          docker container prune -f || true
+
+          echo "Disk usage after post-deploy cleanup:"
+          df -h /
+          docker system df || true
+          REMOTE
