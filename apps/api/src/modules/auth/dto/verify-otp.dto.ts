@@ -10,7 +10,7 @@ export class VerifyOtpDto {
   @Transform(({ value }) => normalizeIranianMobile(value))
   @IsString()
   @Matches(/^09\d{9}$/, {
-    message: 'mobile must be a valid Iranian mobile number',
+    message: 'شماره موبایل باید یک شماره معتبر ایرانی باشد.',
   })
   mobile!: string;
 
@@ -20,7 +20,7 @@ export class VerifyOtpDto {
   @Transform(({ value }) => (typeof value === 'string' ? normalizeDigits(value).trim() : value))
   @IsString()
   @Matches(/^\d{4}$/, {
-    message: 'code must contain exactly 4 digits',
+    message: 'کد تأیید باید دقیقاً ۴ رقم باشد.',
   })
   code!: string;
 }

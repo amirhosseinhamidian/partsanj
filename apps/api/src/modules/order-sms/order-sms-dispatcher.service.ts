@@ -196,7 +196,7 @@ export class OrderSmsDispatcherService implements OnModuleInit, OnModuleDestroy 
         data: {
           status: SmsOutboxStatus.CANCELLED,
           lockedAt: null,
-          lastError: 'Order is no longer eligible for payment reminder',
+          lastError: 'سفارش دیگر شرایط ارسال یادآوری پرداخت را ندارد.',
         },
       });
 
@@ -348,7 +348,7 @@ export class OrderSmsDispatcherService implements OnModuleInit, OnModuleDestroy 
   }
 
   private getErrorMessage(error: unknown): string {
-    return error instanceof Error ? error.message : 'Unknown SMS delivery error';
+    return error instanceof Error ? error.message : 'خطای ناشناخته در ارسال پیامک';
   }
 
   private createErrorDetails(error: unknown): Record<string, unknown> {

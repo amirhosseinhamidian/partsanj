@@ -8,6 +8,7 @@ import type { StorefrontProductListItem } from '@/lib/storefront/catalog/catalog
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
 import { ProductCardPrice } from '../catalog/product-card-price';
+import Image from 'next/image';
 
 type HomeFeaturedProductsProps = {
   products?: StorefrontProductListItem[];
@@ -100,17 +101,18 @@ function FeaturedProductCard({ product }: { product: StorefrontProductListItem }
       <div className='grid h-[145px] grid-cols-[42%_58%] gap-2 p-5'>
         <Link
           href={`/products/${encodeURIComponent(product.slug)}`}
-          className='flex items-center justify-center rounded-xl bg-background'
+          className='relative flex h-[105px] items-center justify-center overflow-hidden rounded-xl bg-background'
         >
           {primaryImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={primaryImage.url}
               alt={primaryImage.alt ?? product.name}
-              className='max-h-[105px] w-full object-contain transition duration-300 hover:scale-105'
+              fill
+              sizes='(max-width: 768px) 50vw, 25vw'
+              className='object-contain transition duration-300 hover:scale-105'
             />
           ) : (
-            <div className='flex h-[105px] w-full items-center justify-center rounded-xl bg-slate-50 text-xs text-slate-400'>
+            <div className='flex h-full w-full items-center justify-center rounded-xl bg-slate-50 text-xs text-slate-400'>
               بدون تصویر
             </div>
           )}

@@ -43,7 +43,7 @@ export class KavenegarService {
 
       if (nodeEnv !== 'development') {
         throw new InternalServerErrorException(
-          'Console OTP delivery is forbidden outside development',
+          'ارسال کد تأیید از طریق کنسول خارج از محیط توسعه مجاز نیست.',
         );
       }
 
@@ -59,7 +59,7 @@ export class KavenegarService {
     }
 
     if (deliveryMode !== 'KAVENEGAR') {
-      throw new InternalServerErrorException('Unsupported OTP delivery mode');
+      throw new InternalServerErrorException('روش ارسال کد تأیید پشتیبانی نمی‌شود.');
     }
 
     const apiKey = this.configService.getOrThrow<string>('KAVENEGAR_API_KEY');
@@ -87,7 +87,9 @@ export class KavenegarService {
         }),
       );
 
-      throw new ServiceUnavailableException('Unable to send verification code');
+      throw new ServiceUnavailableException(
+        'ارسال کد تأیید در حال حاضر امکان‌پذیر نیست. لطفاً دوباره تلاش کنید.',
+      );
     }
 
     const payload = (await response.json().catch(() => null)) as KavenegarResponse | null;

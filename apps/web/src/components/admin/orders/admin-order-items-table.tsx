@@ -6,6 +6,7 @@ import { formatToman } from '@/lib/admin/orders/admin-order-presentation';
 import type { AdminOrderItem } from '@/lib/admin/orders/admin-order.types';
 import { ImageOff } from 'lucide-react';
 import { useMemo } from 'react';
+import Image from 'next/image';
 
 type AdminOrderItemsTableProps = {
   items: AdminOrderItem[];
@@ -34,9 +35,12 @@ export function AdminOrderItemsTable({ items }: AdminOrderItemsTableProps) {
           <div className='flex min-w-0 items-center gap-3'>
             <div className='grid size-12 shrink-0 place-items-center overflow-hidden rounded-control border border-border bg-surface-muted'>
               {row.productImageUrl ? (
-                <img
+                <Image
                   src={row.productImageUrl}
                   alt={row.productName}
+                  width={48}
+                  height={48}
+                  sizes='48px'
                   className='size-full object-cover'
                 />
               ) : (

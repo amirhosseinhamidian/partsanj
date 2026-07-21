@@ -155,7 +155,7 @@ export class CustomerVehicleService {
         });
 
         if (!current) {
-          throw new NotFoundException('Customer vehicle not found');
+          throw new NotFoundException('خودروی موردنظر یافت نشد.');
         }
 
         const data: Prisma.CustomerVehicleUpdateInput = {};
@@ -226,7 +226,7 @@ export class CustomerVehicleService {
       });
 
       if (!current) {
-        throw new NotFoundException('Customer vehicle not found');
+        throw new NotFoundException('خودروی موردنظر یافت نشد.');
       }
 
       if (!current.isDefault) {
@@ -277,7 +277,7 @@ export class CustomerVehicleService {
       });
 
       if (!current) {
-        throw new NotFoundException('Customer vehicle not found');
+        throw new NotFoundException('خودروی موردنظر یافت نشد.');
       }
 
       await transaction.customerVehicle.delete({
@@ -353,7 +353,7 @@ export class CustomerVehicleService {
     });
 
     if (!vehicleVariant) {
-      throw new NotFoundException('Vehicle variant not found');
+      throw new NotFoundException('تیپ خودرو یافت نشد.');
     }
   }
 }

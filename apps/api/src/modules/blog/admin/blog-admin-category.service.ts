@@ -170,7 +170,7 @@ export class BlogAdminCategoryService {
     });
 
     if (!category) {
-      throw new NotFoundException('Blog category not found');
+      throw new NotFoundException('دسته‌بندی بلاگ یافت نشد.');
     }
 
     return {
@@ -240,7 +240,7 @@ export class BlogAdminCategoryService {
         });
 
         if (!current) {
-          throw new NotFoundException('Blog category not found');
+          throw new NotFoundException('دسته‌بندی بلاگ یافت نشد.');
         }
 
         const before = getAuditSnapshot(current);

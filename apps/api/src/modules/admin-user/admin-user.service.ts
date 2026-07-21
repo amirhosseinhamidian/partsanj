@@ -181,7 +181,7 @@ export class AdminUserService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('کاربر یافت نشد.');
     }
 
     return {
@@ -203,7 +203,7 @@ export class AdminUserService {
       });
 
       if (!current) {
-        throw new NotFoundException('User not found');
+        throw new NotFoundException('کاربر یافت نشد.');
       }
 
       const nextRole = dto.role ?? current.role;

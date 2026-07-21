@@ -7,6 +7,7 @@ import {
 import type { PublicBlogPostDetail } from '@/lib/storefront/blog/public-blog.types';
 import { PublicBlogPageShell } from './public-blog-page-shell';
 import { TiptapDocument } from '@/components/ui/tiptap-document';
+import Image from 'next/image';
 
 type PublicBlogPostPageContentProps = {
   post: PublicBlogPostDetail;
@@ -75,13 +76,14 @@ export function PublicBlogPostPageContent({ post }: PublicBlogPostPageContentPro
         </header>
 
         {post.coverImageUrl ? (
-          <figure className='mt-8 overflow-hidden rounded-card border border-border bg-surface-muted'>
-            <img
+          <figure className='relative mt-8 aspect-[16/9] overflow-hidden rounded-card border border-border bg-surface-muted'>
+            <Image
               src={post.coverImageUrl}
               alt={post.coverImageAlt || post.title}
-              loading='eager'
-              decoding='async'
-              className='h-auto w-full object-cover'
+              fill
+              priority
+              sizes='(max-width: 768px) 100vw, 900px'
+              className='object-cover'
             />
           </figure>
         ) : null}

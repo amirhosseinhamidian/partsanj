@@ -23,7 +23,9 @@ export class CustomerProfileService {
     });
 
     if (!user || !user.isActive) {
-      throw new UnauthorizedException('Authentication is no longer valid');
+      throw new UnauthorizedException(
+        'اعتبار ورود شما به پایان رسیده است. لطفاً دوباره وارد شوید.',
+      );
     }
 
     return {
@@ -51,7 +53,9 @@ export class CustomerProfileService {
     });
 
     if (result.count !== 1) {
-      throw new UnauthorizedException('Authentication is no longer valid');
+      throw new UnauthorizedException(
+        'اعتبار ورود شما به پایان رسیده است. لطفاً دوباره وارد شوید.',
+      );
     }
 
     return this.getProfile(customerUserId);

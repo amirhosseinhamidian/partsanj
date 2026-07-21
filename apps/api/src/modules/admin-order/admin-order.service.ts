@@ -54,7 +54,7 @@ export class AdminOrderService {
     const createdTo = query.createdTo ? new Date(query.createdTo) : undefined;
 
     if (createdFrom && createdTo && createdFrom.getTime() > createdTo.getTime()) {
-      throw new BadRequestException('createdFrom cannot be greater than createdTo');
+      throw new BadRequestException('تاریخ شروع نمی‌تواند بعد از تاریخ پایان باشد.');
     }
 
     const where: Prisma.OrderWhereInput = {
@@ -432,7 +432,7 @@ export class AdminOrderService {
     ]);
 
     if (!order) {
-      throw new NotFoundException('Order not found');
+      throw new NotFoundException('سفارش یافت نشد.');
     }
 
     return {
@@ -550,10 +550,7 @@ export class AdminOrderService {
           },
         },
       });
-    await this.orderSmsOutbox.enqueueOrderShipped(
-      transaction,
-      orderId,
-    );
+      await this.orderSmsOutbox.enqueueOrderShipped(transaction, orderId);
     });
 
     return this.findOrderById(orderId);
@@ -696,7 +693,7 @@ export class AdminOrderService {
     });
 
     if (!order) {
-      throw new NotFoundException('Order not found');
+      throw new NotFoundException('سفارش یافت نشد.');
     }
 
     return order;
@@ -806,7 +803,7 @@ export class AdminOrderService {
     const serialized = JSON.stringify(value);
 
     if (serialized === undefined) {
-      throw new BadRequestException('Value cannot be converted to JSON');
+      throw new BadRequestException('امکان تبدیل مقدار به JSON وجود ندارد.');
     }
 
     return JSON.parse(serialized) as Prisma.InputJsonValue;

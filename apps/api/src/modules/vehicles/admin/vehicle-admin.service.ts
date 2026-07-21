@@ -255,7 +255,7 @@ export class VehicleAdminService {
     });
 
     if (!variant) {
-      throw new NotFoundException('Vehicle variant not found');
+      throw new NotFoundException('تیپ خودرو یافت نشد.');
     }
 
     const hasYearFromUpdate = this.hasOwnProperty(dto, 'yearFrom');
@@ -318,7 +318,7 @@ export class VehicleAdminService {
 
   private assertYearRange(yearFrom: number | null, yearTo: number | null): void {
     if (yearFrom !== null && yearTo !== null && yearFrom > yearTo) {
-      throw new BadRequestException('yearFrom cannot be greater than yearTo');
+      throw new BadRequestException('سال شروع نمی‌تواند بعد از سال پایان باشد.');
     }
   }
 
@@ -333,7 +333,7 @@ export class VehicleAdminService {
     });
 
     if (!make) {
-      throw new NotFoundException('Vehicle make not found');
+      throw new NotFoundException('برند خودرو یافت نشد.');
     }
   }
 
@@ -348,13 +348,13 @@ export class VehicleAdminService {
     });
 
     if (!model) {
-      throw new NotFoundException('Vehicle model not found');
+      throw new NotFoundException('مدل خودرو یافت نشد.');
     }
   }
 
   private ensureUpdatePayload(payload: object): void {
     if (Object.keys(payload).length === 0) {
-      throw new BadRequestException('At least one field must be provided');
+      throw new BadRequestException('حداقل یکی از فیلدها باید ارسال شود.');
     }
   }
 
@@ -364,7 +364,7 @@ export class VehicleAdminService {
 
   private rethrowKnownDatabaseError(error: unknown): never {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      throw new ConflictException('A record with the same unique value already exists');
+      throw new ConflictException('رکوردی با این اطلاعات قبلاً ثبت شده است.');
     }
 
     throw error;

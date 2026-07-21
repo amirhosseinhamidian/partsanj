@@ -193,7 +193,7 @@ export class CustomerAddressService {
     });
 
     if (!address) {
-      throw new NotFoundException('Customer address not found');
+      throw new NotFoundException('آدرس موردنظر یافت نشد.');
     }
 
     return address;
@@ -254,7 +254,7 @@ export class CustomerAddressService {
     const digits = this.toLatinDigits(value).replace(/\D/g, '');
 
     if (!/^\d{10}$/.test(digits)) {
-      throw new BadRequestException('Postal code must contain exactly 10 digits');
+      throw new BadRequestException('کد پستی باید دقیقاً ۱۰ رقم باشد.');
     }
 
     return digits;
@@ -275,7 +275,7 @@ export class CustomerAddressService {
       return `0${digits.slice(4)}`;
     }
 
-    throw new BadRequestException('Recipient mobile number is invalid');
+    throw new BadRequestException('شماره موبایل گیرنده معتبر نیست.');
   }
 
   private toLatinDigits(value: string) {

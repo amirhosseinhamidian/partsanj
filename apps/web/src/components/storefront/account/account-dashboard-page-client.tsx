@@ -34,6 +34,8 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useStorefrontCustomerAuth } from '../customer-auth/storefront-customer-auth-provider';
 import { toPersianDigits } from '@/lib/utils/digits';
+import Image from 'next/image';
+import Link from 'next/link';
 
 type AccountDashboardData = {
   latestOrder: CustomerOrderListItem | null;
@@ -141,6 +143,9 @@ function LatestOrderCard({
   }
 
   const firstProduct = order.previewItems[0];
+  const productHref = firstProduct
+    ? `/products/${encodeURIComponent(firstProduct.productSlug)}`
+    : null;
 
   return (
     <DashboardCard title='آخرین سفارش' icon={<PackageOpen className='size-5' />}>
@@ -172,22 +177,42 @@ function LatestOrderCard({
         </div>
 
         <div className='flex min-w-0 items-center gap-3'>
-          <div className='grid size-14 shrink-0 place-items-center overflow-hidden rounded-control border border-border bg-surface-muted'>
-            {firstProduct?.productImageUrl ? (
-              <img
-                src={firstProduct.productImageUrl}
-                alt={firstProduct.productName}
-                className='size-full object-cover'
-              />
-            ) : (
+          {productHref && firstProduct ? (
+            <Link
+              href={productHref}
+              aria-label={`مشاهده محصول ${firstProduct.productName}`}
+              className='grid size-14 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-control border border-border bg-surface-muted transition hover:border-brand/50'
+            >
+              {firstProduct.productImageUrl ? (
+                <Image
+                  src={firstProduct.productImageUrl}
+                  alt={firstProduct.productName}
+                  width={56}
+                  height={56}
+                  sizes='56px'
+                  className='size-full object-cover transition-transform duration-300 hover:scale-105'
+                />
+              ) : (
+                <Package className='size-5 text-foreground-muted' />
+              )}
+            </Link>
+          ) : (
+            <div className='grid size-14 shrink-0 place-items-center overflow-hidden rounded-control border border-border bg-surface-muted'>
               <Package className='size-5 text-foreground-muted' />
-            )}
-          </div>
+            </div>
+          )}
 
           <div className='min-w-0 flex-1'>
-            <p className='leading-7 font-bold break-words text-foreground'>
-              {firstProduct?.productName ?? 'اطلاعات اقلام سفارش'}
-            </p>
+            {productHref && firstProduct ? (
+              <Link
+                href={productHref}
+                className='block cursor-pointer leading-7 font-bold break-words text-foreground transition-colors hover:text-brand'
+              >
+                {firstProduct.productName}
+              </Link>
+            ) : (
+              <p className='leading-7 font-bold break-words text-foreground'>اطلاعات اقلام سفارش</p>
+            )}
 
             <p className='mt-1 text-sm text-foreground-secondary'>
               {new Intl.NumberFormat('fa-IR').format(order.itemCount)} قلم کالا

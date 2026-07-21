@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { CalendarDays, FileText, FolderOpen } from 'lucide-react';
 import { formatPublicBlogDate } from '@/lib/storefront/blog/public-blog-presentation';
 import { PublicBlogPostListItem } from '@/lib/storefront/blog/public-blog.types';
+import Image from 'next/image';
 
 type PublicBlogPostCardProps = {
   post: PublicBlogPostListItem;
@@ -12,12 +13,12 @@ export function PublicBlogPostCard({ post }: PublicBlogPostCardProps) {
     <article className='group overflow-hidden rounded-card border border-border bg-surface shadow-panel transition-transform duration-300 hover:-translate-y-1'>
       <div className='relative aspect-[16/9] overflow-hidden bg-surface-muted'>
         {post.coverImageUrl ? (
-          <img
+          <Image
             src={post.coverImageUrl}
             alt={post.coverImageAlt || post.title}
-            loading='lazy'
-            decoding='async'
-            className='h-full w-full object-cover transition-transform duration-500 group-hover:scale-105'
+            fill
+            sizes='(max-width: 768px) 100vw, 50vw'
+            className='object-cover transition-transform duration-500 group-hover:scale-105'
           />
         ) : (
           <span className='grid h-full w-full place-items-center text-foreground-muted'>

@@ -388,7 +388,7 @@ export class CatalogService {
     });
 
     if (!product) {
-      throw new NotFoundException('Product not found');
+      throw new NotFoundException('محصول یافت نشد.');
     }
 
     return {

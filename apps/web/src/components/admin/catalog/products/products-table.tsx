@@ -14,6 +14,7 @@ import { IconButton } from '@/components/ui/icon-button';
 import { Tooltip } from '@/components/ui/tooltip';
 import { toPersianDigits } from '@/lib/utils/digits';
 import { formatPrice } from '@/lib/utils/price';
+import Image from 'next/image';
 
 type ProductsTableProps = {
   products: AdminProductListItem[];
@@ -109,10 +110,12 @@ export function ProductsTable({
             <div className='flex min-w-0 items-center gap-3'>
               <div className='grid size-12 shrink-0 place-items-center overflow-hidden rounded-control border border-border bg-surface-muted'>
                 {primaryImage ? (
-                  <img
+                  <Image
                     src={primaryImage.url}
                     alt={primaryImage.alt ?? row.name}
-                    loading='lazy'
+                    width={48}
+                    height={48}
+                    sizes='48px'
                     className='size-full object-cover'
                   />
                 ) : (

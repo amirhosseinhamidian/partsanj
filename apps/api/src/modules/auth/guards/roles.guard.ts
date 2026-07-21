@@ -32,11 +32,11 @@ export class RolesGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
     if (!request.user) {
-      throw new UnauthorizedException('Authentication is required');
+      throw new UnauthorizedException('برای انجام این عملیات باید وارد حساب کاربری شوید.');
     }
 
     if (!requiredRoles.includes(request.user.role)) {
-      throw new ForbiddenException('You do not have permission to access this resource');
+      throw new ForbiddenException('اجازه دسترسی به این بخش را ندارید.');
     }
 
     return true;

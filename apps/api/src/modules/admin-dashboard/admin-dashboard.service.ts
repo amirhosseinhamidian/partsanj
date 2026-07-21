@@ -647,7 +647,9 @@ export class AdminDashboardService {
     const boundaries = rows[0];
 
     if (!boundaries) {
-      throw new InternalServerErrorException('Dashboard time boundaries could not be calculated');
+      throw new InternalServerErrorException(
+        'دریافت اطلاعات داشبورد در حال حاضر امکان‌پذیر نیست. لطفاً دوباره تلاش کنید.',
+      );
     }
 
     return boundaries;

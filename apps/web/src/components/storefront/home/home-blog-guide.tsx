@@ -8,6 +8,7 @@ import type { PublicBlogPostListItem } from '@/lib/storefront/blog/public-blog.t
 import { cn } from '@/lib/utils/cn';
 import { toPersianDigits } from '@/lib/utils/digits';
 import { Button } from '@/components/ui/button';
+import Image from 'next/image';
 
 type HomeBlogGuideProps = {
   posts?: PublicBlogPostListItem[];
@@ -121,16 +122,17 @@ function HomeBlogGuideCard({ post }: { post: PublicBlogPostListItem }) {
         </div>
       </div>
 
-      <div className='overflow-hidden rounded-xl bg-slate-100'>
+      <div className='relative min-h-[108px] overflow-hidden rounded-xl bg-slate-100'>
         {post.coverImageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={post.coverImageUrl}
             alt={post.coverImageAlt ?? post.title}
-            className='h-full min-h-[108px] w-full object-cover transition duration-300 group-hover:scale-105'
+            fill
+            sizes='(max-width: 768px) 100vw, 33vw'
+            className='object-cover transition duration-300 group-hover:scale-105'
           />
         ) : (
-          <div className='flex h-full min-h-[108px] w-full items-center justify-center text-slate-400'>
+          <div className='flex min-h-[108px] w-full items-center justify-center text-slate-400'>
             <ImageIcon className='h-9 w-9' />
           </div>
         )}

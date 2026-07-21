@@ -19,7 +19,7 @@ import { storefrontCustomerAuthApi } from '@/lib/api/storefront-customer-auth-cl
 import { ClientApiError } from '@/lib/api/web-client';
 import type { StorefrontCustomerAuthUser } from '@/lib/storefront/customer-auth/customer-auth.types';
 import { toLatinDigits, toPersianDigits } from '@/lib/utils/digits';
-import { KeyRound, LogIn, Pencil, Phone, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Check, KeyRound, LogIn, Pencil, Phone, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
   createContext,
@@ -100,11 +100,20 @@ function isSafeReturnTo(value: string | undefined): value is string {
   return Boolean(value && value.startsWith('/') && !value.startsWith('//'));
 }
 
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, milliseconds);
+  });
+}
+
 type CustomerLoginSheetProps = {
   open: boolean;
   mobile: string;
   otp: string;
   error: string | null;
+  otpHasError: boolean;
+  loginSucceeded: boolean;
+  otpErrorAnimationKey: number;
   step: 'mobile' | 'otp';
   isRequesting: boolean;
   isVerifying: boolean;
@@ -122,6 +131,9 @@ function CustomerLoginDialog({
   mobile,
   otp,
   error,
+  otpHasError,
+  loginSucceeded,
+  otpErrorAnimationKey,
   step,
   isRequesting,
   isVerifying,
@@ -133,7 +145,7 @@ function CustomerLoginDialog({
   onVerifyOtp,
   onBack,
 }: CustomerLoginSheetProps) {
-  const isBusy = isRequesting || isVerifying;
+  const isBusy = isRequesting || isVerifying || loginSucceeded;
 
   function handleMobileSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -231,83 +243,170 @@ function CustomerLoginDialog({
         ) : (
           <form onSubmit={handleOtpSubmit}>
             <DialogBody className='space-y-6'>
-              <div className='flex items-center justify-between gap-3 rounded-control border border-border bg-surface-muted p-4'>
-                <div className='min-w-0'>
-                  <p className='text-xs text-foreground-muted'>
-                    کد تأیید به این شماره ارسال شده است
-                  </p>
+              {!loginSucceeded ? (
+                <div className='flex items-center justify-between gap-3 rounded-control border border-border bg-surface-muted p-4'>
+                  <div className='min-w-0'>
+                    <p className='text-xs text-foreground-muted'>
+                      کد تأیید به این شماره ارسال شده است
+                    </p>
 
-                  <p dir='ltr' className='mt-1 truncate text-sm font-extrabold text-foreground'>
-                    {toPersianDigits(normalizeIranianMobile(mobile) ?? mobile)}
-                  </p>
-                </div>
+                    <p dir='ltr' className='mt-1 truncate text-sm font-extrabold text-foreground'>
+                      {toPersianDigits(normalizeIranianMobile(mobile) ?? mobile)}
+                    </p>
+                  </div>
 
-                <button
-                  type='button'
-                  disabled={isBusy}
-                  aria-label='ویرایش شماره موبایل'
-                  title='ویرایش شماره موبایل'
-                  onClick={onBack}
-                  className='grid size-10 shrink-0 place-items-center rounded-control border border-border bg-surface text-foreground-secondary transition-colors hover:border-brand/40 hover:bg-brand-soft hover:text-brand disabled:pointer-events-none disabled:opacity-50'
-                >
-                  <Pencil className='size-4' />
-                </button>
-              </div>
-
-              <OtpInput
-                length={OTP_LENGTH}
-                size='md'
-                value={otp}
-                error={Boolean(error)}
-                disabled={isBusy}
-                autoFocus
-                onChange={onOtpChange}
-              />
-
-              {error ? (
-                <p className='text-center text-sm font-semibold text-danger'>{error}</p>
-              ) : null}
-
-              <div className='rounded-control border border-border bg-surface-muted px-4 py-3 text-center'>
-                {resendRemainingSeconds > 0 ? (
-                  <p className='text-sm text-foreground-secondary'>
-                    درخواست مجدد کد تا{' '}
-                    <span dir='ltr' className='numeric font-extrabold text-foreground'>
-                      {formatRemainingSeconds(resendRemainingSeconds)}
-                    </span>{' '}
-                    دیگر فعال می‌شود
-                  </p>
-                ) : (
                   <button
                     type='button'
                     disabled={isBusy}
-                    onClick={onRequestOtp}
-                    className='hover:text-brand-strong inline-flex items-center gap-2 text-sm font-bold text-brand transition-colors disabled:pointer-events-none disabled:opacity-50'
+                    aria-label='ویرایش شماره موبایل'
+                    title='ویرایش شماره موبایل'
+                    onClick={onBack}
+                    className='grid size-10 shrink-0 place-items-center rounded-control border border-border bg-surface text-foreground-secondary transition-colors hover:border-brand/40 hover:bg-brand-soft hover:text-brand disabled:pointer-events-none disabled:opacity-50'
                   >
-                    <RefreshCw className='size-4' />
-                    درخواست مجدد کد تأیید
+                    <Pencil className='size-4' />
                   </button>
-                )}
+                </div>
+              ) : null}
+
+              <div className='relative min-h-36 overflow-hidden'>
+                <div
+                  key={otpErrorAnimationKey}
+                  className={[
+                    'absolute inset-x-0 top-1/2 -translate-y-1/2',
+                    otpHasError && !loginSucceeded ? 'partsanj-otp-error partsanj-otp-shake' : '',
+                    loginSucceeded ? 'partsanj-otp-success' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  <OtpInput
+                    length={OTP_LENGTH}
+                    size='md'
+                    value={otp}
+                    error={otpHasError && !loginSucceeded}
+                    disabled={isBusy}
+                    autoFocus={!loginSucceeded}
+                    onChange={onOtpChange}
+                  />
+                </div>
+
+                {loginSucceeded ? (
+                  <div
+                    role='status'
+                    aria-live='polite'
+                    className='partsanj-login-success-message absolute inset-0 flex flex-col items-center justify-center gap-3'
+                  >
+                    <span className='partsanj-login-success-check grid size-16 place-items-center rounded-full bg-success text-white shadow-lg'>
+                      <Check className='size-9 stroke-[3]' />
+                    </span>
+
+                    <p className='partsanj-login-success-text text-base font-extrabold text-success'>
+                      با موفقیت وارد شدید
+                    </p>
+                  </div>
+                ) : null}
               </div>
+
+              {!loginSucceeded && error ? (
+                <p className='text-center text-sm font-semibold text-danger'>{error}</p>
+              ) : null}
+
+              {!loginSucceeded ? (
+                <div className='rounded-control border border-border bg-surface-muted px-4 py-3 text-center'>
+                  {resendRemainingSeconds > 0 ? (
+                    <p className='text-sm text-foreground-secondary'>
+                      درخواست مجدد کد تا{' '}
+                      <span dir='ltr' className='numeric font-extrabold text-foreground'>
+                        {formatRemainingSeconds(resendRemainingSeconds)}
+                      </span>{' '}
+                      دیگر فعال می‌شود
+                    </p>
+                  ) : (
+                    <Button
+                      iconStart={<RefreshCw className='size-4' />}
+                      type='button'
+                      disabled={isBusy}
+                      size='sm'
+                      onClick={onRequestOtp}
+                    >
+                      درخواست مجدد کد تأیید
+                    </Button>
+                  )}
+                </div>
+              ) : null}
             </DialogBody>
 
-            <DialogFooter className='justify-end'>
-              <Button
-                type='submit'
-                disabled={otp.length !== OTP_LENGTH}
-                isLoading={isVerifying}
-                loadingLabel='در حال تأیید'
-                iconStart={<ShieldCheck className='size-4' />}
-              >
-                تأیید و ورود
-              </Button>
-            </DialogFooter>
+            {!loginSucceeded ? (
+              <DialogFooter className='justify-end'>
+                <Button
+                  type='submit'
+                  disabled={otp.length !== OTP_LENGTH}
+                  isLoading={isVerifying}
+                  loadingLabel='در حال تأیید'
+                  iconStart={<ShieldCheck className='size-4' />}
+                >
+                  تأیید و ورود
+                </Button>
+              </DialogFooter>
+            ) : null}
           </form>
         )}
       </DialogContent>
+
+      <style jsx global>{`
+        @keyframes partsanj-otp-shake {
+          0%,
+          100% {
+            transform: translateX(0);
+          }
+
+          20% {
+            transform: translateX(-5px);
+          }
+
+          40% {
+            transform: translateX(5px);
+          }
+
+          60% {
+            transform: translateX(-3px);
+          }
+
+          80% {
+            transform: translateX(3px);
+          }
+        }
+
+        .partsanj-otp-shake {
+          animation: partsanj-otp-shake 280ms ease-in-out;
+        }
+
+        .partsanj-otp-error input,
+        .partsanj-otp-error [data-slot='otp-slot'] {
+          border-color: rgb(220 38 38) !important;
+          box-shadow:
+            0 0 0 3px rgb(220 38 38 / 0.14),
+            0 8px 24px rgb(220 38 38 / 0.1) !important;
+        }
+
+        .partsanj-otp-error input:focus,
+        .partsanj-otp-error [data-slot='otp-slot']:focus {
+          border-color: rgb(220 38 38) !important;
+          box-shadow:
+            0 0 0 4px rgb(220 38 38 / 0.18),
+            0 8px 24px rgb(220 38 38 / 0.12) !important;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .partsanj-otp-shake {
+            animation: none;
+          }
+        }
+      `}</style>
     </Dialog>
   );
 }
+
 export function StorefrontCustomerAuthProvider({ children }: PropsWithChildren) {
   const router = useRouter();
   const { toast } = useToast();
@@ -324,6 +423,10 @@ export function StorefrontCustomerAuthProvider({ children }: PropsWithChildren) 
   const [mobile, setMobile] = useState('');
   const [otp, setOtp] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [otpHasError, setOtpHasError] = useState(false);
+  const [otpErrorAnimationKey, setOtpErrorAnimationKey] = useState(0);
+
+  const [loginSucceeded, setLoginSucceeded] = useState(false);
 
   const [isRequesting, setIsRequesting] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -333,6 +436,8 @@ export function StorefrontCustomerAuthProvider({ children }: PropsWithChildren) 
   const [clockMs, setClockMs] = useState(() => Date.now());
 
   const returnToRef = useRef<string | undefined>(undefined);
+  const lastSubmittedOtpRef = useRef<string | null>(null);
+  const verificationInFlightRef = useRef(false);
 
   useEffect(() => {
     if (step !== 'otp' || !resendAvailableAtMs) {
@@ -362,7 +467,7 @@ export function StorefrontCustomerAuthProvider({ children }: PropsWithChildren) 
     const response = await storefrontCustomerAuthApi.getMe();
 
     if (!response.data) {
-      throw new Error('Authenticated user was not returned');
+      throw new Error('اطلاعات کاربر واردشده دریافت نشد');
     }
 
     setUser(response.data);
@@ -389,24 +494,32 @@ export function StorefrontCustomerAuthProvider({ children }: PropsWithChildren) 
   }, [refreshSession]);
 
   const closeLogin = useCallback(() => {
-    if (isRequesting || isVerifying) {
+    if (isRequesting || isVerifying || loginSucceeded) {
       return;
     }
 
     setIsLoginOpen(false);
     setError(null);
     setOtp('');
+    setOtpHasError(false);
+    setLoginSucceeded(false);
     setStep('mobile');
     setResendAvailableAtMs(null);
+    lastSubmittedOtpRef.current = null;
+    verificationInFlightRef.current = false;
     returnToRef.current = undefined;
-  }, [isRequesting, isVerifying]);
+  }, [isRequesting, isVerifying, loginSucceeded]);
 
   const openLogin = useCallback((options?: OpenCustomerLoginOptions) => {
     returnToRef.current = options?.returnTo;
     setError(null);
     setOtp('');
+    setOtpHasError(false);
+    setLoginSucceeded(false);
     setStep('mobile');
     setIsLoginOpen(true);
+    lastSubmittedOtpRef.current = null;
+    verificationInFlightRef.current = false;
   }, []);
 
   const requestOtp = useCallback(async () => {
@@ -418,7 +531,10 @@ export function StorefrontCustomerAuthProvider({ children }: PropsWithChildren) 
     }
 
     setError(null);
+    setOtpHasError(false);
+    setLoginSucceeded(false);
     setIsRequesting(true);
+    lastSubmittedOtpRef.current = null;
 
     try {
       const response = await storefrontCustomerAuthApi.requestOtp(normalizedMobile);
@@ -444,68 +560,118 @@ export function StorefrontCustomerAuthProvider({ children }: PropsWithChildren) 
     }
   }, [mobile, toast]);
 
-  const verifyOtp = useCallback(async () => {
-    const normalizedMobile = normalizeIranianMobile(mobile);
+  const verifyOtp = useCallback(
+    async (codeOverride?: string, options?: { force?: boolean }) => {
+      const normalizedMobile = normalizeIranianMobile(mobile);
+      const normalizedOtp = toLatinDigits(codeOverride ?? otp)
+        .replace(/\D/g, '')
+        .slice(0, OTP_LENGTH);
 
-    if (!normalizedMobile) {
-      setStep('mobile');
-      setError('شماره موبایل معتبر نیست');
-      return;
-    }
-
-    if (otp.length !== OTP_LENGTH) {
-      setError(`کد تأیید باید ${toPersianDigits(String(OTP_LENGTH))} رقمی باشد`);
-
-      return;
-    }
-
-    setError(null);
-    setIsVerifying(true);
-
-    try {
-      const response = await storefrontCustomerAuthApi.verifyOtp(normalizedMobile, otp);
-
-      setUser({
-        ...response.data.user,
-        mobile: response.data.user.mobile ?? normalizedMobile,
-      });
-
-      setStatus('authenticated');
-
-      try {
-        await syncAuthenticatedUser();
-      } catch {
-        // اطلاعات اولیه verifyOtp موقتاً حفظ می‌شود
-        // تا Header به حالت مهمان برنگردد
-      }
-
-      await reloadCart();
-
-      const returnTo = returnToRef.current;
-
-      setIsLoginOpen(false);
-      setOtp('');
-      setStep('mobile');
-      returnToRef.current = undefined;
-
-      toast({
-        position: 'top-left',
-        variant: 'success',
-        title: 'با موفقیت وارد شدید',
-      });
-
-      if (isSafeReturnTo(returnTo)) {
-        router.replace(returnTo);
+      if (!normalizedMobile) {
+        setStep('mobile');
+        setError('شماره موبایل معتبر نیست');
+        setOtpHasError(false);
         return;
       }
 
-      router.refresh();
-    } catch (verifyError) {
-      setError(getErrorMessage(verifyError));
-    } finally {
-      setIsVerifying(false);
+      if (normalizedOtp.length !== OTP_LENGTH) {
+        setError(`کد تأیید باید ${toPersianDigits(String(OTP_LENGTH))} رقمی باشد`);
+        setOtpHasError(true);
+        setOtpErrorAnimationKey((current) => current + 1);
+        return;
+      }
+
+      if (verificationInFlightRef.current) {
+        return;
+      }
+
+      if (!options?.force && lastSubmittedOtpRef.current === normalizedOtp) {
+        return;
+      }
+
+      verificationInFlightRef.current = true;
+      lastSubmittedOtpRef.current = normalizedOtp;
+
+      setError(null);
+      setOtpHasError(false);
+      setIsVerifying(true);
+
+      try {
+        const response = await storefrontCustomerAuthApi.verifyOtp(normalizedMobile, normalizedOtp);
+
+        setUser({
+          ...response.data.user,
+          mobile: response.data.user.mobile ?? normalizedMobile,
+        });
+
+        setStatus('authenticated');
+
+        try {
+          await syncAuthenticatedUser();
+        } catch {
+          // اطلاعات اولیه verifyOtp موقتاً حفظ می‌شود
+          // تا Header به حالت مهمان برنگردد
+        }
+
+        await reloadCart();
+
+        const returnTo = returnToRef.current;
+
+        /*
+         * ابتدا انیمیشن موفقیت اجرا می‌شود.
+         */
+        setIsVerifying(false);
+        setLoginSucceeded(true);
+
+        await wait(1550);
+
+        /*
+         * سپس Dialog با انیمیشن داخلی خودش بسته می‌شود.
+         */
+        setIsLoginOpen(false);
+
+        await wait(300);
+
+        setOtp('');
+        setOtpHasError(false);
+        setStep('mobile');
+        setLoginSucceeded(false);
+        setResendAvailableAtMs(null);
+
+        lastSubmittedOtpRef.current = null;
+        returnToRef.current = undefined;
+
+        if (isSafeReturnTo(returnTo)) {
+          router.replace(returnTo);
+          return;
+        }
+
+        router.refresh();
+      } catch (verifyError) {
+        setOtpHasError(true);
+        setOtpErrorAnimationKey((current) => current + 1);
+        setError(getErrorMessage(verifyError));
+      } finally {
+        verificationInFlightRef.current = false;
+        setIsVerifying(false);
+      }
+    },
+    [mobile, otp, reloadCart, router, syncAuthenticatedUser, toast],
+  );
+
+  useEffect(() => {
+    if (step !== 'otp' || !isLoginOpen || isRequesting || isVerifying || loginSucceeded) {
+      return;
     }
-  }, [mobile, otp, reloadCart, router, syncAuthenticatedUser, toast]);
+
+    const normalizedOtp = toLatinDigits(otp).replace(/\D/g, '').slice(0, OTP_LENGTH);
+
+    if (normalizedOtp.length !== OTP_LENGTH) {
+      return;
+    }
+
+    void verifyOtp(normalizedOtp);
+  }, [isLoginOpen, isRequesting, isVerifying, loginSucceeded, otp, step, verifyOtp]);
 
   const logout = useCallback(async () => {
     setIsLoggingOut(true);
@@ -559,6 +725,9 @@ export function StorefrontCustomerAuthProvider({ children }: PropsWithChildren) 
         mobile={mobile}
         otp={otp}
         error={error}
+        otpHasError={otpHasError}
+        loginSucceeded={loginSucceeded}
+        otpErrorAnimationKey={otpErrorAnimationKey}
         step={step}
         isRequesting={isRequesting}
         isVerifying={isVerifying}
@@ -567,18 +736,30 @@ export function StorefrontCustomerAuthProvider({ children }: PropsWithChildren) 
         onMobileChange={(value) => {
           setMobile(value);
           setError(null);
+          setOtpHasError(false);
         }}
         onOtpChange={(value) => {
-          setOtp(value);
+          const normalizedOtp = toLatinDigits(value).replace(/\D/g, '').slice(0, OTP_LENGTH);
+
+          if (normalizedOtp !== otp) {
+            lastSubmittedOtpRef.current = null;
+          }
+
+          setOtp(normalizedOtp);
           setError(null);
+          setOtpHasError(false);
         }}
         onRequestOtp={() => void requestOtp()}
-        onVerifyOtp={() => void verifyOtp()}
+        onVerifyOtp={() => void verifyOtp(undefined, { force: true })}
         onBack={() => {
           setStep('mobile');
           setOtp('');
           setError(null);
+          setOtpHasError(false);
+          setLoginSucceeded(false);
           setResendAvailableAtMs(null);
+          lastSubmittedOtpRef.current = null;
+          verificationInFlightRef.current = false;
         }}
       />
     </StorefrontCustomerAuthContext.Provider>
@@ -589,7 +770,9 @@ export function useStorefrontCustomerAuth() {
   const context = useContext(StorefrontCustomerAuthContext);
 
   if (!context) {
-    throw new Error('useStorefrontCustomerAuth must be used inside StorefrontCustomerAuthProvider');
+    throw new Error(
+      'هوک useStorefrontCustomerAuth باید داخل StorefrontCustomerAuthProvider استفاده شود',
+    );
   }
 
   return context;

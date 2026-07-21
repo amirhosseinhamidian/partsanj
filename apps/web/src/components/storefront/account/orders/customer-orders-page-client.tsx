@@ -23,6 +23,7 @@ import { ChevronLeft, CircleAlert, ImageOff, PackageOpen, RefreshCw, Truck } fro
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toPersianDigits } from '@/lib/utils/digits';
+import Image from 'next/image';
 
 const PAGE_SIZE = 10;
 
@@ -97,21 +98,26 @@ function ProductPreview({ order }: { order: CustomerOrderListItem }) {
       <div className='flex -space-x-2 space-x-reverse'>
         {visibleItems.length > 0 ? (
           visibleItems.map((item) => (
-            <div
+            <Link
               key={item.id}
-              className='grid size-12 shrink-0 place-items-center overflow-hidden rounded-control border-2 border-surface bg-surface-muted'
+              href={`/products/${encodeURIComponent(item.productSlug)}`}
+              aria-label={`مشاهده محصول ${item.productName}`}
               title={item.productName}
+              className='group grid size-12 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-control border-2 border-surface bg-surface-muted transition hover:border-brand/50'
             >
               {item.productImageUrl ? (
-                <img
+                <Image
                   src={item.productImageUrl}
                   alt={item.productName}
-                  className='size-full object-cover'
+                  width={48}
+                  height={48}
+                  sizes='48px'
+                  className='size-full object-cover transition-transform duration-300 group-hover:scale-105'
                 />
               ) : (
                 <ImageOff className='size-4 text-foreground-muted' />
               )}
-            </div>
+            </Link>
           ))
         ) : (
           <div className='grid size-12 place-items-center rounded-control border border-border bg-surface-muted'>

@@ -55,7 +55,7 @@ export class AuthService {
 
       throw new HttpException(
         {
-          message: 'لطفا جهت درخواست کد دیگر کمی صبر کنید.',
+          message: 'لطفاً برای درخواست مجدد کد کمی صبر کنید.',
           resendAvailableAt,
         },
         HttpStatus.TOO_MANY_REQUESTS,
@@ -118,7 +118,7 @@ export class AuthService {
     }
 
     return {
-      message: 'Verification code sent successfully',
+      message: 'کد تأیید با موفقیت ارسال شد.',
       expiresAt,
       resendAvailableAt: new Date(now.getTime() + resendCooldownSeconds * 1000),
     };
@@ -144,7 +144,7 @@ export class AuthService {
     });
 
     if (!challenge || challenge.attempts >= challenge.maxAttempts) {
-      throw new UnauthorizedException('Verification code is invalid or expired');
+      throw new UnauthorizedException('کد تأیید نامعتبر است یا منقضی شده است.');
     }
 
     const otpHashSecret = this.configService.getOrThrow<string>('OTP_HASH_SECRET');
@@ -180,7 +180,7 @@ export class AuthService {
         });
       }
 
-      throw new UnauthorizedException('Verification code is invalid or expired');
+      throw new UnauthorizedException('کد تأیید نامعتبر است یا منقضی شده است.');
     }
 
     const user = await this.prisma.$transaction(async (transaction) => {
@@ -199,7 +199,7 @@ export class AuthService {
       });
 
       if (consumed.count !== 1) {
-        throw new UnauthorizedException('Verification code is invalid or expired');
+        throw new UnauthorizedException('کد تأیید نامعتبر است یا منقضی شده است.');
       }
 
       const existingUser = await transaction.user.findUnique({
@@ -209,7 +209,7 @@ export class AuthService {
       });
 
       if (existingUser && !existingUser.isActive) {
-        throw new ForbiddenException('This account is inactive');
+        throw new ForbiddenException('این حساب کاربری غیرفعال است.');
       }
 
       if (existingUser) {
@@ -274,7 +274,7 @@ export class AuthService {
     });
 
     if (!user || !user.isActive) {
-      throw new UnauthorizedException('Authentication is no longer valid');
+      throw new UnauthorizedException('اعتبار ورود شما به پایان رسیده است. لطفاً دوباره وارد شوید');
     }
 
     return {
@@ -291,7 +291,7 @@ export class AuthService {
     const parsedValue = Number(rawValue ?? fallbackValue);
 
     if (!Number.isSafeInteger(parsedValue) || parsedValue <= 0) {
-      throw new InternalServerErrorException(`${key} must be a positive integer`);
+      throw new InternalServerErrorException(`مقدار تنظیمات ${key} باید یک عدد صحیح مثبت باشد.`);
     }
 
     return parsedValue;

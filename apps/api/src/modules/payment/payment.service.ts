@@ -30,10 +30,20 @@ type CreatedPaymentAttempt = {
   amountToman: number;
 };
 
+type ResumedPaymentAttempt = {
+  id: string;
+  providerCode: PaymentProviderCode;
+  redirectUrl: string;
+};
+
 type CreatePaymentAttemptResult =
   | {
       kind: 'created';
       attempt: CreatedPaymentAttempt;
+    }
+  | {
+      kind: 'resumed';
+      attempt: ResumedPaymentAttempt;
     }
   | {
       kind: 'expired';
@@ -67,6 +77,23 @@ export class PaymentService {
         code: 'ORDER_PAYMENT_EXPIRED',
         message: 'مهلت پرداخت این سفارش به پایان رسیده است',
       });
+    }
+
+    if (result.kind === 'resumed') {
+      this.logger.log(
+        createLogContext('payment_redirect_resumed', {
+          orderId,
+          paymentAttemptId: result.attempt.id,
+          provider: result.attempt.providerCode,
+          userId,
+        }),
+      );
+
+      return {
+        attemptId: result.attempt.id,
+        providerCode: result.attempt.providerCode,
+        redirectUrl: result.attempt.redirectUrl,
+      };
     }
 
     const { attempt } = result;
@@ -227,7 +254,7 @@ export class PaymentService {
     });
 
     if (!order) {
-      throw new NotFoundException('Order not found');
+      throw new NotFoundException('سفارش یافت نشد.');
     }
 
     if (order.status === OrderStatus.PAID || order.paymentStatus === OrderPaymentStatus.PAID) {
@@ -244,29 +271,6 @@ export class PaymentService {
       });
     }
 
-    const activeAttempt = await transaction.paymentAttempt.findFirst({
-      where: {
-        orderId: order.id,
-        status: {
-          in: [
-            PaymentAttemptStatus.CREATED,
-            PaymentAttemptStatus.REDIRECTED,
-            PaymentAttemptStatus.CALLBACK_RECEIVED,
-          ],
-        },
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    if (activeAttempt) {
-      throw new ConflictException({
-        code: 'PAYMENT_ALREADY_IN_PROGRESS',
-        message: 'یک تلاش پرداخت فعال برای این سفارش وجود دارد',
-      });
-    }
-
     if (order.expiresAt && order.expiresAt.getTime() <= now.getTime()) {
       const expired = await expireOrderIfDue(transaction, order.id, now);
 
@@ -280,6 +284,54 @@ export class PaymentService {
       return {
         kind: 'expired',
       };
+    }
+
+    const activeAttempt = await transaction.paymentAttempt.findFirst({
+      where: {
+        orderId: order.id,
+        status: {
+          in: [
+            PaymentAttemptStatus.CREATED,
+            PaymentAttemptStatus.REDIRECTED,
+            PaymentAttemptStatus.CALLBACK_RECEIVED,
+          ],
+        },
+      },
+      orderBy: {
+        attemptNumber: 'desc',
+      },
+      select: {
+        id: true,
+        status: true,
+        providerCode: true,
+        responseMetadata: true,
+      },
+    });
+
+    if (activeAttempt) {
+      const redirectUrl = this.getStoredRedirectUrl(activeAttempt.responseMetadata);
+
+      if (activeAttempt.status === PaymentAttemptStatus.REDIRECTED && redirectUrl) {
+        return {
+          kind: 'resumed',
+          attempt: {
+            id: activeAttempt.id,
+            providerCode: this.normalizeStoredProviderCode(
+              activeAttempt.providerCode,
+              providerCode,
+            ),
+            redirectUrl,
+          },
+        };
+      }
+
+      throw new ConflictException({
+        code: 'PAYMENT_ALREADY_IN_PROGRESS',
+        message:
+          activeAttempt.status === PaymentAttemptStatus.CALLBACK_RECEIVED
+            ? 'نتیجه پرداخت در حال بررسی است. چند لحظه بعد دوباره تلاش کنید.'
+            : 'درخواست پرداخت در حال آماده‌سازی است. چند لحظه بعد دوباره تلاش کنید.',
+      });
     }
 
     if (order.inventoryStatus !== OrderInventoryStatus.RESERVED) {
@@ -529,5 +581,32 @@ export class PaymentService {
         message: 'آدرس عمومی API برای Callback معتبر نیست',
       });
     }
+  }
+
+  private getStoredRedirectUrl(value: Prisma.JsonValue | null): string | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null;
+    }
+
+    const redirectUrl = value.redirectUrl;
+
+    if (typeof redirectUrl !== 'string') {
+      return null;
+    }
+
+    const normalizedRedirectUrl = redirectUrl.trim();
+
+    return normalizedRedirectUrl || null;
+  }
+
+  private normalizeStoredProviderCode(
+    value: string,
+    fallback: PaymentProviderCode,
+  ): PaymentProviderCode {
+    if (value === 'ZARINPAL' || value === 'ZIBAL') {
+      return value;
+    }
+
+    return fallback;
   }
 }

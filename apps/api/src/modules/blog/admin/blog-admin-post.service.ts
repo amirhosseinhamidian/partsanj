@@ -503,7 +503,7 @@ export class BlogAdminPostService {
     });
 
     if (!category) {
-      throw new NotFoundException('Blog category not found');
+      throw new NotFoundException('دسته‌بندی بلاگ یافت نشد.');
     }
 
     if (post.status !== BlogPostStatus.PUBLISHED) {

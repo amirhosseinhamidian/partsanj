@@ -61,6 +61,7 @@ export type CustomerOrderPreviewItem = {
   productName: string;
   productImageUrl: string | null;
   quantity: number;
+  productSlug: string;
 };
 
 export type CustomerOrderVehicle = {
@@ -75,6 +76,7 @@ export type CustomerOrderItem = {
 
   productId: string;
   productSku: string;
+  productSlug: string;
   productName: string;
   brandName: string;
   productImageUrl: string | null;

@@ -94,7 +94,9 @@ export class CartService {
     const nextQuantity = (existingItem?.quantity ?? 0) + dto.quantity;
 
     if (nextQuantity > MAX_CART_ITEM_QUANTITY) {
-      throw new BadRequestException(`Maximum quantity per cart item is ${MAX_CART_ITEM_QUANTITY}`);
+      throw new BadRequestException(
+        `حداکثر تعداد مجاز برای هر آیتم سبد خرید ${MAX_CART_ITEM_QUANTITY} عدد است.`,
+      );
     }
 
     this.assertQuantityIsAvailable(nextQuantity, product.maxOrderQuantity);
@@ -149,7 +151,7 @@ export class CartService {
     });
 
     if (!item) {
-      throw new NotFoundException('Cart item not found');
+      throw new NotFoundException('آیتم سبد خرید یافت نشد.');
     }
 
     /**
@@ -235,7 +237,7 @@ export class CartService {
     });
 
     if (!sourceItemForAvailability) {
-      throw new NotFoundException('Cart item not found');
+      throw new NotFoundException('آیتم سبد خرید یافت نشد.');
     }
 
     const product = await this.getPurchasableProduct(sourceItemForAvailability.productId);
@@ -251,7 +253,7 @@ export class CartService {
       });
 
       if (!sourceItem) {
-        throw new NotFoundException('Cart item not found');
+        throw new NotFoundException('آیتم سبد خرید یافت نشد.');
       }
 
       this.assertQuantityIsAvailable(sourceItem.quantity, product.maxOrderQuantity);
@@ -284,7 +286,7 @@ export class CartService {
 
         if (mergedQuantity > MAX_CART_ITEM_QUANTITY) {
           throw new BadRequestException(
-            `Maximum quantity per cart item is ${MAX_CART_ITEM_QUANTITY}`,
+            `حداکثر تعداد مجاز برای هر آیتم سبد خرید ${MAX_CART_ITEM_QUANTITY} عدد است.`,
           );
         }
 
@@ -358,7 +360,7 @@ export class CartService {
     });
 
     if (!item) {
-      throw new NotFoundException('Cart item not found');
+      throw new NotFoundException('آیتم سبد خرید یافت نشد.');
     }
 
     await this.prisma.cartItem.delete({
@@ -376,11 +378,11 @@ export class CartService {
 
   async mergeGuestCart(user: AuthenticatedUser | undefined, guestToken: string | undefined) {
     if (!user) {
-      throw new UnauthorizedException('Authentication is required to merge a cart');
+      throw new UnauthorizedException('برای ادغام سبد خرید باید وارد حساب کاربری شوید.');
     }
 
     if (!guestToken?.trim()) {
-      throw new BadRequestException('Guest cart token is required');
+      throw new BadRequestException('اطلاعات سبد خرید مهمان موجود نیست.');
     }
 
     const customerCart = await this.getOrCreateCustomerCart(user.id);
@@ -547,7 +549,7 @@ export class CartService {
     });
 
     if (!product) {
-      throw new NotFoundException('Product not found');
+      throw new NotFoundException('محصول یافت نشد.');
     }
 
     if (product.status !== ProductStatus.ACTIVE || !product.isPublished) {
@@ -610,7 +612,7 @@ export class CartService {
     });
 
     if (!vehicleVariant) {
-      throw new NotFoundException('Vehicle variant not found');
+      throw new NotFoundException('تیپ خودرو یافت نشد.');
     }
   }
 
@@ -651,7 +653,7 @@ export class CartService {
     const guestCart = await this.findActiveGuestCart(guestToken);
 
     if (!guestCart) {
-      throw new NotFoundException('Guest cart not found');
+      throw new NotFoundException('سبد خرید مهمان یافت نشد.');
     }
 
     return guestCart;
@@ -760,7 +762,7 @@ export class CartService {
     });
 
     if (!cart) {
-      throw new NotFoundException('Cart not found');
+      throw new NotFoundException('سبد خرید یافت نشد.');
     }
 
     const now = new Date();
@@ -886,7 +888,7 @@ export class CartService {
     });
 
     if (!cart) {
-      throw new NotFoundException('Cart not found');
+      throw new NotFoundException('سبد خرید یافت نشد.');
     }
 
     const compatibilityPairs = cart.items
@@ -1084,7 +1086,7 @@ export class CartService {
     const parsedValue = Number(rawValue);
 
     if (!Number.isInteger(parsedValue) || parsedValue <= 0) {
-      throw new Error(`${key} must be a positive integer`);
+      throw new Error(`مقدار تنظیمات ${key} باید یک عدد صحیح مثبت باشد.`);
     }
 
     return parsedValue;

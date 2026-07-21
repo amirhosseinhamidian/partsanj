@@ -113,10 +113,10 @@ export function AdminLoginForm({ nextPath, initialMessage }: AdminLoginFormProps
       className='w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm'
     >
       <div className='mb-7'>
-        <p className='text-sm font-medium text-zinc-500'>PartSanj Admin</p>
+        <p className='text-sm font-medium text-zinc-500'>مدیریت پارت‌سنج</p>
         <h1 className='mt-2 text-2xl font-bold text-zinc-950'>ورود به پنل مدیریت</h1>
         <p className='mt-2 text-sm leading-6 text-zinc-600'>
-          ورود فقط برای کاربران دارای نقش ADMIN فعال است
+          ورود فقط برای کاربران دارای نقش مدیر فعال است
         </p>
       </div>
 

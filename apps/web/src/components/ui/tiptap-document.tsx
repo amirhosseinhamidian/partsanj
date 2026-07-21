@@ -208,6 +208,7 @@ function renderNode(node: unknown, nodeKey: string): ReactNode {
       }
 
       return (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           key={nodeKey}
           src={src}

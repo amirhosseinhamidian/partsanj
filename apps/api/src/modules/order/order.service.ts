@@ -63,8 +63,9 @@ export class OrderService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-  
-    private readonly orderSmsOutbox: OrderSmsOutboxService,) {}
+
+    private readonly orderSmsOutbox: OrderSmsOutboxService,
+  ) {}
 
   async createFromCart(userId: string, dto: CreateOrderFromCartDto) {
     let serializationAttempts = 0;
@@ -192,7 +193,7 @@ export class OrderService {
     });
 
     if (!order) {
-      throw new NotFoundException('Order not found');
+      throw new NotFoundException('سفارش یافت نشد.');
     }
 
     return order;
@@ -492,14 +493,11 @@ export class OrderService {
       },
     });
 
-    await this.orderSmsOutbox.enqueuePaymentReminder(
-      transaction,
-      {
-        orderId: order.id,
-        recipient: address.recipientMobile,
-        createdAt: now,
-      },
-    );
+    await this.orderSmsOutbox.enqueuePaymentReminder(transaction, {
+      orderId: order.id,
+      recipient: address.recipientMobile,
+      createdAt: now,
+    });
 
     await transaction.cart.update({
       where: {

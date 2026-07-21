@@ -50,7 +50,7 @@ export class ZarinpalPaymentProvider implements PaymentProvider {
 
     const code = this.readNumber(data.code);
     const authority = this.readString(data.authority);
-    const message = this.readString(data.message) ?? 'پاسخ نامعتبر از زرین‌پال دریافت شد';
+    const message = this.readString(data.message) ?? 'پاسخ نامعتبری از زرین‌پال دریافت شد.';
 
     if (code !== 100 || !authority) {
       throw new BadGatewayException({
@@ -105,7 +105,7 @@ export class ZarinpalPaymentProvider implements PaymentProvider {
       return {
         kind: 'invalid',
         code: 'ZARINPAL_CALLBACK_AUTHORITY_MISSING',
-        message: 'شناسه Authority در Callback وجود ندارد',
+        message: 'شناسه پرداخت در پاسخ بازگشتی زرین‌پال وجود ندارد.',
         callbackMetadata,
       };
     }
@@ -132,7 +132,7 @@ export class ZarinpalPaymentProvider implements PaymentProvider {
       kind: 'invalid',
       providerSessionId: authority,
       code: 'ZARINPAL_CALLBACK_STATUS_INVALID',
-      message: 'وضعیت Callback زرین‌پال معتبر نیست',
+      message: 'وضعیت بازگشتی زرین‌پال معتبر نیست.',
       callbackMetadata,
     };
   }
@@ -149,7 +149,7 @@ export class ZarinpalPaymentProvider implements PaymentProvider {
     const data = this.getResponseData(payload);
 
     const code = this.readNumber(data.code);
-    const message = this.readString(data.message) ?? 'پاسخ نامعتبر از زرین‌پال دریافت شد';
+    const message = this.readString(data.message) ?? 'پاسخ نامعتبری از زرین‌پال دریافت شد.';
 
     const refId = this.readStringOrNumber(data.ref_id);
     const cardPan = this.readString(data.card_pan);
@@ -267,7 +267,7 @@ export class ZarinpalPaymentProvider implements PaymentProvider {
 
       throw new ServiceUnavailableException({
         code: 'ZARINPAL_UNREACHABLE',
-        message: 'سرویس زرین‌پال در حال حاضر در دسترس نیست',
+        message: 'سرویس زرین‌پال در حال حاضر در دسترس نیست. لطفاً دوباره تلاش کنید.',
       });
     } finally {
       clearTimeout(timeoutId);

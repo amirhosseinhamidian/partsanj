@@ -62,7 +62,7 @@ export class VehiclesService {
     });
 
     if (!make) {
-      throw new NotFoundException('Vehicle make not found');
+      throw new NotFoundException('برند خودرو یافت نشد.');
     }
 
     const models = await this.prisma.vehicleModel.findMany({
@@ -125,7 +125,7 @@ export class VehiclesService {
     });
 
     if (!model) {
-      throw new NotFoundException('Vehicle model not found');
+      throw new NotFoundException('مدل خودرو یافت نشد.');
     }
 
     const variants = await this.prisma.vehicleVariant.findMany({

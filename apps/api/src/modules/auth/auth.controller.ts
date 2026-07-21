@@ -33,13 +33,13 @@ export class AuthController {
     },
   })
   @ApiOperation({
-    summary: 'Request a mobile verification code',
+    summary: 'درخواست کد تأیید شماره موبایل',
   })
   @ApiOkResponse({
-    description: 'Verification code sent successfully',
+    description: 'کد تأیید با موفقیت ارسال شد.',
   })
   @ApiTooManyRequestsResponse({
-    description: 'Request limit or resend cooldown reached',
+    description: 'محدودیت تعداد درخواست یا زمان انتظار ارسال مجدد فعال است.',
   })
   requestOtp(@Body() dto: RequestOtpDto) {
     return this.authService.requestOtp(dto);
@@ -54,13 +54,13 @@ export class AuthController {
     },
   })
   @ApiOperation({
-    summary: 'Verify OTP and receive a JWT access token',
+    summary: 'تأیید کد و دریافت توکن ورود',
   })
   @ApiOkResponse({
-    description: 'Verification completed successfully',
+    description: 'احراز هویت با موفقیت انجام شد.',
   })
   @ApiUnauthorizedResponse({
-    description: 'Verification code is invalid or expired',
+    description: 'کد تایید نامعتبر یا منقضی شده است',
   })
   verifyOtp(@Body() dto: VerifyOtpDto) {
     return this.authService.verifyOtp(dto);
@@ -70,13 +70,13 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({
-    summary: 'Get the authenticated user profile',
+    summary: 'دریافت اطلاعات کاربر واردشده',
   })
   @ApiOkResponse({
-    description: 'Authenticated user returned successfully',
+    description: 'اطلاعات کاربر با موفقیت دریافت شد.',
   })
   @ApiUnauthorizedResponse({
-    description: 'Bearer token is missing, invalid, or expired',
+    description: 'اطلاعات ورود موجود نیست، نامعتبر است یا منقضی شده است.',
   })
   async getMe(@CurrentUser() user: AuthenticatedUser) {
     return {

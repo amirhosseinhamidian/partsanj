@@ -57,7 +57,10 @@ export function CustomerOrderTimeline({ timeline }: CustomerOrderTimelineProps) 
           >
             <div className='relative flex w-9 shrink-0 justify-center'>
               {!isLastItem ? (
-                <span className='absolute top-8 bottom-0 left-1/2 w-px -translate-x-1/2 bg-border' />
+                <span
+                  aria-hidden='true'
+                  className='absolute top-8 -bottom-6 left-1/2 w-px -translate-x-1/2 bg-border'
+                />
               ) : null}
 
               <span

@@ -220,7 +220,7 @@ export class CatalogAdminService {
         });
 
         if (!brand) {
-          throw new NotFoundException('Brand not found');
+          throw new NotFoundException('برند یافت نشد.');
         }
 
         const changes: Record<string, unknown> = {};
@@ -390,7 +390,7 @@ export class CatalogAdminService {
         });
 
         if (!category) {
-          throw new NotFoundException('Category not found');
+          throw new NotFoundException('دسته‌بندی یافت نشد.');
         }
 
         const changes: Record<string, unknown> = {};
@@ -495,7 +495,7 @@ export class CatalogAdminService {
 
     if (hasChildren || hasProducts) {
       throw new ConflictException({
-        message: 'Category cannot be deleted because it has dependent records',
+        message: 'این دسته‌بندی به‌دلیل داشتن زیرمجموعه یا محصول وابسته قابل حذف نیست.',
         code: 'CATEGORY_HAS_DEPENDENCIES',
         childrenCount: category._count.children,
         productsCount: category._count.products,
@@ -736,7 +736,7 @@ export class CatalogAdminService {
         });
 
         if (!make) {
-          throw new NotFoundException('Vehicle make not found');
+          throw new NotFoundException('برند خودرو یافت نشد.');
         }
 
         const changes: Record<string, unknown> = {};
@@ -949,7 +949,7 @@ export class CatalogAdminService {
         });
 
         if (!model) {
-          throw new NotFoundException('Vehicle model not found');
+          throw new NotFoundException('مدل خودرو یافت نشد.');
         }
 
         const requestedMakeId = dto.makeId;
@@ -962,7 +962,7 @@ export class CatalogAdminService {
         if (isMovingToAnotherMake) {
           if (model._count.variants > 0) {
             throw new BadRequestException(
-              'A vehicle model with variants cannot be moved to another make',
+              'مدلی که دارای تیپ خودرو است، نمی‌تواند به برند دیگری منتقل شود.',
             );
           }
 
@@ -1692,7 +1692,7 @@ export class CatalogAdminService {
     });
 
     if (!product) {
-      throw new NotFoundException('Product not found');
+      throw new NotFoundException('محصول یافت نشد.');
     }
 
     const auditLogs = await this.prisma.adminAuditLog.findMany({
@@ -2371,7 +2371,7 @@ export class CatalogAdminService {
     });
 
     if (!product) {
-      throw new NotFoundException('Product not found');
+      throw new NotFoundException('محصول یافت نشد.');
     }
 
     return {
@@ -2425,7 +2425,7 @@ export class CatalogAdminService {
     });
 
     if (!product) {
-      throw new NotFoundException('Product not found');
+      throw new NotFoundException('محصول یافت نشد.');
     }
 
     const vehicleVariantIds = dto.items.map((item) => item.vehicleVariantId);
@@ -2599,7 +2599,7 @@ export class CatalogAdminService {
     });
 
     if (!product) {
-      throw new NotFoundException('Product not found');
+      throw new NotFoundException('محصول یافت نشد.');
     }
 
     return product;
@@ -3004,7 +3004,7 @@ export class CatalogAdminService {
     const serialized = JSON.stringify(value);
 
     if (serialized === undefined) {
-      throw new BadRequestException('Value cannot be converted to JSON');
+      throw new BadRequestException('امکان تبدیل مقدار به JSON وجود ندارد.');
     }
 
     return JSON.parse(serialized) as Prisma.InputJsonValue;
@@ -3099,7 +3099,7 @@ export class CatalogAdminService {
     const createdTo = query.createdTo ? new Date(query.createdTo) : undefined;
 
     if (createdFrom && createdTo && createdFrom.getTime() > createdTo.getTime()) {
-      throw new BadRequestException('createdFrom cannot be greater than createdTo');
+      throw new BadRequestException('تاریخ شروع نمی‌تواند بعد از تاریخ پایان باشد.');
     }
 
     const where: Prisma.AdminAuditLogWhereInput = {

@@ -23,19 +23,12 @@ export type SendLookupSmsInput = {
 
 @Injectable()
 export class KavenegarTransactionalSmsService {
-  private readonly logger = new Logger(
-    KavenegarTransactionalSmsService.name,
-  );
+  private readonly logger = new Logger(KavenegarTransactionalSmsService.name);
 
-  constructor(
-    private readonly configService: ConfigService,
-  ) {}
+  constructor(private readonly configService: ConfigService) {}
 
-  async sendLookup(
-    input: SendLookupSmsInput,
-  ): Promise<{ providerMessageId?: string }> {
-    const deliveryMode =
-      this.resolveDeliveryMode();
+  async sendLookup(input: SendLookupSmsInput): Promise<{ providerMessageId?: string }> {
+    const deliveryMode = this.resolveDeliveryMode();
 
     if (deliveryMode === 'CONSOLE') {
       this.logger.log({
@@ -51,42 +44,23 @@ export class KavenegarTransactionalSmsService {
     }
 
     if (deliveryMode !== 'KAVENEGAR') {
-      throw new Error(
-        `Unsupported ORDER_SMS_DELIVERY_MODE: ${deliveryMode}`,
-      );
+      throw new Error(`روش ارسال پیامک سفارش پشتیبانی نمی‌شود: ${deliveryMode}`);
     }
 
-    const apiKey =
-      this.configService.getOrThrow<string>(
-        'KAVENEGAR_API_KEY',
-      );
+    const apiKey = this.configService.getOrThrow<string>('KAVENEGAR_API_KEY');
 
-    const url = new URL(
-      `https://api.kavenegar.com/v1/${apiKey}/verify/lookup.json`,
-    );
+    const url = new URL(`https://api.kavenegar.com/v1/${apiKey}/verify/lookup.json`);
 
-    url.searchParams.set(
-      'receptor',
-      input.recipient,
-    );
-    url.searchParams.set(
-      'template',
-      input.template,
-    );
+    url.searchParams.set('receptor', input.recipient);
+    url.searchParams.set('template', input.template);
     url.searchParams.set('token', input.token);
 
     if (input.token2) {
-      url.searchParams.set(
-        'token2',
-        input.token2,
-      );
+      url.searchParams.set('token2', input.token2);
     }
 
     if (input.token3) {
-      url.searchParams.set(
-        'token3',
-        input.token3,
-      );
+      url.searchParams.set('token3', input.token3);
     }
 
     let response: Response;
@@ -96,24 +70,14 @@ export class KavenegarTransactionalSmsService {
         signal: AbortSignal.timeout(10_000),
       });
     } catch (error) {
-      throw new Error(
-        'Kavenegar transactional SMS request failed',
-        {
-          cause: error,
-        },
-      );
+      throw new Error('درخواست ارسال پیامک تراکنشی کاوه‌نگار ناموفق بود.', {
+        cause: error,
+      });
     }
 
-    const payload = (await response
-      .json()
-      .catch(() => null)) as
-      | KavenegarResponse
-      | null;
+    const payload = (await response.json().catch(() => null)) as KavenegarResponse | null;
 
-    if (
-      !response.ok ||
-      payload?.return?.status !== 200
-    ) {
+    if (!response.ok || payload?.return?.status !== 200) {
       throw new Error(
         `Kavenegar lookup rejected: HTTP ${response.status}, provider status ${
           payload?.return?.status ?? 'unknown'
@@ -121,38 +85,24 @@ export class KavenegarTransactionalSmsService {
       );
     }
 
-    const entry = Array.isArray(
-      payload.entries,
-    )
-      ? payload.entries[0]
-      : payload.entries;
+    const entry = Array.isArray(payload.entries) ? payload.entries[0] : payload.entries;
 
     return {
-      providerMessageId:
-        entry?.messageid !== undefined
-          ? String(entry.messageid)
-          : undefined,
+      providerMessageId: entry?.messageid !== undefined ? String(entry.messageid) : undefined,
     };
   }
 
   private resolveDeliveryMode(): string {
-    const configured =
-      this.configService
-        .get<string>(
-          'ORDER_SMS_DELIVERY_MODE',
-        )
-        ?.trim()
-        .toUpperCase();
+    const configured = this.configService
+      .get<string>('ORDER_SMS_DELIVERY_MODE')
+      ?.trim()
+      .toUpperCase();
 
     if (configured) {
       return configured;
     }
 
-    return this.configService.get(
-      'NODE_ENV',
-    ) === 'production'
-      ? 'KAVENEGAR'
-      : 'CONSOLE';
+    return this.configService.get('NODE_ENV') === 'production' ? 'KAVENEGAR' : 'CONSOLE';
   }
 
   private maskMobile(mobile: string): string {

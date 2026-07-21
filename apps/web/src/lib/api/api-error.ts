@@ -1,3 +1,5 @@
+import { localizeApiMessage } from '@/lib/api/localize-api-message';
+
 export class ApiRequestError extends Error {
   constructor(
     message: string,
@@ -5,7 +7,7 @@ export class ApiRequestError extends Error {
     public readonly code?: string,
     public readonly requestId?: string,
   ) {
-    super(message);
+    super(localizeApiMessage(message, status));
     this.name = 'ApiRequestError';
   }
 }

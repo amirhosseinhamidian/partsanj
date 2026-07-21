@@ -95,6 +95,11 @@ export class CustomerOrderService {
               productName: true,
               productImageUrl: true,
               quantity: true,
+              product: {
+                select: {
+                  slug: true,
+                },
+              },
             },
           },
         },
@@ -165,7 +170,10 @@ export class CustomerOrderService {
         trackingCode: order.trackingCode,
 
         itemCount: order._count.items,
-        previewItems: order.items,
+        previewItems: order.items.map(({ product, ...item }) => ({
+          ...item,
+          productSlug: product.slug,
+        })),
 
         expiresAt: order.expiresAt,
         createdAt: order.createdAt,
@@ -299,6 +307,11 @@ export class CustomerOrderService {
             productName: true,
             brandName: true,
             productImageUrl: true,
+            product: {
+              select: {
+                slug: true,
+              },
+            },
 
             fitmentStatus: true,
             fitmentNotes: true,
@@ -337,7 +350,7 @@ export class CustomerOrderService {
 
     if (!order) {
       // عمدی: نباید مشخص شود سفارش متعلق به کاربر دیگری است.
-      throw new NotFoundException('Order not found');
+      throw new NotFoundException('سفارش یافت نشد.');
     }
 
     return {
@@ -390,8 +403,10 @@ export class CustomerOrderService {
 
         timeline: this.createTimeline(order),
 
-        items: order.items.map(({ vehicleVariant, ...item }) => ({
+        items: order.items.map(({ vehicleVariant, product, ...item }) => ({
           ...item,
+
+          productSlug: product.slug,
 
           vehicle: vehicleVariant
             ? {

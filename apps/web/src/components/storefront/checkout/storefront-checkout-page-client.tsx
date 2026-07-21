@@ -340,18 +340,15 @@ export function StorefrontCheckoutPageClient() {
 
       createdOrderId = orderResponse.data.id;
 
-      /*
-       * پس از ایجاد سفارش، سبد خرید Checkout شده است.
-       */
-      await reloadCart();
-
       const paymentResponse = await storefrontPaymentApi.startOrderPayment(createdOrderId);
-
       const redirectUrl = getTrustedPaymentRedirectUrl(paymentResponse.data.redirectUrl);
 
       /*
-       * انتقال مستقیم مرورگر به صفحه زیبال.
+       * فقط بعد از اینکه آدرس معتبر درگاه دریافت شد،
+       * وضعیت سبد در رابط کاربری به‌روزرسانی می‌شود.
        */
+      void reloadCart();
+
       window.location.assign(redirectUrl);
     } catch (error) {
       if (error instanceof ClientApiError && error.status === 401) {
@@ -376,8 +373,15 @@ export function StorefrontCheckoutPageClient() {
           position: 'top-left',
           variant: 'danger',
           title: 'اتصال به درگاه انجام نشد',
-          description: errorMessage,
+          description:
+            'سفارش شما ثبت شده است و می‌توانید از صفحه جزئیات سفارش دوباره پرداخت را انجام دهید.',
         });
+
+        /*
+         * سفارش ثبت شده و سبد قبلی Checkout شده است.
+         * به‌روزرسانی سبد نباید مانع انتقال کاربر شود.
+         */
+        void reloadCart();
 
         router.replace(`/account/orders/${encodeURIComponent(createdOrderId)}`);
 

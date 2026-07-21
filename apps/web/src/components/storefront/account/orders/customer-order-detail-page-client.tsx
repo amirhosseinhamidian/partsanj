@@ -35,6 +35,8 @@ import {
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { toPersianDigits } from '@/lib/utils/digits';
+import Image from 'next/image';
+import { storefrontPaymentApi } from '@/lib/api/storefront-payment-client';
 
 type CustomerOrderDetailPageClientProps = {
   orderId: string;
@@ -140,25 +142,41 @@ function CustomerOrderItemCard({ item }: { item: CustomerOrderItem }) {
     ? [item.vehicle.makeName, item.vehicle.modelName, item.vehicle.variantName].join(' · ')
     : 'برای این کالا خودرو انتخاب نشده است';
 
+  const productHref = `/products/${encodeURIComponent(item.productSlug)}`;
+
   return (
     <article className='rounded-card border border-border bg-surface p-4'>
       <div className='flex gap-4'>
-        <div className='grid size-20 shrink-0 place-items-center overflow-hidden rounded-control border border-border bg-surface-muted'>
+        <Link
+          href={productHref}
+          aria-label={`مشاهده محصول ${item.productName}`}
+          className='grid size-20 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-control border border-border bg-surface-muted transition hover:border-brand/50'
+        >
           {item.productImageUrl ? (
-            <img
+            <Image
               src={item.productImageUrl}
               alt={item.productName}
-              className='size-full object-cover'
+              width={80}
+              height={80}
+              sizes='80px'
+              className='size-full object-cover transition-transform duration-300 hover:scale-105'
             />
           ) : (
             <ImageOff className='size-6 text-foreground-muted' />
           )}
-        </div>
+        </Link>
 
         <div className='min-w-0 flex-1'>
           <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
             <div className='min-w-0'>
-              <h3 className='truncate font-extrabold text-foreground'>{item.productName}</h3>
+              <h3 className='truncate font-extrabold'>
+                <Link
+                  href={productHref}
+                  className='cursor-pointer text-foreground transition-colors hover:text-brand'
+                >
+                  {item.productName}
+                </Link>
+              </h3>
 
               <p className='mt-1 text-sm text-foreground-secondary'>{item.brandName}</p>
             </div>
@@ -240,11 +258,33 @@ function OrderDetailsLoadingState() {
   );
 }
 
+function getTrustedPaymentRedirectUrl(value: string): string {
+  let url: URL;
+
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error('آدرس درگاه پرداخت معتبر نیست');
+  }
+
+  if (
+    url.protocol !== 'https:' ||
+    url.hostname !== 'gateway.zibal.ir' ||
+    !url.pathname.startsWith('/start/')
+  ) {
+    throw new Error('آدرس درگاه پرداخت قابل اعتماد نیست');
+  }
+
+  return url.toString();
+}
+
 export function CustomerOrderDetailPageClient({ orderId }: CustomerOrderDetailPageClientProps) {
   const [order, setOrder] = useState<CustomerOrderDetail | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isStartingPayment, setIsStartingPayment] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   const loadOrder = useCallback(async () => {
     setIsLoading(true);
@@ -271,6 +311,38 @@ export function CustomerOrderDetailPageClient({ orderId }: CustomerOrderDetailPa
       void loadOrder();
     }, 1500);
   }, [loadOrder]);
+
+  const handleStartPayment = useCallback(async () => {
+    if (!order || order.status !== 'PENDING_PAYMENT') {
+      return;
+    }
+
+    setPaymentError(null);
+    setIsStartingPayment(true);
+
+    try {
+      const response = await storefrontPaymentApi.startOrderPayment(order.id);
+
+      const redirectUrl = getTrustedPaymentRedirectUrl(response.data.redirectUrl);
+
+      window.location.assign(redirectUrl);
+    } catch (error) {
+      if (error instanceof ClientApiError && (error.status === 401 || error.status === 403)) {
+        window.location.assign('/login');
+
+        return;
+      }
+
+      setPaymentError(getErrorMessage(error));
+
+      /*
+       * ممکن است سفارش هنگام درخواست منقضی شده باشد.
+       */
+      void loadOrder();
+    } finally {
+      setIsStartingPayment(false);
+    }
+  }, [loadOrder, order]);
 
   useEffect(() => {
     void loadOrder();
@@ -312,6 +384,7 @@ export function CustomerOrderDetailPageClient({ orderId }: CustomerOrderDetailPa
   }
 
   const orderNumber = formatCustomerOrderNumber(order.orderNumber);
+  const canStartPayment = order.status === 'PENDING_PAYMENT' && order.paymentStatus !== 'PAID';
 
   return (
     <div className='space-y-6'>

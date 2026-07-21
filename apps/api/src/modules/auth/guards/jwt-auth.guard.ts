@@ -22,7 +22,7 @@ export class JwtAuthGuard implements CanActivate {
     const token = this.extractBearerToken(request);
 
     if (!token) {
-      throw new UnauthorizedException('Authentication token is required');
+      throw new UnauthorizedException('برای انجام این عملیات باید وارد حساب کاربری شوید.');
     }
 
     let payload: JwtAccessTokenPayload;
@@ -30,11 +30,11 @@ export class JwtAuthGuard implements CanActivate {
     try {
       payload = await this.jwtService.verifyAsync<JwtAccessTokenPayload>(token);
     } catch {
-      throw new UnauthorizedException('Authentication token is invalid or expired');
+      throw new UnauthorizedException('اعتبار ورود شما به پایان رسیده است. لطفاً دوباره وارد شوید');
     }
 
     if (!payload.sub || !payload.mobile) {
-      throw new UnauthorizedException('Authentication token is invalid');
+      throw new UnauthorizedException('اطلاعات ورود شما معتبر نیست. لطفاً دوباره وارد شوید');
     }
 
     const user = await this.prisma.user.findUnique({
@@ -52,7 +52,7 @@ export class JwtAuthGuard implements CanActivate {
     });
 
     if (!user || !user.isActive || user.mobile !== payload.mobile) {
-      throw new UnauthorizedException('Authentication token is no longer valid');
+      throw new UnauthorizedException('اعتبار ورود شما پایان یافته است. لطفاً دوباره وارد شوید');
     }
 
     request.user = {

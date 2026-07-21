@@ -1,9 +1,10 @@
 'use client';
 
 import { cn } from '@/lib/utils/cn';
-import { ImageOff } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
+
+const PRODUCT_PLACEHOLDER_SRC = '/images/product-placeholder.png';
 
 type ImageUrlPreviewProps = {
   src?: string | null;
@@ -28,39 +29,35 @@ export function ImageUrlPreview({
     setHasImageError(false);
   }, [normalizedSrc]);
 
-  if (!normalizedSrc || hasImageError) {
-    return (
-      <div
-        role='img'
-        aria-label={emptyLabel || 'تصویری ثبت نشده است'}
-        className={cn(
-          'flex min-h-24 min-w-24 items-center justify-center overflow-hidden rounded-control border border-dashed border-border bg-surface-muted text-foreground-muted',
-          className,
-        )}
-      >
-        <div className='flex flex-col items-center gap-1.5 px-3 text-center'>
-          <ImageOff className='size-5' />
-
-          {emptyLabel ? <span className='text-xs font-medium'>{emptyLabel}</span> : null}
-        </div>
-      </div>
-    );
-  }
+  const shouldShowPlaceholder = !normalizedSrc || hasImageError;
 
   return (
     <div
       className={cn(
-        'min-h-24 min-w-24 overflow-hidden rounded-control border border-border bg-surface-muted',
+        'relative min-h-24 min-w-24 overflow-hidden rounded-control border border-border bg-surface-muted',
         className,
       )}
     >
-      <img
-        src={normalizedSrc}
-        alt={alt}
-        loading='lazy'
-        className={cn('size-full object-cover', imageClassName)}
-        onError={() => setHasImageError(true)}
-      />
+      {shouldShowPlaceholder ? (
+        <Image
+          src={PRODUCT_PLACEHOLDER_SRC}
+          alt={emptyLabel || 'تصویر محصول موجود نیست'}
+          fill
+          sizes='(max-width: 768px) 160px, 240px'
+          className={cn('object-cover', imageClassName)}
+        />
+      ) : (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={normalizedSrc}
+            alt={alt}
+            loading='lazy'
+            className={cn('size-full object-cover', imageClassName)}
+            onError={() => setHasImageError(true)}
+          />
+        </>
+      )}
     </div>
   );
 }

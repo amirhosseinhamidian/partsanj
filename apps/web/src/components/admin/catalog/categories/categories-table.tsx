@@ -9,6 +9,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { Edit, ImageIcon, Plus, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
 import { toPersianDigits } from '@/lib/utils/digits';
+import Image from 'next/image';
 
 type CategoriesTableProps = {
   categories: AdminCategory[];
@@ -46,12 +47,13 @@ function CategoryImagePreview({ category }: { category: AdminCategory }) {
 
   return (
     <span className='bg-muted mx-auto flex size-12 items-center justify-center overflow-hidden rounded-control border border-border'>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <Image
         src={category.imageUrl}
         alt={category.imageAlt || category.name}
+        width={48}
+        height={48}
+        sizes='48px'
         className='h-full w-full object-contain p-1.5'
-        loading='lazy'
       />
     </span>
   );

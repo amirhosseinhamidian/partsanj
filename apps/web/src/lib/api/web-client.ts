@@ -1,3 +1,4 @@
+import { localizeApiMessage } from '@/lib/api/localize-api-message';
 import type { AuthScope } from '@/lib/auth/auth-cookies';
 type UnknownRecord = Record<string, unknown>;
 
@@ -11,7 +12,7 @@ export class ClientApiError extends Error {
     public readonly status: number,
     public readonly code?: string,
   ) {
-    super(message);
+    super(localizeApiMessage(message, status));
     this.name = 'ClientApiError';
   }
 }

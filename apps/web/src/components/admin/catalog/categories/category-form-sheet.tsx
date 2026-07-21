@@ -22,6 +22,7 @@ import { Switch } from '@/components/ui/switch';
 import { useEffect, useMemo, useState } from 'react';
 import { FormField } from '@/components/ui/form-field';
 import { AdminSingleImageUploadField } from '../../uploads/admin-single-image-upload-field';
+import Image from 'next/image';
 
 type FormValues = {
   name: string;
@@ -379,12 +380,14 @@ export function CategoryFormSheet({
                       پیش‌نمایش تصویر
                     </p>
 
-                    <div className='bg-muted relative flex h-36 items-center justify-center overflow-hidden rounded-control'>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
+                    <div className='bg-muted relative h-36 overflow-hidden rounded-control'>
+                      <Image
                         src={values.imageUrl.trim()}
                         alt={values.imageAlt.trim() || 'پیش‌نمایش تصویر دسته‌بندی'}
-                        className='h-full w-full object-contain p-3'
+                        fill
+                        unoptimized
+                        sizes='100%'
+                        className='object-contain p-3'
                       />
                     </div>
                   </div>

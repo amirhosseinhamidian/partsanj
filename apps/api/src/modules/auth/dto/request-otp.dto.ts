@@ -10,7 +10,7 @@ export class RequestOtpDto {
   @Transform(({ value }) => normalizeIranianMobile(value))
   @IsString()
   @Matches(/^09\d{9}$/, {
-    message: 'mobile must be a valid Iranian mobile number',
+    message: 'شماره موبایل باید یک شماره معتبر ایرانی باشد.',
   })
   mobile!: string;
 }

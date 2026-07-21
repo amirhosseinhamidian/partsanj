@@ -52,7 +52,7 @@ export class ZibalPaymentProvider implements PaymentProvider {
 
     const trackId = this.readStringOrNumber(payload.trackId);
 
-    const message = this.readString(payload.message) ?? 'پاسخ نامعتبر از زیبال دریافت شد';
+    const message = this.readString(payload.message) ?? 'پاسخ نامعتبری از زیبال دریافت شد.';
 
     if (result !== 100 || !trackId) {
       throw new BadGatewayException({
@@ -95,7 +95,7 @@ export class ZibalPaymentProvider implements PaymentProvider {
       return {
         kind: 'invalid',
         code: 'ZIBAL_CALLBACK_TRACK_ID_MISSING',
-        message: 'شناسه trackId در Callback زیبال وجود ندارد',
+        message: 'شناسه تراکنش در پاسخ بازگشتی زیبال وجود ندارد.',
         callbackMetadata,
       };
     }
@@ -122,7 +122,7 @@ export class ZibalPaymentProvider implements PaymentProvider {
       kind: 'invalid',
       providerSessionId: trackId,
       code: 'ZIBAL_CALLBACK_SUCCESS_INVALID',
-      message: 'وضعیت Callback زیبال معتبر نیست',
+      message: 'وضعیت بازگشتی زیبال معتبر نیست.',
       callbackMetadata,
     };
   }
@@ -139,7 +139,7 @@ export class ZibalPaymentProvider implements PaymentProvider {
 
     const result = this.readNumber(payload.result);
 
-    const message = this.readString(payload.message) ?? 'پاسخ نامعتبر از زیبال دریافت شد';
+    const message = this.readString(payload.message) ?? 'پاسخ نامعتبری از زیبال دریافت شد.';
 
     const refNumber = this.readStringOrNumber(payload.refNumber);
 
@@ -288,7 +288,7 @@ export class ZibalPaymentProvider implements PaymentProvider {
 
       throw new ServiceUnavailableException({
         code: 'ZIBAL_UNREACHABLE',
-        message: 'سرویس زیبال در حال حاضر در دسترس نیست',
+        message: 'سرویس زیبال در حال حاضر در دسترس نیست. لطفاً دوباره تلاش کنید.',
       });
     } finally {
       clearTimeout(timeoutId);

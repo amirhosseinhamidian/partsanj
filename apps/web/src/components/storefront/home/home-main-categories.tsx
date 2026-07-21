@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type { StorefrontCategory } from '@/lib/storefront/catalog/catalog.types';
 import { cn } from '@/lib/utils/cn';
+import Image from 'next/image';
 
 type HomeMainCategoriesProps = {
   categories?: StorefrontCategory[];
@@ -120,13 +121,12 @@ function HomeMainCategoryCard({ category }: { category: StorefrontCategory }) {
     >
       <div className='bg-muted relative aspect-[1.35/1] overflow-hidden rounded-control'>
         {category.imageUrl ? (
-          // از img استفاده شده تا برای URLهای خارجی نیاز به remotePatterns در next.config نداشته باشیم
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={category.imageUrl}
             alt={category.imageAlt || category.name}
-            loading='lazy'
-            className='h-full w-full object-contain p-3 transition-transform duration-300 group-hover:scale-105'
+            fill
+            sizes='(max-width: 768px) 50vw, 25vw'
+            className='object-contain p-3 transition-transform duration-300 group-hover:scale-105'
           />
         ) : (
           <div className='flex h-full w-full items-center justify-center bg-brand-soft text-brand'>
