@@ -12,13 +12,14 @@ import { DeleteCategoryDialog } from '@/components/admin/catalog/categories/dele
 import { CategoriesTable } from '@/components/admin/catalog/categories/categories-table';
 import { Button } from '@/components/ui/button';
 import type { DataTableSort } from '@/components/ui/data-table';
-import { FolderTree, Plus, RefreshCw } from 'lucide-react';
+import { Download, FolderTree, Plus, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   CategoriesFilterBar,
   type CategoryFiltersDraft,
 } from '@/components/admin/catalog/categories/categories-filter-bar';
 import { PageHeader } from '@/components/ui/page-header';
+import { downloadCsv, getCsvDate, yesNo } from '@/lib/utils/csv';
 
 const PAGE_SIZE = 10;
 const EMPTY_CATEGORY_FILTERS: CategoryFiltersDraft = {
@@ -244,6 +245,44 @@ export function CategoriesPageClient() {
     });
   }
 
+  function exportCategoriesCsv() {
+    downloadCsv(
+      `categories-${getCsvDate()}.csv`,
+      [
+        'ID',
+        'نام',
+        'Slug',
+        'دسته والد',
+        'شناسه دسته والد',
+        'ترتیب',
+        'فعال',
+        'نمایش در صفحه اصلی',
+        'تعداد زیرمجموعه',
+        'تعداد محصولات',
+        'آدرس تصویر',
+        'Alt تصویر',
+        'تاریخ ایجاد',
+        'آخرین بروزرسانی',
+      ],
+      sortedCategories.map((category) => [
+        category.id,
+        category.name,
+        category.slug,
+        category.parent?.name ?? '',
+        category.parentId ?? '',
+        category.sortOrder,
+        yesNo(category.isActive),
+        yesNo(category.showOnHome),
+        category._count.children,
+        category._count.products,
+        category.imageUrl ?? '',
+        category.imageAlt ?? '',
+        category.createdAt,
+        category.updatedAt,
+      ]),
+    );
+  }
+
   return (
     <div className='space-y-6'>
       {/* این بخش را بعداً با API واقعی PageHeader خودت جایگزین کن */}
@@ -251,6 +290,17 @@ export function CategoriesPageClient() {
         title='دسته‌بندی‌ها'
         description='ساختار دسته‌بندی قطعات و ترتیب نمایش آن‌ها را مدیریت کنید'
         icon={<FolderTree className='size-5 lg:size-8' />}
+        actions={
+          <Button
+            type='button'
+            variant='outline'
+            iconStart={<Download className='size-4' />}
+            disabled={sortedCategories.length === 0}
+            onClick={exportCategoriesCsv}
+          >
+            خروجی CSV
+          </Button>
+        }
         addButtonLabel='افزودن دسته‌بندی'
         onAddClick={openCreateSheet}
       />

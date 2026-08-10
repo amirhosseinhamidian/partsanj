@@ -405,7 +405,6 @@ export function StorefrontFooter({ logoLightUrl, logoDarkUrl }: StorefrontFooter
                 title='نماد اعتماد الکترونیکی پارت‌سنج'
                 className='mt-3 inline-flex rounded-card border border-border bg-white p-2 transition-colors hover:border-brand/40'
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   referrerPolicy='origin'
                   src='https://trustseal.enamad.ir/logo.aspx?id=6937477&Code=3mFvy0fA2rHoD3qOn8naXI4VVDVqfxJG'

@@ -16,12 +16,14 @@ import type {
   ProductStatus,
   StockStatus,
 } from '@/lib/admin/catalog/product.types';
-import { PackageSearch, RefreshCw } from 'lucide-react';
+import { Download, PackageSearch, RefreshCw } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CatalogImportShortcutButton } from '@/components/admin/catalog/import/catalog-import-shortcut-button';
+import { downloadCsv, getCsvDate, yesNo } from '@/lib/utils/csv';
 
 const PAGE_SIZE = 24;
+const EXPORT_PAGE_SIZE = 100;
 
 const PRODUCT_STATUSES: ProductStatus[] = ['DRAFT', 'ACTIVE', 'ARCHIVED'];
 const STOCK_STATUSES: StockStatus[] = ['IN_STOCK', 'OUT_OF_STOCK', 'CHECK_AVAILABILITY'];
@@ -112,6 +114,7 @@ export function ProductsPageClient() {
 
   const [isOptionsLoading, setIsOptionsLoading] = useState(true);
   const [optionsError, setOptionsError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const latestProductsRequestId = useRef(0);
 
@@ -279,13 +282,124 @@ export function ProductsPageClient() {
     void loadFilterOptions();
   }
 
+  async function exportProductsCsv() {
+    if (isExporting) {
+      return;
+    }
+
+    setIsExporting(true);
+
+    try {
+      const baseQuery = {
+        q: filters.q || undefined,
+        status: filters.status || undefined,
+        stockStatus: filters.stockStatus || undefined,
+        brandId: filters.brandId || undefined,
+        categoryId: filters.categoryId || undefined,
+        limit: EXPORT_PAGE_SIZE,
+      };
+
+      const firstResponse = await adminProductsApi.list({
+        ...baseQuery,
+        page: 1,
+      });
+
+      const products = [...firstResponse.data];
+
+      // تمام صفحات را می‌گیریم، نه فقط صفحه‌ای که ادمین روی آن قرار دارد.
+      for (let page = 2; page <= firstResponse.meta.totalPages; page += 1) {
+        const pageResponse = await adminProductsApi.list({
+          ...baseQuery,
+          page,
+        });
+
+        products.push(...pageResponse.data);
+      }
+
+      downloadCsv(
+        `products-${getCsvDate()}.csv`,
+        [
+          'ID',
+          'SKU',
+          'نام محصول',
+          'Slug',
+          'برند',
+          'دسته‌بندی',
+          'قیمت',
+          'قیمت فروش ویژه',
+          'قیمت نهایی',
+          'مبلغ تخفیف',
+          'درصد تخفیف',
+          'وضعیت موجودی',
+          'تعداد موجودی',
+          'حد هشدار موجودی',
+          'وضعیت محصول',
+          'منتشر شده',
+          'فعال در ترب',
+          'نمایش در صفحه اصلی',
+          'ترتیب صفحه اصلی',
+          'کدها',
+          'تصویر',
+          'آخرین بروزرسانی',
+        ],
+        products.map((product) => [
+          product.id,
+          product.sku,
+          product.name,
+          product.slug,
+          product.brand.name,
+          product.category.name,
+          product.priceToman,
+          product.salePriceToman,
+          product.effectivePriceToman,
+          product.discountAmountToman,
+          product.discountPercent,
+          product.stockStatus,
+          product.stockQuantity,
+          product.lowStockThreshold,
+          product.status,
+          yesNo(product.isPublished),
+          yesNo(product.isTorobEnabled),
+          yesNo(product.showOnHome),
+          product.homeSortOrder,
+          product.codes.map((code) => `${code.type}:${code.value}`).join(' | '),
+          product.images[0]?.url ?? '',
+          product.updatedAt,
+        ]),
+      );
+    } catch (error) {
+      if (error instanceof ClientApiError && (error.status === 401 || error.status === 403)) {
+        window.location.assign('/admin/login');
+        return;
+      }
+
+      window.alert(getErrorMessage(error, 'ساخت خروجی CSV محصولات با خطا مواجه شد'));
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   return (
     <div className='space-y-6'>
       <PageHeader
         title='محصولات'
         description='اطلاعات فنی، قیمت، وضعیت موجودی و نمایش محصولات را مدیریت کنید'
         icon={<PackageSearch className='size-5 lg:size-8' />}
-        actions={<CatalogImportShortcutButton />}
+        actions={
+          <div className='flex flex-wrap gap-2'>
+            <Button
+              type='button'
+              variant='outline'
+              iconStart={<Download className='size-4' />}
+              disabled={isExporting || response.meta.total === 0}
+              onClick={() => void exportProductsCsv()}
+            >
+              {isExporting ? 'در حال ساخت خروجی...' : 'خروجی CSV'}
+            </Button>
+
+            <CatalogImportShortcutButton />
+          </div>
+        }
         addButtonLabel='افزودن محصول'
         onAddClick={() => router.push('/admin/catalog/products/new')}
       />

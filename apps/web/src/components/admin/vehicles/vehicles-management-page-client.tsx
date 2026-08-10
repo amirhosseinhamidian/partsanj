@@ -14,9 +14,10 @@ import type {
 import { adminVehiclesApi } from '@/lib/api/admin-vehicles-client';
 import { ClientApiError } from '@/lib/api/web-client';
 import { toPersianDigits } from '@/lib/utils/digits';
-import { CarFront, FileUp, RefreshCw, TriangleAlert } from 'lucide-react';
+import { CarFront, Download, FileUp, RefreshCw, TriangleAlert } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { downloadCsv, getCsvDate, yesNo } from '@/lib/utils/csv';
 
 type VehicleManagementTab = 'makes' | 'models' | 'variants';
 
@@ -70,6 +71,84 @@ export function VehiclesManagementPageClient() {
     void loadVehicleData();
   }, [loadVehicleData]);
 
+  function exportVehiclesCsv() {
+    if (activeTab === 'makes') {
+      downloadCsv(
+        `vehicle-makes-${getCsvDate()}.csv`,
+        ['ID', 'نام برند', 'Slug', 'آدرس لوگو', 'فعال', 'ترتیب', 'تعداد مدل'],
+        makes.map((make) => [
+          make.id,
+          make.name,
+          make.slug,
+          make.logoUrl ?? '',
+          yesNo(make.isActive),
+          make.sortOrder,
+          make._count.models,
+        ]),
+      );
+
+      return;
+    }
+
+    if (activeTab === 'models') {
+      downloadCsv(
+        `vehicle-models-${getCsvDate()}.csv`,
+        ['ID', 'نام مدل', 'Slug', 'برند', 'شناسه برند', 'آدرس تصویر', 'فعال', 'ترتیب', 'تعداد تیپ'],
+        models.map((model) => [
+          model.id,
+          model.name,
+          model.slug,
+          model.make.name,
+          model.makeId,
+          model.imageUrl ?? '',
+          yesNo(model.isActive),
+          model.sortOrder,
+          model._count.variants,
+        ]),
+      );
+
+      return;
+    }
+
+    downloadCsv(
+      `vehicle-variants-${getCsvDate()}.csv`,
+      [
+        'ID',
+        'نام تیپ',
+        'Slug',
+        'برند',
+        'مدل',
+        'شناسه مدل',
+        'کد موتور',
+        'نام موتور',
+        'سال شروع',
+        'سال پایان',
+        'نوع تقویم',
+        'توضیحات',
+        'فعال',
+        'ترتیب',
+        'تعداد سازگاری قطعات',
+      ],
+      variants.map((variant) => [
+        variant.id,
+        variant.name,
+        variant.slug,
+        variant.model.make.name,
+        variant.model.name,
+        variant.modelId,
+        variant.engineCode ?? '',
+        variant.engineName ?? '',
+        variant.yearFrom,
+        variant.yearTo,
+        variant.yearCalendar,
+        variant.notes ?? '',
+        yesNo(variant.isActive),
+        variant.sortOrder,
+        variant._count.compatibilities,
+      ]),
+    );
+  }
+
   return (
     <div dir='rtl' className='space-y-6 text-right'>
       <PageHeader
@@ -78,6 +157,20 @@ export function VehiclesManagementPageClient() {
         icon={<CarFront className='size-5 lg:size-8' />}
         actions={
           <div className='flex flex-wrap gap-2'>
+            <Button
+              type='button'
+              variant='outline'
+              iconStart={<Download className='size-4' />}
+              disabled={
+                isLoading ||
+                (activeTab === 'makes' && makes.length === 0) ||
+                (activeTab === 'models' && models.length === 0) ||
+                (activeTab === 'variants' && variants.length === 0)
+              }
+              onClick={exportVehiclesCsv}
+            >
+              خروجی CSV
+            </Button>
             <Button
               type='button'
               variant='outline'
