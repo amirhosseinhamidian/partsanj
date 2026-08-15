@@ -97,8 +97,15 @@ function FeaturedProductCard({ product }: { product: StorefrontProductListItem }
   const metaLines = getProductMetaLines(product);
 
   return (
-    <article className='max-w-[300px] min-w-[300px] overflow-hidden rounded-2xl bg-surface shadow-[0_8px_28px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_36px_rgba(15,23,42,0.12)] sm:max-w-[315px] sm:min-w-[315px]'>
-      <div className='grid h-[145px] grid-cols-[42%_58%] gap-2 p-5'>
+    <article
+      className={cn(
+        'flex max-w-[300px] min-w-[300px] flex-col overflow-hidden rounded-2xl bg-surface',
+        'shadow-[0_8px_28px_rgba(15,23,42,0.08)]',
+        'transition hover:-translate-y-0.5 hover:shadow-[0_12px_36px_rgba(15,23,42,0.12)]',
+        'sm:max-w-[315px] sm:min-w-[315px]',
+      )}
+    >
+      <div className='grid min-h-[175px] grid-cols-[42%_58%] gap-2 p-5 pb-3'>
         <Link
           href={`/products/${encodeURIComponent(product.slug)}`}
           className='relative flex h-[105px] items-center justify-center overflow-hidden rounded-xl bg-background'
@@ -120,7 +127,7 @@ function FeaturedProductCard({ product }: { product: StorefrontProductListItem }
 
         <div className='flex min-w-0 flex-col'>
           <Link href={`/products/${encodeURIComponent(product.slug)}`}>
-            <h3 className='line-clamp-2 text-sm font-extrabold text-slate-800 transition hover:text-orange-500 dark:text-slate-100'>
+            <h3 className='line-clamp-2 min-h-10 text-sm leading-5 font-extrabold text-slate-800 transition hover:text-orange-500 dark:text-slate-100'>
               {product.name}
             </h3>
           </Link>
@@ -133,13 +140,13 @@ function FeaturedProductCard({ product }: { product: StorefrontProductListItem }
             ))}
           </ul>
 
-          <div className='mt-auto'>
+          <div className='mt-auto pt-2'>
             <ProductCardPrice product={product} variant='home-row' />
           </div>
         </div>
       </div>
 
-      <div className='px-7 pb-3'>
+      <div className='mt-auto px-7 pt-2 pb-3'>
         <Link href={`/products/${encodeURIComponent(product.slug)}`}>
           <Button
             size='sm'

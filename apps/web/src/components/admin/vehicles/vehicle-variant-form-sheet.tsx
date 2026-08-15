@@ -27,6 +27,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Save } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { DropdownOptionImage } from '@/components/ui/dropdown-option-image';
 
 type VehicleVariantFormValues = {
   makeId: string;
@@ -150,6 +151,7 @@ export function VehicleVariantFormSheet({
         value: make.id,
         label: make.name,
         description: [make.slug, make.isActive ? 'فعال' : 'غیرفعال'].filter(Boolean).join(' · '),
+        icon: <DropdownOptionImage src={make.logoUrl} alt={make.name} />,
       })),
     [makes],
   );
@@ -164,6 +166,7 @@ export function VehicleVariantFormSheet({
           description: [model.slug, model.isActive ? 'فعال' : 'غیرفعال']
             .filter(Boolean)
             .join(' · '),
+          icon: <DropdownOptionImage src={model.imageUrl} alt={model.name} />,
         })),
     [models, values.makeId],
   );

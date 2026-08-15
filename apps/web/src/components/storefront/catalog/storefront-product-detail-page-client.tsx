@@ -39,6 +39,7 @@ import type {
 import { useStorefrontCart } from '@/components/storefront/cart/storefront-cart-provider';
 import { ProductPurchasePanel } from '@/components/storefront/catalog/product-purchase-panel';
 import { toPersianDigits } from '@/lib/utils/digits';
+import Image from 'next/image';
 
 type StorefrontProductDetailPageClientProps = {
   slug: string;
@@ -818,35 +819,63 @@ export function StorefrontProductDetailPageClient({
 
             {product.compatibilities.length ? (
               <div className='mt-4 space-y-3'>
-                {product.compatibilities.map((compatibility) => (
-                  <div
-                    key={compatibility.vehicleVariant.id}
-                    className='rounded-control border border-border bg-surface-muted p-3'
-                  >
-                    <div className='flex flex-wrap items-start justify-between gap-2'>
-                      <p className='text-sm font-bold text-foreground'>
-                        {getCompatibilityTitle(compatibility)}
-                      </p>
+                {product.compatibilities.map((compatibility) => {
+                  const variant = compatibility.vehicleVariant;
+                  const model = variant.model;
+                  const modelImageUrl = model.imageUrl;
 
-                      <Badge
-                        size='sm'
-                        variant={compatibility.requiresVerification ? 'warning' : 'success'}
-                      >
-                        {compatibility.requiresVerification ? 'نیازمند بررسی' : 'تأییدشده'}
-                      </Badge>
+                  return (
+                    <div
+                      key={variant.id}
+                      className='rounded-control border border-border bg-surface-muted p-3'
+                    >
+                      <div className='flex items-start justify-between gap-3'>
+                        <div className='flex min-w-0 items-center gap-3'>
+                          {/* تصویر مدل خودرو */}
+                          <div className='relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg border border-border bg-surface'>
+                            {modelImageUrl ? (
+                              <Image
+                                src={modelImageUrl}
+                                alt={`تصویر ${model.name}`}
+                                fill
+                                sizes='48px'
+                                className='object-contain p-1.5'
+                              />
+                            ) : (
+                              <CarFront className='size-6 text-foreground-muted' />
+                            )}
+                          </div>
+
+                          <div className='min-w-0'>
+                            {/* فقط مدل + تیپ، بدون برند */}
+                            <p className='text-sm leading-5 font-bold text-foreground'>
+                              {model.name}
+                              {variant.name ? ` ${variant.name}` : ''}
+                            </p>
+
+                            <p className='mt-1 text-xs leading-5 text-foreground-secondary'>
+                              {getVariantDetails(variant)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <Badge
+                          size='sm'
+                          variant={compatibility.requiresVerification ? 'warning' : 'success'}
+                          className='shrink-0'
+                        >
+                          {compatibility.requiresVerification ? 'نیازمند بررسی' : 'تأییدشده'}
+                        </Badge>
+                      </div>
+
+                      {compatibility.notes ? (
+                        <p className='mt-2 text-xs leading-6 text-foreground-muted'>
+                          {compatibility.notes}
+                        </p>
+                      ) : null}
                     </div>
-
-                    <p className='mt-2 text-xs leading-6 text-foreground-secondary'>
-                      {getVariantDetails(compatibility.vehicleVariant)}
-                    </p>
-
-                    {compatibility.notes ? (
-                      <p className='mt-2 text-xs leading-6 text-foreground-muted'>
-                        {compatibility.notes}
-                      </p>
-                    ) : null}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className='mt-4 rounded-control border border-dashed border-border bg-surface-muted p-4'>

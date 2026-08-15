@@ -28,6 +28,7 @@ import { ImageUrlPreview } from '@/components/ui/image-url-preview';
 
 import { isValidRemoteImageUrl, normalizeImageUrl } from '@/lib/utils/image-url';
 import { AdminSingleImageUploadField } from '../uploads/admin-single-image-upload-field';
+import { DropdownOptionImage } from '@/components/ui/dropdown-option-image';
 
 type VehicleModelFormValues = {
   makeId: string;
@@ -119,6 +120,7 @@ export function VehicleModelFormSheet({
         value: make.id,
         label: make.name,
         description: [make.slug, make.isActive ? 'فعال' : 'غیرفعال'].filter(Boolean).join(' · '),
+        icon: <DropdownOptionImage src={make.logoUrl} alt={make.name} />,
       })),
     [makes],
   );

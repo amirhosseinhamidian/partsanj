@@ -7,6 +7,7 @@ export type CustomerVehicleMake = {
 };
 
 export type CustomerVehicleModel = {
+  imageUrl: string | null;
   id: string;
   name: string;
   slug: string;

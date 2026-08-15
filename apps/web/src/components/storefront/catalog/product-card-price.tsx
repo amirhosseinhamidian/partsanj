@@ -42,14 +42,14 @@ export function ProductCardPrice({
   if (!settings.showPrices) {
     if (variant === 'home-row') {
       return (
-        <div className={cn('text-right', className)}>
+        <div className={cn('flex min-h-[52px] items-center text-right', className)}>
           <span className='text-sm font-extrabold text-brand'>استعلام قیمت</span>
         </div>
       );
     }
 
     return (
-      <div className={cn('flex flex-col gap-1 text-right', className)}>
+      <div className={cn('flex min-h-[58px] flex-col gap-1 text-right', className)}>
         <Badge variant='brand' size='lg' dot>
           قیمت با استعلام
         </Badge>
@@ -62,17 +62,20 @@ export function ProductCardPrice({
   }
 
   if (displayedPrice === null) {
-    if (variant === 'home-row') {
-      return (
-        <div className={cn('text-right', className)}>
-          <span className='text-sm font-extrabold text-brand'>استعلام قیمت</span>
-        </div>
-      );
-    }
-
     return (
-      <div className={cn('flex flex-col items-end gap-1 text-right', className)}>
-        <span className='text-sm font-semibold text-foreground-secondary'>
+      <div
+        className={cn(
+          'flex min-h-[52px] items-center text-right',
+          variant === 'product-list' && 'justify-end',
+          className,
+        )}
+      >
+        <span
+          className={cn(
+            'font-semibold text-foreground-secondary',
+            variant === 'home-row' ? 'text-sm' : 'text-sm',
+          )}
+        >
           قیمت نیازمند استعلام است
         </span>
       </div>
@@ -81,29 +84,37 @@ export function ProductCardPrice({
 
   if (variant === 'home-row') {
     return (
-      <div className={cn('flex flex-col items-start gap-1 text-right', className)}>
-        <span className='text-lg font-extrabold text-brand'>{formatPrice(displayedPrice)}</span>
+      <div
+        className={cn('flex min-h-[52px] flex-col items-start justify-end text-right', className)}
+      >
+        <span className='numeric text-lg leading-6 font-extrabold text-brand'>
+          {formatPrice(displayedPrice)}
+        </span>
 
         {showOriginalPrice && hasActiveSale ? (
-          <span className='text-xs font-bold text-foreground-muted line-through'>
+          <span className='numeric mt-1 text-xs leading-4 font-medium text-foreground-muted line-through decoration-1'>
             {formatPrice(product.priceToman as number)}
           </span>
-        ) : null}
+        ) : (
+          <span aria-hidden='true' className='mt-1 block h-4' />
+        )}
       </div>
     );
   }
 
   return (
-    <div className={cn('flex flex-col items-end gap-1 text-right', className)}>
-      <span className='numeric text-lg font-extrabold text-foreground'>
+    <div className={cn('flex min-h-[58px] flex-col items-end justify-end text-right', className)}>
+      <span className='numeric text-lg leading-6 font-extrabold text-foreground'>
         {formatPrice(displayedPrice)}
       </span>
 
       {showOriginalPrice && hasActiveSale ? (
-        <span className='numeric text-xs text-foreground-muted line-through'>
+        <span className='numeric mt-1 text-xs leading-4 font-medium text-foreground-muted line-through decoration-1'>
           {formatPrice(product.priceToman as number)}
         </span>
-      ) : null}
+      ) : (
+        <span aria-hidden='true' className='mt-1 block h-4' />
+      )}
     </div>
   );
 }

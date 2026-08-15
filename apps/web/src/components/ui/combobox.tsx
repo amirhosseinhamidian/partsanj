@@ -15,6 +15,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
+import { useFloatingPortalContainer } from '@/components/ui/floating-portal-context';
 
 const comboboxSizeClasses = {
   sm: 'h-9 px-3 text-xs',
@@ -187,6 +188,8 @@ export const Combobox = forwardRef<HTMLButtonElement, ComboboxProps>(function Co
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   const optionRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  const portalContainer = useFloatingPortalContainer();
 
   const isControlled = value !== undefined;
   const selectedValue = isControlled ? value : internalValue;
@@ -417,16 +420,20 @@ export const Combobox = forwardRef<HTMLButtonElement, ComboboxProps>(function Co
                   {startIcon}
                 </span>
               ) : null}
+              <div className='flex min-w-0 flex-1 items-center gap-2'>
+                {selectedOption?.icon ? (
+                  <span className='shrink-0'>{selectedOption.icon}</span>
+                ) : null}
 
-              <span
-                className={cn(
-                  'min-w-0 flex-1 truncate',
-                  !selectedOption && 'text-foreground-muted',
-                )}
-              >
-                {selectedOption?.label ?? placeholder}
-              </span>
-
+                <span
+                  className={cn(
+                    'min-w-0 flex-1 truncate',
+                    !selectedOption && 'text-foreground-muted',
+                  )}
+                >
+                  {selectedOption?.label ?? placeholder}
+                </span>
+              </div>
               <ChevronDown
                 aria-hidden='true'
                 className={cn(
@@ -450,7 +457,7 @@ export const Combobox = forwardRef<HTMLButtonElement, ComboboxProps>(function Co
           ) : null}
         </div>
 
-        <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Portal container={portalContainer ?? undefined}>
           <PopoverPrimitive.Content
             id={contentId}
             dir='rtl'
@@ -460,6 +467,9 @@ export const Combobox = forwardRef<HTMLButtonElement, ComboboxProps>(function Co
             collisionPadding={12}
             onOpenAutoFocus={(event) => {
               event.preventDefault();
+            }}
+            onWheelCapture={(event) => {
+              event.stopPropagation();
             }}
             className={cn(
               'z-90 max-h-80 min-w-(--radix-popover-trigger-width) overflow-hidden rounded-card border border-border bg-surface-elevated shadow-floating outline-none',
@@ -488,7 +498,7 @@ export const Combobox = forwardRef<HTMLButtonElement, ComboboxProps>(function Co
             <div
               role='listbox'
               aria-label={typeof label === 'string' ? label : placeholder}
-              className='max-h-60 overflow-y-auto p-1.5'
+              className='max-h-60 touch-pan-y overflow-y-auto overscroll-y-contain p-1.5'
             >
               {loading ? (
                 <div className='flex min-h-28 items-center justify-center gap-2 text-sm text-foreground-muted'>

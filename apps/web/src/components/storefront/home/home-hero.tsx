@@ -100,55 +100,52 @@ function HeroArtwork({
   darkSrc: string;
   alt: string;
 }) {
+  const imageClassName = cn(
+    'object-contain',
+
+    // موبایل:
+    // تصویر بزرگ‌تر + جبران فضای شفاف نامتقارن فایل
+    'scale-[1.4] translate-x-12',
+
+    // تبلت
+    'sm:scale-[1.38] sm:translate-x-[5%]',
+
+    // دسکتاپ دقیقاً مثل قبل
+    'lg:scale-125 lg:translate-x-0 lg:object-left-center',
+  );
+
   return (
-    <div className='relative order-2 min-h-[300px] sm:min-h-[380px] lg:order-1 lg:-ml-10 lg:min-h-[440px] xl:-ml-16'>
-      <div className='scale- absolute inset-x-[8%] bottom-[4%] h-[24%] rounded-full bg-brand/20 blur-3xl dark:bg-brand/30' />
+    <div
+      className={cn(
+        'relative order-2',
+        'min-h-[240px]',
+        'sm:min-h-[410px]',
+        'lg:order-1 lg:-ml-10 lg:min-h-[440px]',
+        'xl:-ml-16',
+      )}
+    >
+      <div className='absolute inset-x-[8%] bottom-[4%] h-[24%] rounded-full bg-brand/20 blur-3xl dark:bg-brand/30' />
 
-      <div className='absolute inset-0 scale-125'>
-        <Image
-          src={lightSrc}
-          alt={alt}
-          fill
-          priority
-          sizes='(max-width: 1024px) 100vw, 58vw'
-          className='object-left-center block object-contain dark:hidden'
-        />
+      <Image
+        src={lightSrc}
+        alt={alt}
+        fill
+        priority
+        sizes='(max-width: 640px) 125vw, (max-width: 1024px) 110vw, 58vw'
+        className={cn(imageClassName, 'block dark:hidden')}
+      />
 
-        <Image
-          src={darkSrc}
-          alt={alt}
-          fill
-          priority
-          sizes='(max-width: 1024px) 100vw, 58vw'
-          className='object-left-center hidden object-contain dark:block'
-        />
-      </div>
+      <Image
+        src={darkSrc}
+        alt={alt}
+        fill
+        priority
+        sizes='(max-width: 640px) 125vw, (max-width: 1024px) 110vw, 58vw'
+        className={cn(imageClassName, 'hidden dark:block')}
+      />
     </div>
   );
 }
-
-// function HeroArtwork({ src, alt }: { src: string; alt: string }) {
-//   return (
-//     <div className='relative order-2 min-h-[260px] sm:min-h-[330px] lg:order-1 lg:min-h-[420px]'>
-//       <div className='absolute inset-x-[6%] bottom-[3%] h-[24%] rounded-full bg-brand/20 blur-3xl dark:bg-brand/30' />
-
-//       <div className='absolute inset-x-0 top-[6%] h-[78%] opacity-50 dark:opacity-70'>
-//         <HeroBlueprint />
-//       </div>
-
-//       <div className='absolute inset-0'>
-//         <Image
-//           src={src}
-//           alt={alt}
-//           fill
-//           priority
-//           sizes='(max-width: 1024px) 100vw, 54vw'
-//           className='object-contain object-center drop-shadow-[0_28px_28px_rgba(4,18,39,0.22)]'
-//         />
-//       </div>
-//     </div>
-//   );
-// }
 
 function HeroBackground() {
   return (

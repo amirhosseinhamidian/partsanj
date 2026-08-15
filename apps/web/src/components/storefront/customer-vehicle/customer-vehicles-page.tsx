@@ -8,6 +8,8 @@ import { useCustomerVehicles } from '@/lib/storefront/customer-vehicle/use-custo
 import { CustomerVehicleFormSheet } from './customer-vehicle-form-sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import Image from 'next/image';
+import { cn } from '@/lib/utils/cn';
 
 type VehicleFormState =
   | {
@@ -288,6 +290,8 @@ function CustomerVehicleCard({
   const yearRange = getVehicleYearRange(vehicle);
   const engineText = getEngineText(vehicle);
 
+  const modelImageUrl = vehicle.vehicleVariant.model.imageUrl;
+
   const isCurrentVehiclePending = pendingVehicleId === vehicle.id;
 
   const isDeleting = isCurrentVehiclePending && pendingAction === 'delete';
@@ -295,69 +299,98 @@ function CustomerVehicleCard({
   const isSettingDefault = isCurrentVehiclePending && pendingAction === 'set-default';
 
   return (
-    <article className='rounded-card border border-border bg-surface p-5 shadow-panel'>
-      <div className='flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between'>
-        <div className='min-w-0'>
-          <div className='flex flex-wrap items-center gap-2'>
-            <h2 className='truncate text-base font-bold text-foreground sm:text-lg'>
-              {vehicle.label || vehicleTitle}
-            </h2>
-
-            {vehicle.isDefault ? (
-              <Badge variant='success' dot>
-                خودروی پیش‌فرض
-              </Badge>
-            ) : null}
-          </div>
-
-          {vehicle.label ? (
-            <p className='mt-2 text-sm text-foreground-secondary'>{vehicleTitle}</p>
-          ) : null}
-
-          <div className='mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-foreground-secondary'>
-            {yearRange ? <span>سال ساخت: {yearRange}</span> : null}
-
-            {engineText ? <span>موتور: {engineText}</span> : null}
-          </div>
+    <article className='rounded-card border border-border bg-surface p-4 shadow-panel sm:p-5'>
+      <div className='flex flex-col gap-4 sm:flex-row sm:items-stretch'>
+        {/* تصویر مدل خودرو */}
+        <div
+          className={cn(
+            'relative h-40 w-full shrink-0 overflow-hidden rounded-xl border border-border bg-background',
+            'sm:h-auto sm:min-h-[125px] sm:w-40',
+          )}
+        >
+          {modelImageUrl ? (
+            <Image
+              src={modelImageUrl}
+              alt={`تصویر ${vehicle.vehicleVariant.model.name}`}
+              fill
+              sizes='(max-width: 640px) 100vw, 160px'
+              className='object-contain p-3'
+            />
+          ) : (
+            <div className='flex h-full w-full items-center justify-center bg-surface-muted text-foreground-muted'>
+              <CarFront className='size-12' />
+            </div>
+          )}
         </div>
 
-        <div className='flex shrink-0 flex-wrap gap-2 sm:justify-end'>
-          {!vehicle.isDefault ? (
+        {/* اطلاعات خودرو */}
+        <div className='flex min-w-0 flex-1 flex-col gap-5 sm:flex-row sm:items-start sm:justify-between'>
+          <div className='min-w-0 flex-1'>
+            <div className='flex flex-wrap items-center gap-2'>
+              <h2 className='min-w-0 truncate text-base font-bold text-foreground sm:text-lg'>
+                {vehicle.label || vehicleTitle}
+              </h2>
+
+              {vehicle.isDefault ? (
+                <Badge variant='success' dot>
+                  خودروی پیش‌فرض
+                </Badge>
+              ) : null}
+            </div>
+
+            {vehicle.label ? (
+              <p className='mt-2 text-sm text-foreground-secondary'>{vehicleTitle}</p>
+            ) : null}
+
+            <div className='mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-foreground-secondary'>
+              {yearRange ? <span>سال ساخت: {yearRange}</span> : null}
+
+              {engineText ? <span>موتور: {engineText}</span> : null}
+            </div>
+          </div>
+
+          {/* اکشن‌ها */}
+          <div className='flex shrink-0 flex-wrap gap-2 sm:max-w-[260px] sm:justify-end'>
+            {!vehicle.isDefault ? (
+              <Button
+                type='button'
+                size='sm'
+                variant='outline'
+                disabled={isMutating}
+                isLoading={isSettingDefault}
+                loadingLabel='در حال انتخاب'
+                iconStart={<Star className='size-4' />}
+                onClick={() => onSetDefault(vehicle)}
+              >
+                انتخاب پیش‌فرض
+              </Button>
+            ) : null}
+
+            <Button
+              type='button'
+              onClick={() => onEdit(vehicle)}
+              disabled={isMutating}
+              iconStart={<Pencil className='size-4' />}
+              variant='secondary'
+              size='sm'
+            >
+              ویرایش
+            </Button>
+
             <Button
               type='button'
               size='sm'
               variant='outline'
               disabled={isMutating}
-              isLoading={isSettingDefault}
-              loadingLabel='در حال انتخاب'
-              iconStart={<Star className='size-4' />}
-              onClick={() => onSetDefault(vehicle)}
+              isLoading={isDeleting}
+              loadingLabel='در حال حذف'
+              className='border-danger/40 text-danger hover:bg-danger-soft'
+              iconStart={<Trash2 className='size-4' />}
+              onClick={() => void onDelete(vehicle)}
             >
-              انتخاب پیش‌فرض
+              حذف
             </Button>
-          ) : null}
-
-          <Button
-            onClick={() => onEdit(vehicle)}
-            disabled={isMutating}
-            iconStart={<Pencil className='size-4' />}
-            variant='secondary'
-            size='sm'
-          >
-            ویرایش
-          </Button>
-
-          <Button
-            type='button'
-            size='sm'
-            variant='outline'
-            disabled={isMutating}
-            className='border-danger/40 text-danger hover:bg-danger-soft'
-            iconStart={<Trash2 className='size-4' />}
-            onClick={() => void onDelete(vehicle)}
-          >
-            حذف
-          </Button>
+          </div>
         </div>
       </div>
     </article>

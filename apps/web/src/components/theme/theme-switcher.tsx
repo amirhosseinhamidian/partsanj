@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Monitor, Moon, Sun, type LucideIcon } from 'lucide-react';
+import { Moon, Sun, type LucideIcon } from 'lucide-react';
 
-import { useTheme } from '@/components/providers/theme-provider';
+import { useTheme, type Theme } from '@/components/providers/theme-provider';
 import { Button } from '@/components/ui/button';
 
 type ThemeOption = {
-  value: 'light' | 'dark' | 'system';
+  value: Theme;
   label: string;
   icon: LucideIcon;
 };

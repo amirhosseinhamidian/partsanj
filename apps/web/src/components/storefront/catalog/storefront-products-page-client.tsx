@@ -201,7 +201,7 @@ function ProductCard({
         )}
 
         <div className='mt-4 flex flex-1 flex-col border-t border-border pt-4'>
-          <ProductCardPrice product={product} variant='product-list' showOriginalPrice={false} />
+          <ProductCardPrice product={product} variant='product-list' />
 
           <Link
             href={buildProductHref(product.slug, vehicleContext)}

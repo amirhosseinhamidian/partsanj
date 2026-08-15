@@ -6,10 +6,14 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import {
   forwardRef,
+  useCallback,
+  useState,
   type ComponentPropsWithoutRef,
   type ComponentRef,
+  type ForwardedRef,
   type HTMLAttributes,
 } from 'react';
+import { FloatingPortalContainerProvider } from '@/components/ui/floating-portal-context';
 
 export const Sheet = DialogPrimitive.Root;
 export const SheetTrigger = DialogPrimitive.Trigger;
@@ -47,6 +51,17 @@ const sheetSideClasses: Record<SheetSide, string> = {
   ].join(' '),
 };
 
+function assignRef<T>(ref: ForwardedRef<T>, value: T | null) {
+  if (typeof ref === 'function') {
+    ref(value);
+    return;
+  }
+
+  if (ref) {
+    ref.current = value;
+  }
+}
+
 export type SheetContentProps = ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
   side?: SheetSide;
   showCloseButton?: boolean;
@@ -59,6 +74,16 @@ export const SheetContent = forwardRef<
   { side = 'right', showCloseButton = true, className, children, ...props },
   ref,
 ) {
+  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
+
+  const contentRef = useCallback(
+    (node: ComponentRef<typeof DialogPrimitive.Content> | null) => {
+      setPortalContainer(node);
+      assignRef(ref, node);
+    },
+    [ref],
+  );
+
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
@@ -71,26 +96,28 @@ export const SheetContent = forwardRef<
 
       <DialogPrimitive.Content
         {...props}
-        ref={ref}
+        ref={contentRef}
         className={cn(
           'fixed z-80 flex flex-col overflow-hidden border bg-surface p-5 text-right text-foreground shadow-floating outline-none sm:p-6',
           sheetSideClasses[side],
           className,
         )}
       >
-        {children}
+        <FloatingPortalContainerProvider container={portalContainer}>
+          {children}
 
-        {showCloseButton ? (
-          <DialogPrimitive.Close asChild>
-            <IconButton
-              aria-label='بستن پنجره'
-              icon={<X />}
-              variant='ghost'
-              size='sm'
-              className='absolute end-3 top-3'
-            />
-          </DialogPrimitive.Close>
-        ) : null}
+          {showCloseButton ? (
+            <DialogPrimitive.Close asChild>
+              <IconButton
+                aria-label='بستن پنجره'
+                icon={<X />}
+                variant='ghost'
+                size='sm'
+                className='absolute end-3 top-3'
+              />
+            </DialogPrimitive.Close>
+          ) : null}
+        </FloatingPortalContainerProvider>
       </DialogPrimitive.Content>
     </DialogPrimitive.Portal>
   );

@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils/cn';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown, type LucideIcon } from 'lucide-react';
 import { forwardRef, useId, type ReactNode } from 'react';
+import { useFloatingPortalContainer } from '@/components/ui/floating-portal-context';
 
 const selectSizeClasses = {
   sm: 'h-9 px-3 text-xs',
@@ -88,7 +89,10 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(function Select
 
   const messageId = error || helperText ? `${selectId}-message` : undefined;
 
+  const portalContainer = useFloatingPortalContainer();
+
   const describedBy = [ariaDescribedBy, messageId].filter(Boolean).join(' ') || undefined;
+  const selectedOption = options.find((option) => option.value === value);
 
   return (
     <div dir='rtl' className={cn('w-full space-y-1.5', wrapperClassName)}>
@@ -142,6 +146,11 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(function Select
             </span>
           ) : null}
 
+          <div className='flex min-w-0 flex-1 items-center gap-2'>
+            {selectedOption?.icon ? <span className='shrink-0'>{selectedOption.icon}</span> : null}
+            <SelectPrimitive.Value placeholder={placeholder} />
+          </div>
+
           <SelectPrimitive.Value placeholder={placeholder} />
 
           <SelectPrimitive.Icon asChild>
@@ -149,19 +158,22 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(function Select
           </SelectPrimitive.Icon>
         </SelectPrimitive.Trigger>
 
-        <SelectPrimitive.Portal>
+        <SelectPrimitive.Portal container={portalContainer ?? undefined}>
           <SelectPrimitive.Content
             position='popper'
             side='bottom'
             align='start'
             sideOffset={8}
             collisionPadding={12}
+            onWheelCapture={(event) => {
+              event.stopPropagation();
+            }}
             className={cn(
               'z-90 max-h-72 min-w-(--radix-select-trigger-width) overflow-hidden rounded-card border border-border bg-surface-elevated p-1 shadow-floating',
               contentClassName,
             )}
           >
-            <SelectPrimitive.Viewport className='max-h-72 overflow-y-auto p-1'>
+            <SelectPrimitive.Viewport className='max-h-72 touch-pan-y overflow-y-auto overscroll-y-contain p-1'>
               {options.map((option) => (
                 <SelectPrimitive.Item
                   key={option.value}

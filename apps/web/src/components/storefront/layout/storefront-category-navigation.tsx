@@ -92,7 +92,6 @@ export function StorefrontCategoryDesktopMenu({
   );
 
   const [previewRootSlug, setPreviewRootSlug] = useState<string | null>(null);
-
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -114,19 +113,10 @@ export function StorefrontCategoryDesktopMenu({
       onMouseLeave={() => {
         setIsOpen(false);
       }}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') {
-          setIsOpen(false);
-        }
-      }}
     >
-      <button
-        type='button'
-        aria-haspopup='true'
-        aria-expanded={isOpen}
-        onClick={() => {
-          setIsOpen((current) => !current);
-        }}
+      {/* با کلیک مستقیم وارد صفحه محصولات می‌شود */}
+      <Link
+        href='/products'
         className={cn(
           'relative inline-flex h-11 items-center gap-1 px-3 text-sm font-semibold transition-colors',
           'after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:transition-transform',
@@ -137,20 +127,27 @@ export function StorefrontCategoryDesktopMenu({
       >
         محصولات
         <ChevronDown className={cn('size-4 transition-transform', isOpen && 'rotate-180')} />
-      </button>
+      </Link>
 
+      {/* فقط با Hover باز می‌شود */}
       <div
         aria-hidden={!isOpen}
         className={cn(
-          'absolute inset-s-0 top-full z-50 w-[40rem] pt-3 transition-[opacity,transform,visibility] duration-200 ease-out',
+          'absolute inset-s-0 top-full z-50 w-[40rem] pt-3',
+          'transition-[opacity,transform,visibility] duration-200 ease-out',
           isOpen
             ? 'visible translate-y-0 opacity-100'
             : 'pointer-events-none invisible translate-y-2 opacity-0',
         )}
       >
-        <div className='overflow-hidden rounded-card border border-border bg-surface shadow-panel'>
+        <div
+          className={cn(
+            'flex max-h-[min(70vh,34rem)] flex-col overflow-hidden',
+            'rounded-card border border-border bg-surface shadow-panel',
+          )}
+        >
           {isLoading ? (
-            <div className='grid min-h-72 grid-cols-2 gap-5 p-5'>
+            <div className='grid min-h-72 grid-cols-2 gap-5 overflow-y-auto p-5'>
               <div className='space-y-3'>
                 {Array.from({ length: 5 }).map((_, index) => (
                   <div
@@ -177,22 +174,21 @@ export function StorefrontCategoryDesktopMenu({
                 دسته‌بندی فعالی برای نمایش وجود ندارد
               </p>
 
-              <Link
-                href='/products'
-                onClick={() => {
-                  setIsOpen(false);
-                }}
-                className='mt-4 text-sm font-extrabold text-brand'
-              >
+              <Link href='/products' className='mt-4 text-sm font-extrabold text-brand'>
                 مشاهده همه محصولات
               </Link>
             </div>
           ) : (
-            <div dir='rtl' className='flex min-h-72'>
+            <div dir='rtl' className='flex min-h-0 flex-1 overflow-hidden'>
               {/* ستون راست: دسته‌های اصلی */}
-              <section className='w-[40%] shrink-0 bg-surface-muted/60 p-4'>
-                <div className='flex items-center gap-2 border-b border-border pb-3'>
-                  <FolderTree className='size-4 text-brand' />
+              <section
+                className={cn(
+                  'w-[40%] shrink-0 bg-surface-muted/60 p-4',
+                  'min-h-0 overflow-y-auto overscroll-contain',
+                )}
+              >
+                <div className='sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-surface-muted/95 pb-3 backdrop-blur'>
+                  <FolderTree className='size-4 shrink-0 text-brand' />
 
                   <p className='text-sm font-extrabold text-foreground'>دسته‌بندی‌ها</p>
                 </div>
@@ -209,9 +205,6 @@ export function StorefrontCategoryDesktopMenu({
                         href={getCategoryProductsHref(category.slug)}
                         aria-current={isCurrentRoot ? 'page' : undefined}
                         onMouseEnter={() => {
-                          setPreviewRootSlug(category.slug);
-                        }}
-                        onFocus={() => {
                           setPreviewRootSlug(category.slug);
                         }}
                         onClick={() => {
@@ -233,11 +226,13 @@ export function StorefrontCategoryDesktopMenu({
                 </div>
               </section>
 
-              {/* ستون چپ: فقط زیر‌دسته‌های مستقیم */}
-              <section className='min-w-0 flex-1 p-5'>
+              {/* ستون چپ: زیردسته‌ها */}
+              <section
+                className={cn('min-h-0 min-w-0 flex-1 p-5', 'overflow-y-auto overscroll-contain')}
+              >
                 {activeRoot ? (
                   <>
-                    <div className='flex items-start justify-between gap-4 border-b border-border pb-4'>
+                    <div className='sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-border bg-surface/95 pb-4 backdrop-blur'>
                       <div className='min-w-0'>
                         <p className='text-xs font-semibold text-brand'>زیر‌دسته‌های</p>
 
@@ -285,7 +280,8 @@ export function StorefrontCategoryDesktopMenu({
             </div>
           )}
 
-          <div className='border-t border-border p-3'>
+          {/* همیشه پایین منو ثابت می‌ماند */}
+          <div className='shrink-0 border-t border-border bg-surface p-3'>
             <Link
               href='/products'
               onClick={() => {

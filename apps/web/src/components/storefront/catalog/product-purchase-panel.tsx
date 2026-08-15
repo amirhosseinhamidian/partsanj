@@ -485,7 +485,7 @@ export function ProductPurchasePanel({
               <span className='truncate'>
                 {selectedVehicle
                   ? `${selectedVehicle.modelName} · ${selectedVehicle.variant.name}`
-                  : 'تطبیق خودرو اختیاری'}
+                  : 'تطبیق'}
               </span>
 
               <ChevronLeft className='size-4 shrink-0' />
