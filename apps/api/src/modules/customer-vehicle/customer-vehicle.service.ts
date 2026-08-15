@@ -35,7 +35,7 @@ const customerVehicleSelect = {
           name: true,
           slug: true,
           isActive: true,
-
+          imageUrl: true,
           make: {
             select: {
               id: true,

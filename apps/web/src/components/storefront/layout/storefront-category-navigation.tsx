@@ -228,11 +228,14 @@ export function StorefrontCategoryDesktopMenu({
 
               {/* ستون چپ: زیردسته‌ها */}
               <section
-                className={cn('min-h-0 min-w-0 flex-1 p-5', 'overflow-y-auto overscroll-contain')}
+                className={cn(
+                  'min-h-0 min-w-0 flex-1 px-5 pb-5',
+                  'overflow-y-auto overscroll-contain',
+                )}
               >
                 {activeRoot ? (
                   <>
-                    <div className='sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-border bg-surface/95 pb-4 backdrop-blur'>
+                    <div className='sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-border bg-surface/95 pt-5 pb-4 backdrop-blur'>
                       <div className='min-w-0'>
                         <p className='text-xs font-semibold text-brand'>زیر‌دسته‌های</p>
 

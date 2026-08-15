@@ -370,7 +370,7 @@ export class CatalogService {
                     id: true,
                     name: true,
                     slug: true,
-
+                    imageUrl: true,
                     make: {
                       select: {
                         id: true,
