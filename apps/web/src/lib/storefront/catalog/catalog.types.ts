@@ -68,6 +68,7 @@ export type StorefrontProductCompatibility = {
       id: string;
       name: string;
       slug: string;
+      imageUrl: string | null;
       make: {
         id: string;
         name: string;
