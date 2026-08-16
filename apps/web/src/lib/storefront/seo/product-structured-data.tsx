@@ -67,6 +67,25 @@ function toIsoDateTime(value: string | null | undefined): string | undefined {
   return date.toISOString();
 }
 
+function htmlToPlainText(value: string | null | undefined): string {
+  if (!value?.trim()) {
+    return '';
+  }
+
+  return value
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/(p|h1|h2|h3|h4|h5|h6|li|blockquote)>/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function ProductStructuredData({ product, settings }: ProductStructuredDataProps) {
   const origin = getSiteOrigin(settings.siteBaseUrl);
 
@@ -89,7 +108,7 @@ export function ProductStructuredData({ product, settings }: ProductStructuredDa
   const description =
     product.seoDescription?.trim() ||
     product.shortDescription?.trim() ||
-    product.description?.trim() ||
+    htmlToPlainText(product.description) ||
     `مشخصات و خرید ${product.name} از ${siteName}`;
 
   const effectivePriceToman = product.effectivePriceToman;

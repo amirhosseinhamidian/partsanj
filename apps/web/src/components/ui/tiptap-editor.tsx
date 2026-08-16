@@ -25,6 +25,8 @@ export type TiptapEditorDocument = Record<string, unknown> & {
   content?: unknown[];
 };
 
+export type TiptapEditorOutputFormat = 'json' | 'html';
+
 export type TiptapEditorToolbarOptions = {
   undoRedo?: boolean;
   headings?: boolean;
@@ -37,21 +39,22 @@ export type TiptapEditorToolbarOptions = {
 
 type TiptapHeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 
-export type TiptapEditorProps<TDocument extends TiptapEditorDocument = TiptapEditorDocument> = {
+type TiptapEditorBaseProps = {
   id?: string;
 
   label?: ReactNode;
   helperText?: ReactNode;
   error?: string;
 
-  value: TDocument;
-  onChange?: (value: TDocument) => void;
-
   disabled?: boolean;
   dir?: 'rtl' | 'ltr' | 'auto';
 
   placeholder?: string;
   ariaLabel?: string;
+
+  'aria-labelledby'?: string;
+  'aria-describedby'?: string;
+  'aria-invalid'?: boolean | 'true' | 'false';
 
   className?: string;
   contentClassName?: string;
@@ -76,6 +79,23 @@ export type TiptapEditorProps<TDocument extends TiptapEditorDocument = TiptapEdi
 
   onEditorReady?: (editor: Editor) => void;
 };
+
+type TiptapEditorJsonProps<TDocument extends TiptapEditorDocument = TiptapEditorDocument> = {
+  outputFormat?: 'json';
+
+  value: TDocument;
+  onChange?: (value: TDocument) => void;
+};
+
+type TiptapEditorHtmlProps = {
+  outputFormat: 'html';
+
+  value: string;
+  onChange?: (value: string) => void;
+};
+
+export type TiptapEditorProps<TDocument extends TiptapEditorDocument = TiptapEditorDocument> =
+  TiptapEditorBaseProps & (TiptapEditorJsonProps<TDocument> | TiptapEditorHtmlProps);
 
 const DEFAULT_TOOLBAR_OPTIONS: Required<TiptapEditorToolbarOptions> = {
   undoRedo: true,
@@ -116,7 +136,7 @@ function getSafeLinkHref(value: string): string | null {
   return null;
 }
 
-function serializeContent(value: unknown) {
+function serializeContent(value: unknown): string {
   try {
     return JSON.stringify(value);
   } catch {
@@ -124,31 +144,55 @@ function serializeContent(value: unknown) {
   }
 }
 
+function getEditorHtml(editor: Editor): string {
+  if (editor.isEmpty) {
+    return '';
+  }
+
+  return editor.getHTML();
+}
+
 export function TiptapEditor<TDocument extends TiptapEditorDocument = TiptapEditorDocument>({
   id,
   label,
   helperText,
   error,
+
+  outputFormat = 'json',
   value,
   onChange,
+
   disabled = false,
   dir = 'rtl',
+
   placeholder = 'شروع به نوشتن کنید',
   ariaLabel = 'ویرایشگر متن',
+
+  'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
+
   className,
   contentClassName,
   minHeightClassName = 'min-h-[280px]',
+
   toolbar = {},
   headingLevels = [2, 3],
+
   extensions = [],
+
   showCharacterCount = false,
   characterCountLocale = 'fa-IR',
   characterCountLabel = 'کاراکتر',
+
   linkPromptLabel = 'آدرس لینک را وارد کنید',
   invalidLinkMessage = 'آدرس لینک معتبر نیست',
+
   onRequestLink,
+
   onFocus,
   onBlur,
+
   onEditorReady,
 }: TiptapEditorProps<TDocument>) {
   const generatedId = useId();
@@ -156,21 +200,36 @@ export function TiptapEditor<TDocument extends TiptapEditorDocument = TiptapEdit
   const editorId = id ?? `tiptap-editor-${generatedId}`;
 
   const helperTextId = `${editorId}-helper`;
-  const errorId = `${editorId}-error`;
-  const labelId = `${editorId}-label`;
 
-  const describedBy = [helperText ? helperTextId : null, error ? errorId : null]
+  const errorId = `${editorId}-error`;
+
+  const internalLabelId = `${editorId}-label`;
+
+  const resolvedLabelledBy = ariaLabelledBy || (label ? internalLabelId : undefined);
+
+  const resolvedDescribedBy = [
+    ariaDescribedBy,
+    helperText ? helperTextId : null,
+    error ? errorId : null,
+  ]
     .filter(Boolean)
     .join(' ');
+
+  const resolvedAriaInvalid = ariaInvalid === true || ariaInvalid === 'true' || Boolean(error);
 
   const [, setToolbarVersion] = useState(0);
 
   const [linkError, setLinkError] = useState<string | null>(null);
 
   const onChangeRef = useRef(onChange);
+
   const onFocusRef = useRef(onFocus);
+
   const onBlurRef = useRef(onBlur);
+
   const onEditorReadyRef = useRef(onEditorReady);
+
+  const outputFormatRef = useRef<TiptapEditorOutputFormat>(outputFormat);
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -188,6 +247,10 @@ export function TiptapEditor<TDocument extends TiptapEditorDocument = TiptapEdit
     onEditorReadyRef.current = onEditorReady;
   }, [onEditorReady]);
 
+  useEffect(() => {
+    outputFormatRef.current = outputFormat;
+  }, [outputFormat]);
+
   const toolbarOptions = useMemo(
     () => ({
       ...DEFAULT_TOOLBAR_OPTIONS,
@@ -200,7 +263,7 @@ export function TiptapEditor<TDocument extends TiptapEditorDocument = TiptapEdit
 
   const resolvedHeadingLevels = useMemo(
     () => Array.from(new Set(headingLevels)).sort((first, second) => first - second),
-    [headingLevelsKey],
+    [headingLevelsKey, headingLevels],
   );
 
   const resolvedExtensions = useMemo(
@@ -210,17 +273,21 @@ export function TiptapEditor<TDocument extends TiptapEditorDocument = TiptapEdit
           levels: resolvedHeadingLevels,
         },
       }),
+
       Link.configure({
         openOnClick: false,
         autolink: true,
         linkOnPaste: true,
+
         HTMLAttributes: {
           rel: 'noopener noreferrer',
         },
       }),
+
       Placeholder.configure({
         placeholder,
       }),
+
       ...extensions,
     ],
     [extensions, placeholder, resolvedHeadingLevels],
@@ -228,19 +295,44 @@ export function TiptapEditor<TDocument extends TiptapEditorDocument = TiptapEdit
 
   const editor = useEditor({
     immediatelyRender: false,
+
     shouldRerenderOnTransaction: false,
 
-    content: value as JSONContent,
+    content: outputFormat === 'html' ? (value as string) : (value as JSONContent),
+
     editable: !disabled,
+
     extensions: resolvedExtensions,
 
     editorProps: {
       attributes: {
         id: editorId,
+
         dir,
+
         role: 'textbox',
+
         'aria-label': ariaLabel,
+
         'aria-multiline': 'true',
+
+        ...(resolvedLabelledBy
+          ? {
+              'aria-labelledby': resolvedLabelledBy,
+            }
+          : {}),
+
+        ...(resolvedDescribedBy
+          ? {
+              'aria-describedby': resolvedDescribedBy,
+            }
+          : {}),
+
+        ...(resolvedAriaInvalid
+          ? {
+              'aria-invalid': 'true',
+            }
+          : {}),
       },
     },
 
@@ -253,9 +345,15 @@ export function TiptapEditor<TDocument extends TiptapEditorDocument = TiptapEdit
     onUpdate: ({ editor: currentEditor }) => {
       setLinkError(null);
 
-      const document = currentEditor.getJSON() as unknown as TDocument;
+      if (outputFormatRef.current === 'html') {
+        const html = getEditorHtml(currentEditor);
 
-      onChangeRef.current?.(document);
+        (onChangeRef.current as ((value: string) => void) | undefined)?.(html);
+      } else {
+        const document = currentEditor.getJSON() as unknown as TDocument;
+
+        (onChangeRef.current as ((value: TDocument) => void) | undefined)?.(document);
+      }
 
       setToolbarVersion((current) => current + 1);
     },
@@ -277,25 +375,34 @@ export function TiptapEditor<TDocument extends TiptapEditorDocument = TiptapEdit
     },
   });
 
-  const serializedIncomingValue = useMemo(() => serializeContent(value), [value]);
+  const serializedIncomingValue = useMemo(() => {
+    if (outputFormat === 'html') {
+      return String(value ?? '');
+    }
+
+    return serializeContent(value);
+  }, [outputFormat, value]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
       return;
     }
 
-    const serializedEditorValue = serializeContent(editor.getJSON());
+    const serializedEditorValue =
+      outputFormat === 'html' ? getEditorHtml(editor) : serializeContent(editor.getJSON());
 
     if (serializedEditorValue === serializedIncomingValue) {
       return;
     }
 
-    editor.commands.setContent(value as JSONContent, {
+    const nextContent = outputFormat === 'html' ? (value as string) : (value as JSONContent);
+
+    editor.commands.setContent(nextContent, {
       emitUpdate: false,
     });
 
     setToolbarVersion((current) => current + 1);
-  }, [editor, serializedIncomingValue, value]);
+  }, [editor, outputFormat, serializedIncomingValue, value]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
@@ -328,6 +435,7 @@ export function TiptapEditor<TDocument extends TiptapEditorDocument = TiptapEdit
 
     if (href === null) {
       setLinkError(invalidLinkMessage);
+
       return;
     }
 
@@ -339,7 +447,14 @@ export function TiptapEditor<TDocument extends TiptapEditorDocument = TiptapEdit
       return;
     }
 
-    editor.chain().focus().extendMarkRange('link').setLink({ href }).run();
+    editor
+      .chain()
+      .focus()
+      .extendMarkRange('link')
+      .setLink({
+        href,
+      })
+      .run();
   }
 
   const showToolbar = toolbar !== false;
@@ -348,7 +463,7 @@ export function TiptapEditor<TDocument extends TiptapEditorDocument = TiptapEdit
     <div className={cn('space-y-1.5', className)}>
       {label ? (
         <label
-          id={labelId}
+          id={internalLabelId}
           htmlFor={editorId}
           className='block text-sm font-semibold text-foreground'
         >
@@ -358,14 +473,16 @@ export function TiptapEditor<TDocument extends TiptapEditorDocument = TiptapEdit
 
       <div
         role='group'
-        aria-labelledby={label ? labelId : undefined}
-        aria-describedby={describedBy || undefined}
-        aria-invalid={error ? 'true' : undefined}
+        aria-labelledby={resolvedLabelledBy}
+        aria-describedby={resolvedDescribedBy || undefined}
+        aria-invalid={resolvedAriaInvalid ? 'true' : undefined}
         className={cn(
           'overflow-hidden rounded-card border bg-background transition-colors',
-          error
+
+          error || resolvedAriaInvalid
             ? 'border-danger'
             : 'border-border focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/15',
+
           disabled && 'opacity-60',
         )}
       >
@@ -554,17 +671,29 @@ export function TiptapEditor<TDocument extends TiptapEditorDocument = TiptapEdit
             editor={editor}
             className={cn(
               'h-full text-sm leading-8 text-foreground',
+
               '[&_.ProseMirror]:min-h-full [&_.ProseMirror]:px-4 [&_.ProseMirror]:py-5 [&_.ProseMirror]:outline-none',
+
               '[&_.ProseMirror_h1]:mt-8 [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-extrabold',
+
               '[&_.ProseMirror_h2]:mt-8 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-extrabold',
+
               '[&_.ProseMirror_h3]:mt-6 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-bold',
+
               '[&_.ProseMirror_h4]:mt-5 [&_.ProseMirror_h4]:text-base [&_.ProseMirror_h4]:font-bold',
+
               '[&_.ProseMirror_p]:my-3',
+
               '[&_.ProseMirror_ul]:my-4 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pe-6',
+
               '[&_.ProseMirror_ol]:my-4 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pe-6',
+
               '[&_.ProseMirror_blockquote]:my-5 [&_.ProseMirror_blockquote]:border-s-4 [&_.ProseMirror_blockquote]:border-brand [&_.ProseMirror_blockquote]:ps-4 [&_.ProseMirror_blockquote]:text-foreground-secondary',
+
               '[&_.ProseMirror_a]:text-brand [&_.ProseMirror_a]:underline',
+
               '[&_.is-editor-empty:first-child::before]:pointer-events-none [&_.is-editor-empty:first-child::before]:float-right [&_.is-editor-empty:first-child::before]:h-0 [&_.is-editor-empty:first-child::before]:text-foreground-muted [&_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
+
               disabled && 'cursor-not-allowed [&_.ProseMirror]:cursor-not-allowed',
             )}
           />
@@ -629,9 +758,11 @@ function ToolbarButton({
       onClick={onClick}
       className={cn(
         'grid size-8 place-items-center rounded-control transition-colors',
+
         pressed
           ? 'bg-brand text-brand-foreground'
           : 'text-foreground-secondary hover:bg-background hover:text-foreground',
+
         disabled &&
           'cursor-not-allowed opacity-40 hover:bg-transparent hover:text-foreground-secondary',
       )}

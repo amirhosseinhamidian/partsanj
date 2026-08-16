@@ -776,9 +776,12 @@ export function StorefrontProductDetailPageClient({
                 <div className='relative overflow-hidden rounded-control border border-border bg-surface-muted/60 p-5 sm:p-6'>
                   <span className='absolute inset-y-0 start-0 w-1 bg-brand' />
 
-                  <p className='pe-2 text-sm leading-8 whitespace-pre-line text-foreground-secondary sm:text-[15px]'>
-                    {product.description}
-                  </p>
+                  <div
+                    className='product-rich-content text-sm leading-8 text-foreground-secondary'
+                    dangerouslySetInnerHTML={{
+                      __html: product.description,
+                    }}
+                  />
                 </div>
               </div>
             </section>
@@ -835,14 +838,14 @@ export function StorefrontProductDetailPageClient({
         </div>
 
         <aside className='space-y-6'>
-          <section className='rounded-card border border-border bg-surface p-5'>
-            <div className='flex items-center gap-2'>
-              <Code2 className='size-5 text-brand' />
+          {product.codes.length > 0 ? (
+            <section className='rounded-card border border-border bg-surface p-5'>
+              <div className='flex items-center gap-2'>
+                <Code2 className='size-5 text-brand' />
 
-              <h2 className='text-base font-extrabold text-foreground'>کدهای محصول</h2>
-            </div>
+                <h2 className='text-base font-extrabold text-foreground'>کدهای محصول</h2>
+              </div>
 
-            {product.codes.length ? (
               <div className='mt-4 space-y-3'>
                 {product.codes.map((code) => (
                   <div
@@ -862,10 +865,8 @@ export function StorefrontProductDetailPageClient({
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className='mt-4 text-sm text-foreground-muted'>کدی برای این محصول ثبت نشده است</p>
-            )}
-          </section>
+            </section>
+          ) : null}
 
           <section className='rounded-card border border-border bg-surface p-5'>
             <div className='flex items-center gap-2'>

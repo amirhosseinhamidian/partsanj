@@ -27,6 +27,7 @@ import { SortableImageList, type SortableImageItem } from '@/components/ui/sorta
 import { JalaliDatePicker } from '@/components/ui/jalali-date-picker';
 import { toPersianDigits } from '@/lib/utils/digits';
 import { AdminSingleImageUploadField } from '../../uploads/admin-single-image-upload-field';
+import { TiptapEditor } from '@/components/ui/tiptap-editor';
 
 const MAX_CODES = 20;
 const MAX_IMAGES = 10;
@@ -1090,20 +1091,24 @@ export function ProductEditorForm({
                 className='md:col-span-2'
               >
                 {({ id, labelId, describedBy, invalid }) => (
-                  <Textarea
+                  <TiptapEditor
+                    outputFormat='html'
                     id={id}
+                    label='متن توضیحات محصول'
                     aria-labelledby={labelId}
                     aria-describedby={describedBy}
                     aria-invalid={invalid}
-                    disabled={isSaving}
-                    maxLength={20000}
-                    rows={8}
                     value={values.description}
-                    onChange={(event) => setField('description', event.target.value)}
+                    disabled={isSaving}
                     placeholder={`محصول را به زبان طبیعی معرفی کنید.
 کاربرد اصلی قطعه و وظیفه آن را توضیح دهید.
 خودروها یا موتورهای سازگار و نکات مهم انتخاب قطعه را ذکر کنید.
 در صورت کاربرد، علائم خرابی و نکات نصب یا تعویض را توضیح دهید.`}
+                    minHeightClassName='min-h-[380px]'
+                    headingLevels={[2, 3]}
+                    showCharacterCount
+                    characterCountLocale='fa-IR'
+                    onChange={(description) => setField('description', description)}
                   />
                 )}
               </FormField>
