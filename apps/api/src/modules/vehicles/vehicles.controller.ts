@@ -32,6 +32,27 @@ export class VehiclesController {
     return this.vehiclesService.findActiveModelsByMakeSlug(params.slug);
   }
 
+  @Get('models')
+  @ApiOperation({
+    summary: 'List active vehicle models',
+  })
+  @ApiOkResponse()
+  findModels() {
+    return this.vehiclesService.findActiveModels();
+  }
+
+  @Get('models/:slug')
+  @ApiOperation({
+    summary: 'Get an active vehicle model landing page data',
+  })
+  @ApiOkResponse()
+  @ApiNotFoundResponse({
+    description: 'Vehicle model does not exist or is inactive',
+  })
+  findModelBySlug(@Param() params: VehicleSlugParamDto) {
+    return this.vehiclesService.findActiveModelBySlug(params.slug);
+  }
+
   @Get('models/:slug/variants')
   @ApiOperation({
     summary: 'List active variants for an active vehicle model',

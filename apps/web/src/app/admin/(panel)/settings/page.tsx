@@ -4,7 +4,7 @@ import type { SiteSettings } from '@/lib/admin/settings/site-settings.types';
 const DEFAULT_SITE_SETTINGS: SiteSettings = {
   siteName: 'پارت‌سنج',
   siteTagline: 'انتخاب مطمئن قطعات خودرو',
-  siteBaseUrl: 'https://partsanj.com',
+  siteBaseUrl: 'https://partsanj.ir',
 
   logoLightUrl: null,
   logoDarkUrl: null,

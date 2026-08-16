@@ -11,9 +11,15 @@ import {
   Matches,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
 
-import { normalizeNullableUrl, normalizeSlug, trimText } from './catalog-admin.dto.utils.js';
+import {
+  normalizeNullableText,
+  normalizeNullableUrl,
+  normalizeSlug,
+  trimText,
+} from './catalog-admin.dto.utils.js';
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -42,6 +48,24 @@ export class UpdateCategoryDto {
   @MaxLength(120)
   slug?: string;
 
+  /*
+   * Page content
+   */
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'انواع قطعات برقی خودرو شامل سنسورها، وایر شمع، رگولاتور دینام و سایر قطعات مرتبط.',
+  })
+  @Transform(({ value }) => normalizeNullableText(value), {
+    toClassOnly: true,
+  })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @IsString()
+  @MaxLength(20000)
+  description?: string | null;
+
+  /*
+   * Category image
+   */
   @ApiPropertyOptional({
     nullable: true,
     example: 'https://cdn.partsanj.ir/categories/car-socket.webp',
@@ -62,29 +86,127 @@ export class UpdateCategoryDto {
     nullable: true,
     example: 'سوکت برق خودرو',
   })
-  @IsOptional()
-  @Transform(
-    ({ value }) => {
-      if (value === null) {
-        return null;
-      }
-
-      if (typeof value !== 'string') {
-        return value;
-      }
-
-      const normalizedValue = value.trim();
-
-      return normalizedValue || null;
-    },
-    {
-      toClassOnly: true,
-    },
-  )
+  @Transform(({ value }) => normalizeNullableText(value), {
+    toClassOnly: true,
+  })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
   @IsString()
   @MaxLength(255)
   imageAlt?: string | null;
 
+  /*
+   * SEO
+   */
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'خرید قطعات برقی خودرو | پارت‌سنج',
+    maxLength: 120,
+  })
+  @Transform(({ value }) => normalizeNullableText(value), {
+    toClassOnly: true,
+  })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @IsString()
+  @MaxLength(120)
+  seoTitle?: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'خرید انواع قطعات برقی خودرو با امکان بررسی مشخصات، سازگاری با خودرو و مشاهده قیمت.',
+    maxLength: 320,
+  })
+  @Transform(({ value }) => normalizeNullableText(value), {
+    toClassOnly: true,
+  })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @IsString()
+  @MaxLength(320)
+  seoDescription?: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'https://partsanj.ir/categories/electrical-parts',
+    maxLength: 2048,
+  })
+  @Transform(({ value }) => normalizeNullableText(value), {
+    toClassOnly: true,
+  })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @IsUrl({
+    protocols: ['http', 'https'],
+    require_protocol: true,
+  })
+  @MaxLength(2048)
+  canonicalUrl?: string | null;
+
+  @ApiPropertyOptional({
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  noIndex?: boolean;
+
+  /*
+   * Open Graph
+   */
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'خرید قطعات برقی خودرو',
+    maxLength: 160,
+  })
+  @Transform(({ value }) => normalizeNullableText(value), {
+    toClassOnly: true,
+  })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @IsString()
+  @MaxLength(160)
+  openGraphTitle?: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'مشاهده و خرید انواع قطعات برقی خودرو در پارت‌سنج.',
+    maxLength: 500,
+  })
+  @Transform(({ value }) => normalizeNullableText(value), {
+    toClassOnly: true,
+  })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @IsString()
+  @MaxLength(500)
+  openGraphDescription?: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'https://cdn.partsanj.ir/categories/electrical-parts-og.webp',
+    maxLength: 2048,
+  })
+  @Transform(({ value }) => normalizeNullableText(value), {
+    toClassOnly: true,
+  })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @IsUrl({
+    protocols: ['http', 'https'],
+    require_protocol: true,
+  })
+  @MaxLength(2048)
+  openGraphImageUrl?: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'انواع قطعات برقی خودرو در پارت‌سنج',
+    maxLength: 255,
+  })
+  @Transform(({ value }) => normalizeNullableText(value), {
+    toClassOnly: true,
+  })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @IsString()
+  @MaxLength(255)
+  openGraphImageAlt?: string | null;
+
+  /*
+   * Storefront options
+   */
   @ApiPropertyOptional({
     example: true,
     description: 'Whether this category should be displayed on the storefront home page',

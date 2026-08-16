@@ -9,7 +9,7 @@ import type {
 const FALLBACK_SITE_SETTINGS: StorefrontSiteSettings = {
   siteName: 'پارت‌سنج',
   siteTagline: 'انتخاب مطمئن قطعات خودرو',
-  siteBaseUrl: 'https://partsanj.com',
+  siteBaseUrl: 'https://partsanj.ir',
 
   logoLightUrl: null,
   logoDarkUrl: null,

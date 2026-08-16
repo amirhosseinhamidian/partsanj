@@ -45,6 +45,15 @@ import { ProductCardPrice } from './product-card-price';
 
 const PRODUCTS_PAGE_SIZE = 24;
 
+type StorefrontProductsPageClientProps = {
+  fixedCategorySlug?: string;
+  initialResult?: StorefrontProductsResponse | null;
+  showHeader?: boolean;
+  showCategoryFilter?: boolean;
+  fixedVehicleModelSlug?: string;
+  showVehicleFilter?: boolean;
+};
+
 type UrlPatch = Record<string, string | null>;
 
 type ProductToolsPanel = 'vehicle' | 'filters' | null;
@@ -180,12 +189,25 @@ function ProductCard({
       </div>
 
       <div className='flex flex-1 flex-col p-4'>
-        <div className='flex flex-wrap items-center justify-between gap-2'>
+        <div className='flex flex-col flex-nowrap items-start gap-2'>
           <Badge variant={getStockStatusVariant(product.stockStatus)} size='sm' dot>
             {getStockStatusLabel(product.stockStatus)}
           </Badge>
 
-          <span className='text-xs text-foreground-muted'>{product.brand.name}</span>
+          <div className='flex min-w-0 items-center gap-1.5 text-xs'>
+            <Link
+              href={`/categories/${encodeURIComponent(product.category.slug)}`}
+              className='max-w-32 truncate font-semibold text-foreground-secondary transition-colors hover:text-brand'
+            >
+              {product.category.name}
+            </Link>
+
+            <span aria-hidden='true' className='text-foreground-muted'>
+              •
+            </span>
+
+            <span className='max-w-28 truncate text-foreground-muted'>{product.brand.name}</span>
+          </div>
         </div>
 
         <h2 className='mt-3 line-clamp-2 min-h-12 text-base leading-6 font-bold text-foreground'>
@@ -200,12 +222,12 @@ function ProductCard({
           <div className='min-h-10' />
         )}
 
-        <div className='mt-4 flex flex-1 flex-col border-t border-border pt-4'>
+        <div className='mt-4 flex flex-1 flex-col border-t border-border pt-2'>
           <ProductCardPrice product={product} variant='product-list' />
 
           <Link
             href={buildProductHref(product.slug, vehicleContext)}
-            className='mt-auto block pt-5'
+            className='mt-auto block pt-2'
           >
             <Button fullWidth iconEnd={<ChevronLeft />}>
               مشاهده جزئیات قطعه
@@ -232,7 +254,14 @@ function ProductCardSkeleton() {
   );
 }
 
-export function StorefrontProductsPageClient() {
+export function StorefrontProductsPageClient({
+  fixedCategorySlug,
+  fixedVehicleModelSlug,
+  initialResult = null,
+  showHeader = true,
+  showCategoryFilter = true,
+  showVehicleFilter = true,
+}: StorefrontProductsPageClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -240,7 +269,8 @@ export function StorefrontProductsPageClient() {
 
   const q = searchParams.get('q') ?? '';
   const brand = searchParams.get('brand') ?? '';
-  const category = searchParams.get('category') ?? '';
+  const urlCategory = searchParams.get('category') ?? '';
+  const category = fixedCategorySlug?.trim() || urlCategory;
   const stockStatus = (searchParams.get('stockStatus') as StorefrontStockStatus | null) ?? '';
   const vehicleVariantId = searchParams.get('vehicleVariantId') ?? '';
   const vehicleMake = searchParams.get('vehicleMake') ?? '';
@@ -249,10 +279,10 @@ export function StorefrontProductsPageClient() {
 
   const [brands, setBrands] = useState<StorefrontBrand[]>([]);
   const [categories, setCategories] = useState<StorefrontCategory[]>([]);
-  const [result, setResult] = useState<StorefrontProductsResponse | null>(null);
+  const [result, setResult] = useState<StorefrontProductsResponse | null>(initialResult);
 
   const [isLoadingFilters, setIsLoadingFilters] = useState(true);
-  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(!initialResult);
 
   const [filtersError, setFiltersError] = useState<string | null>(null);
   const [productsError, setProductsError] = useState<string | null>(null);
@@ -264,7 +294,9 @@ export function StorefrontProductsPageClient() {
   const [draftFilters, setDraftFilters] = useState<StorefrontProductsFilterDraft>(() => ({
     q,
     brand,
-    category,
+
+    category: showCategoryFilter ? fixedCategorySlug?.trim() || urlCategory : '',
+
     stockStatus,
   }));
 
@@ -282,6 +314,7 @@ export function StorefrontProductsPageClient() {
   } = useCustomerVehiclesForCompatibility();
 
   const latestProductsRequestId = useRef(0);
+  const shouldUseInitialResultRef = useRef(Boolean(initialResult));
 
   const replaceUrl = useCallback(
     (patch: UrlPatch) => {
@@ -320,40 +353,253 @@ export function StorefrontProductsPageClient() {
     [pathname, router, searchParamsString],
   );
 
+  const navigateToCategory = useCallback(
+    (categorySlug: string, filters: StorefrontProductsFilterDraft) => {
+      const normalizedCategorySlug = categorySlug.trim();
+
+      if (!normalizedCategorySlug) {
+        return;
+      }
+
+      const nextSearchParams = new URLSearchParams(searchParamsString);
+
+      /*
+       * Category دیگر query parameter نیست؛
+       * داخل pathname قرار می‌گیرد.
+       */
+      nextSearchParams.delete('category');
+
+      /*
+       * با تغییر دسته همیشه از صفحه اول
+       * شروع می‌کنیم.
+       */
+      nextSearchParams.delete('page');
+
+      /*
+       * Trackingهای URL قبلی را در لینک
+       * داخلی جدید تکثیر نمی‌کنیم.
+       */
+      for (const key of [...nextSearchParams.keys()]) {
+        const normalizedKey = key.trim().toLowerCase();
+
+        if (
+          normalizedKey.startsWith('utm_') ||
+          normalizedKey === 'gclid' ||
+          normalizedKey === 'fbclid' ||
+          normalizedKey === 'ref' ||
+          normalizedKey === 'source'
+        ) {
+          nextSearchParams.delete(key);
+        }
+      }
+
+      const qValue = filters.q.trim();
+
+      if (qValue) {
+        nextSearchParams.set('q', qValue);
+      } else {
+        nextSearchParams.delete('q');
+      }
+
+      if (filters.brand) {
+        nextSearchParams.set('brand', filters.brand);
+      } else {
+        nextSearchParams.delete('brand');
+      }
+
+      if (filters.stockStatus) {
+        nextSearchParams.set('stockStatus', filters.stockStatus);
+      } else {
+        nextSearchParams.delete('stockStatus');
+      }
+
+      const queryString = nextSearchParams.toString();
+
+      const categoryPath = `/categories/${encodeURIComponent(normalizedCategorySlug)}`;
+
+      const nextUrl = queryString ? `${categoryPath}?${queryString}` : categoryPath;
+
+      router.push(nextUrl);
+    },
+    [router, searchParamsString],
+  );
+
+  const getPaginationHref = useCallback(
+    (nextPage: number) => {
+      const nextSearchParams = new URLSearchParams(searchParamsString);
+
+      /*
+       * در صفحه /categories/[slug]
+       * دسته از pathname مشخص است و نباید
+       * دوباره ?category=... تولید شود.
+       */
+      if (fixedCategorySlug) {
+        nextSearchParams.delete('category');
+      }
+
+      /*
+       * در Vehicle Landing خود مدل خودرو داخل
+       * pathname مشخص است؛ پارامترهای انتخاب
+       * خودرو نباید دوباره در pagination تکثیر شوند.
+       */
+      if (fixedVehicleModelSlug) {
+        nextSearchParams.delete('vehicleModel');
+        nextSearchParams.delete('vehicleVariantId');
+        nextSearchParams.delete('vehicleMake');
+      }
+
+      /*
+       * Tracking params را در لینک‌های
+       * داخلی pagination تکثیر نمی‌کنیم.
+       */
+      for (const key of [...nextSearchParams.keys()]) {
+        const normalizedKey = key.trim().toLowerCase();
+
+        if (
+          normalizedKey.startsWith('utm_') ||
+          normalizedKey === 'gclid' ||
+          normalizedKey === 'fbclid' ||
+          normalizedKey === 'ref' ||
+          normalizedKey === 'source'
+        ) {
+          nextSearchParams.delete(key);
+        }
+      }
+
+      if (nextPage <= 1) {
+        nextSearchParams.delete('page');
+      } else {
+        nextSearchParams.set('page', String(nextPage));
+      }
+
+      const queryString = nextSearchParams.toString();
+
+      return queryString ? `${pathname}?${queryString}` : pathname;
+    },
+    [fixedCategorySlug, fixedVehicleModelSlug, pathname, searchParamsString],
+  );
+
   useEffect(() => {
     setDraftFilters({
       q,
       brand,
-      category,
+
+      category: showCategoryFilter ? fixedCategorySlug?.trim() || urlCategory : '',
+
       stockStatus,
     });
-  }, [q, brand, category, stockStatus]);
+  }, [q, brand, urlCategory, stockStatus, showCategoryFilter, fixedCategorySlug]);
 
   const applyFilters = useCallback(
     (nextDraft: StorefrontProductsFilterDraft = draftFilters) => {
       const normalizedDraft: StorefrontProductsFilterDraft = {
         ...nextDraft,
+
         q: nextDraft.q.trim(),
+
+        category: nextDraft.category.trim(),
       };
 
       setDraftFilters(normalizedDraft);
 
+      const selectedCategory = normalizedDraft.category;
+
+      /*
+       * اگر Category دیگری انتخاب شد،
+       * وارد Landing Page همان Category شو.
+       */
+      if (
+        showCategoryFilter &&
+        !fixedVehicleModelSlug &&
+        selectedCategory &&
+        selectedCategory !== fixedCategorySlug
+      ) {
+        navigateToCategory(selectedCategory, normalizedDraft);
+
+        return;
+      }
+
+      /*
+       * اگر روی Category Landing هستیم
+       * و کاربر "همه دسته‌بندی‌ها" را انتخاب کرد،
+       * باید به /products برگردیم.
+       */
+      if (showCategoryFilter && !fixedVehicleModelSlug && fixedCategorySlug && !selectedCategory) {
+        const nextSearchParams = new URLSearchParams();
+
+        if (normalizedDraft.q) {
+          nextSearchParams.set('q', normalizedDraft.q);
+        }
+
+        if (normalizedDraft.brand) {
+          nextSearchParams.set('brand', normalizedDraft.brand);
+        }
+
+        if (normalizedDraft.stockStatus) {
+          nextSearchParams.set('stockStatus', normalizedDraft.stockStatus);
+        }
+
+        if (vehicleVariantId) {
+          nextSearchParams.set('vehicleVariantId', vehicleVariantId);
+        }
+
+        if (vehicleMake) {
+          nextSearchParams.set('vehicleMake', vehicleMake);
+        }
+
+        if (vehicleModel) {
+          nextSearchParams.set('vehicleModel', vehicleModel);
+        }
+
+        const queryString = nextSearchParams.toString();
+
+        router.push(queryString ? `/products?${queryString}` : '/products');
+
+        return;
+      }
+
+      /*
+       * همان Category فعلی است؛
+       * فقط سایر فیلترها تغییر می‌کنند.
+       */
       replaceUrl({
         q: normalizedDraft.q || null,
+
         brand: normalizedDraft.brand || null,
-        category: normalizedDraft.category || null,
+
+        /*
+         * روی Vehicle Landing دسته‌بندی یک
+         * فیلتر ثانویه است و در query می‌ماند.
+         * روی Category Landing خود دسته در pathname است.
+         */
+        category: fixedVehicleModelSlug ? normalizedDraft.category || null : null,
+
         stockStatus: normalizedDraft.stockStatus || null,
+
         page: '1',
       });
     },
-    [draftFilters, replaceUrl],
+    [
+      draftFilters,
+      fixedCategorySlug,
+      fixedVehicleModelSlug,
+      navigateToCategory,
+      replaceUrl,
+      router,
+      showCategoryFilter,
+      vehicleMake,
+      vehicleModel,
+      vehicleVariantId,
+    ],
   );
 
   const clearAllFilters = useCallback(() => {
     setDraftFilters({
       q: '',
       brand: '',
-      category: '',
+
+      category: fixedCategorySlug?.trim() || '',
+
       stockStatus: '',
     });
 
@@ -362,14 +608,21 @@ export function StorefrontProductsPageClient() {
     replaceUrl({
       q: null,
       brand: null,
+
+      /*
+       * Category در pathname است.
+       */
       category: null,
+
       stockStatus: null,
+
       vehicleVariantId: null,
       vehicleMake: null,
       vehicleModel: null,
+
       page: null,
     });
-  }, [replaceUrl]);
+  }, [fixedCategorySlug, replaceUrl]);
 
   const toggleToolsPanel = useCallback((panel: ProductToolsPanelName) => {
     setOpenToolsPanel((current) => (current === panel ? null : panel));
@@ -410,8 +663,9 @@ export function StorefrontProductsPageClient() {
       const response = await storefrontCatalogApi.listProducts({
         q: q || undefined,
         brand: brand || undefined,
-        category: category || undefined,
-        vehicleVariantId: vehicleVariantId || undefined,
+        category: fixedCategorySlug || category || undefined,
+        vehicleModel: fixedVehicleModelSlug || undefined,
+        vehicleVariantId: fixedVehicleModelSlug ? undefined : vehicleVariantId || undefined,
         stockStatus: stockStatus || undefined,
         page,
         limit: PRODUCTS_PAGE_SIZE,
@@ -439,9 +693,24 @@ export function StorefrontProductsPageClient() {
         setIsLoadingProducts(false);
       }
     }
-  }, [brand, category, page, q, replaceUrl, stockStatus, vehicleVariantId]);
+  }, [
+    brand,
+    category,
+    fixedCategorySlug,
+    fixedVehicleModelSlug,
+    page,
+    q,
+    replaceUrl,
+    stockStatus,
+    vehicleVariantId,
+  ]);
 
   useEffect(() => {
+    if (shouldUseInitialResultRef.current) {
+      shouldUseInitialResultRef.current = false;
+      return;
+    }
+
     void loadProducts();
   }, [loadProducts]);
 
@@ -525,12 +794,21 @@ export function StorefrontProductsPageClient() {
     [replaceUrl],
   );
 
-  const catalogAppliedFilterCount = [q, brand, category, stockStatus].filter(Boolean).length;
+  const catalogAppliedFilterCount = [
+    q,
+    brand,
+    showCategoryFilter ? urlCategory : '',
+    stockStatus,
+  ].filter(Boolean).length;
 
-  const totalAppliedFilterCount = catalogAppliedFilterCount + (vehicleVariantId ? 1 : 0);
+  const hasAppliedVehicleVariantFilter =
+    showVehicleFilter && !fixedVehicleModelSlug && Boolean(vehicleVariantId);
+
+  const totalAppliedFilterCount =
+    catalogAppliedFilterCount + (hasAppliedVehicleVariantFilter ? 1 : 0);
 
   const productVehicleContext = useMemo<ProductVehicleContext | null>(() => {
-    if (!vehicleVariantId) {
+    if (fixedVehicleModelSlug || !vehicleVariantId) {
       return null;
     }
 
@@ -539,7 +817,7 @@ export function StorefrontProductsPageClient() {
       vehicleMake: vehicleMake || undefined,
       vehicleModel: vehicleModel || undefined,
     };
-  }, [vehicleMake, vehicleModel, vehicleVariantId]);
+  }, [fixedVehicleModelSlug, vehicleMake, vehicleModel, vehicleVariantId]);
 
   useEffect(() => {
     const storedSelection = readStorefrontVehicleSelection() ?? undefined;
@@ -565,46 +843,50 @@ export function StorefrontProductsPageClient() {
   return (
     <div className='mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8'>
       <div className='space-y-4'>
-        <header>
-          <p className='text-sm font-semibold text-brand'>فروشگاه پارت‌سنج</p>
+        {showHeader && !fixedCategorySlug && !fixedVehicleModelSlug ? (
+          <header>
+            <p className='text-sm font-semibold text-brand'>فروشگاه پارت‌سنج</p>
 
-          <h1 className='mt-1 text-3xl font-extrabold text-foreground sm:text-4xl'>
-            قطعات یدکی خودرو
-          </h1>
+            <h1 className='mt-1 text-3xl font-extrabold text-foreground sm:text-4xl'>
+              قطعات یدکی خودرو
+            </h1>
 
-          <p className='mt-3 max-w-2xl text-sm leading-7 text-foreground-secondary sm:text-base'>
-            قطعه مناسب خودروی خود را با فیلتر برند، دسته‌بندی، موجودی و سازگاری خودرو پیدا کنید
-          </p>
-        </header>
+            <p className='mt-3 max-w-2xl text-sm leading-7 text-foreground-secondary sm:text-base'>
+              قطعه مناسب خودروی خود را با فیلتر برند، دسته‌بندی، موجودی و سازگاری خودرو پیدا کنید
+            </p>
+          </header>
+        ) : null}
 
         <div className='sticky top-3 z-30'>
           <div className='flex flex-wrap gap-2'>
-            <Button
-              type='button'
-              variant='outline'
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                toggleToolsPanel('vehicle');
-              }}
-              iconStart={<CarFront className='size-4' />}
-              iconEnd={
-                <ChevronDown
-                  className={cn(
-                    'size-4 transition-transform',
-                    openToolsPanel === 'vehicle' && 'rotate-180',
-                  )}
-                />
-              }
-            >
-              <span>انتخاب خودرو</span>
-              {vehicleVariantId ? (
-                // <span className='rounded-full bg-white/20 px-1.5 py-0.5 text-[11px]'>فعال</span>
-                <Badge variant='danger' size='sm' dot className='mr-3'>
-                  فعال
-                </Badge>
-              ) : null}
-            </Button>
+            {showVehicleFilter ? (
+              <Button
+                type='button'
+                variant='outline'
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  toggleToolsPanel('vehicle');
+                }}
+                iconStart={<CarFront className='size-4' />}
+                iconEnd={
+                  <ChevronDown
+                    className={cn(
+                      'size-4 transition-transform',
+                      openToolsPanel === 'vehicle' && 'rotate-180',
+                    )}
+                  />
+                }
+              >
+                <span>انتخاب خودرو</span>
+
+                {hasAppliedVehicleVariantFilter ? (
+                  <Badge variant='danger' size='sm' dot className='mr-3'>
+                    فعال
+                  </Badge>
+                ) : null}
+              </Button>
+            ) : null}
 
             <Button
               type='button'
@@ -643,21 +925,23 @@ export function StorefrontProductsPageClient() {
           </div>
         </div>
 
-        <ExpandableProductsToolsPanel open={openToolsPanel === 'vehicle'}>
-          <StorefrontVehicleCompatibilityFilter
-            initialSelection={initialVehicleSelection}
-            hasExternalVehicleFilter={Boolean(vehicleVariantId)}
-            resetKey={vehicleResetKey}
-            savedVehicles={customerVehicles}
-            savedVehiclesLoading={isLoadingCustomerVehicles}
-            savedVehiclesError={customerVehiclesError}
-            isAuthenticated={isAuthenticated}
-            isSavingSelectedVehicle={isSavingSelectedVehicle}
-            saveSelectedVehicleError={saveSelectedVehicleError}
-            onSaveSelectedVehicle={saveSelectedVehicle}
-            onVehicleChange={handleVehicleChange}
-          />
-        </ExpandableProductsToolsPanel>
+        {showVehicleFilter ? (
+          <ExpandableProductsToolsPanel open={openToolsPanel === 'vehicle'}>
+            <StorefrontVehicleCompatibilityFilter
+              initialSelection={initialVehicleSelection}
+              hasExternalVehicleFilter={hasAppliedVehicleVariantFilter}
+              resetKey={vehicleResetKey}
+              savedVehicles={customerVehicles}
+              savedVehiclesLoading={isLoadingCustomerVehicles}
+              savedVehiclesError={customerVehiclesError}
+              isAuthenticated={isAuthenticated}
+              isSavingSelectedVehicle={isSavingSelectedVehicle}
+              saveSelectedVehicleError={saveSelectedVehicleError}
+              onSaveSelectedVehicle={saveSelectedVehicle}
+              onVehicleChange={handleVehicleChange}
+            />
+          </ExpandableProductsToolsPanel>
+        ) : null}
 
         <ExpandableProductsToolsPanel open={openToolsPanel === 'filters'}>
           <>
@@ -689,9 +973,10 @@ export function StorefrontProductsPageClient() {
               brandOptions={brandOptions}
               categoryOptions={categoryOptions}
               stockStatusOptions={stockStatusOptions}
+              showCategoryFilter={showCategoryFilter}
               loading={isLoadingProducts}
               optionsLoading={isLoadingFilters}
-              externalActiveFilterCount={vehicleVariantId ? 1 : 0}
+              externalActiveFilterCount={hasAppliedVehicleVariantFilter ? 1 : 0}
               onDraftChange={(patch) => {
                 setDraftFilters((current) => ({
                   ...current,
@@ -722,7 +1007,7 @@ export function StorefrontProductsPageClient() {
               </div>
             </div>
 
-            {vehicleVariantId ? (
+            {hasAppliedVehicleVariantFilter ? (
               <Badge variant='brand' startIcon={<Tag />}>
                 فیلتر سازگاری خودرو فعال است
               </Badge>
@@ -773,6 +1058,7 @@ export function StorefrontProductsPageClient() {
                 page={result.meta.page}
                 pageSize={result.meta.limit}
                 totalItems={result.meta.total}
+                getPageHref={getPaginationHref}
                 onPageChange={(nextPage) => {
                   replaceUrl({
                     page: nextPage === 1 ? null : String(nextPage),
@@ -789,7 +1075,9 @@ export function StorefrontProductsPageClient() {
               <h3 className='mt-4 text-lg font-bold text-foreground'>محصولی پیدا نشد</h3>
 
               <p className='mx-auto mt-2 max-w-md text-sm leading-6 text-foreground-secondary'>
-                فیلترها را تغییر دهید یا انتخاب خودرو را پاک کنید
+                {fixedVehicleModelSlug
+                  ? 'فیلترها را تغییر دهید؛ فعلاً محصولی با این شرایط برای این خودرو پیدا نشد'
+                  : 'فیلترها را تغییر دهید یا انتخاب خودرو را پاک کنید'}
               </p>
 
               {totalAppliedFilterCount > 0 ? (

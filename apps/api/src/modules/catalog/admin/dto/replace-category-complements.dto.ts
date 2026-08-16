@@ -1,0 +1,17 @@
+import { ApiProperty } from '@nestjs/swagger';
+import { ArrayMaxSize, ArrayUnique, IsArray, IsUUID } from 'class-validator';
+
+export class ReplaceCategoryComplementsDto {
+  @ApiProperty({
+    type: [String],
+    example: ['550e8400-e29b-41d4-a716-446655440000'],
+    description: 'Complete ordered list of complementary category IDs',
+  })
+  @IsArray()
+  @ArrayUnique()
+  @ArrayMaxSize(12)
+  @IsUUID('4', {
+    each: true,
+  })
+  categoryIds!: string[];
+}

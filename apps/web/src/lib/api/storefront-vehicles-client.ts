@@ -3,6 +3,8 @@ import type {
   StorefrontVehicleMakesResponse,
   StorefrontVehicleModelsResponse,
   StorefrontVehicleVariantsResponse,
+  StorefrontVehicleModelDetailResponse,
+  StorefrontVehicleModelsLandingResponse,
 } from '@/lib/storefront/vehicles/vehicle.types';
 
 const STOREFRONT_VEHICLES_API_PATH = '/api/vehicles';
@@ -23,6 +25,18 @@ export const storefrontVehiclesApi = {
   listVariantsByModelSlug(modelSlug: string): Promise<StorefrontVehicleVariantsResponse> {
     return requestStorefrontApi<StorefrontVehicleVariantsResponse>(
       `${STOREFRONT_VEHICLES_API_PATH}/models/${encodeURIComponent(modelSlug)}/variants`,
+    );
+  },
+
+  listModels(): Promise<StorefrontVehicleModelsLandingResponse> {
+    return requestStorefrontApi<StorefrontVehicleModelsLandingResponse>(
+      `${STOREFRONT_VEHICLES_API_PATH}/models`,
+    );
+  },
+
+  getModelBySlug(modelSlug: string): Promise<StorefrontVehicleModelDetailResponse> {
+    return requestStorefrontApi<StorefrontVehicleModelDetailResponse>(
+      `${STOREFRONT_VEHICLES_API_PATH}/models/${encodeURIComponent(modelSlug)}`,
     );
   },
 };

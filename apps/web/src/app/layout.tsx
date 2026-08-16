@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/components/providers/theme-provider';
 import { TooltipProvider } from '@/components/providers/tooltip-provider';
 import { StorefrontShell } from '@/components/storefront/layout/storefront-shell';
 import { getStorefrontSiteSettings } from '@/lib/storefront/settings/site-settings.server';
+import { StorefrontStructuredData } from '@/lib/storefront/seo/storefront-structured-data';
 
 import { vazirmatn } from './fonts';
 
@@ -103,6 +104,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang='fa' dir='rtl' suppressHydrationWarning>
       <body className={vazirmatn.className}>
+        {!settings.noIndexSite ? <StorefrontStructuredData settings={settings} /> : null}
         <ThemeProvider>
           <TooltipProvider>
             <ToastProvider>

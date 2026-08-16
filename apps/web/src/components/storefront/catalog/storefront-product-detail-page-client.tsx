@@ -40,9 +40,15 @@ import { useStorefrontCart } from '@/components/storefront/cart/storefront-cart-
 import { ProductPurchasePanel } from '@/components/storefront/catalog/product-purchase-panel';
 import { toPersianDigits } from '@/lib/utils/digits';
 import Image from 'next/image';
+import {
+  getRecommendationSessionId,
+  hasTrackedProductView,
+  markProductViewTracked,
+} from '@/lib/storefront/recommendations/recommendation-session';
 
 type StorefrontProductDetailPageClientProps = {
   slug: string;
+  initialProduct: StorefrontProductDetail;
 };
 
 type VehicleSelectionContext = {
@@ -392,6 +398,7 @@ function ProductCompatibilityStatus({
 
 export function StorefrontProductDetailPageClient({
   slug,
+  initialProduct,
 }: StorefrontProductDetailPageClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -401,9 +408,9 @@ export function StorefrontProductDetailPageClient({
 
   const [isCompatibilityDialogOpen, setIsCompatibilityDialogOpen] = useState(false);
 
-  const [product, setProduct] = useState<StorefrontProductDetail | null>(null);
+  const [product, setProduct] = useState<StorefrontProductDetail | null>(initialProduct);
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [loadError, setLoadError] = useState<ProductLoadError | null>(null);
 
@@ -515,8 +522,10 @@ export function StorefrontProductDetailPageClient({
   }, [slug]);
 
   useEffect(() => {
-    void loadProduct();
-  }, [loadProduct]);
+    setProduct(initialProduct);
+    setLoadError(null);
+    setIsLoading(false);
+  }, [initialProduct]);
 
   useEffect(() => {
     if (!selectionContext) {
@@ -561,6 +570,51 @@ export function StorefrontProductDetailPageClient({
       isCurrent = false;
     };
   }, [selectionContext]);
+
+  useEffect(() => {
+    if (!product) {
+      return;
+    }
+
+    const currentProduct = product;
+    const vehicleVariantId = selectionContext?.variantId;
+
+    let isCurrent = true;
+
+    async function trackView() {
+      const sessionId = getRecommendationSessionId();
+
+      if (hasTrackedProductView(sessionId, currentProduct.id)) {
+        return;
+      }
+
+      try {
+        await storefrontCatalogApi.trackProductView(currentProduct.slug, {
+          sessionId,
+
+          ...(vehicleVariantId
+            ? {
+                vehicleVariantId,
+              }
+            : {}),
+        });
+
+        if (isCurrent) {
+          markProductViewTracked(sessionId, currentProduct.id);
+        }
+      } catch {
+        /*
+         * Analytics نباید UX صفحه محصول را خراب کند.
+         */
+      }
+    }
+
+    void trackView();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [product, selectionContext?.variantId]);
 
   const specificationEntries = useMemo(
     () => toSpecificationEntries(product?.specifications),
@@ -624,7 +678,7 @@ export function StorefrontProductDetailPageClient({
         <ChevronLeft className='size-4' />
 
         <Link
-          href={`/products?category=${encodeURIComponent(product.category.slug)}`}
+          href={`/categories/${encodeURIComponent(product.category.slug)}`}
           className='transition-colors hover:text-brand'
         >
           {product.category.name}
@@ -667,7 +721,12 @@ export function StorefrontProductDetailPageClient({
             <div>
               <p className='text-xs font-semibold text-foreground-muted'>دسته‌بندی</p>
 
-              <p className='mt-1 font-bold text-foreground'>{product.category.name}</p>
+              <Link
+                href={`/categories/${encodeURIComponent(product.category.slug)}`}
+                className='mt-1 inline-block font-bold text-foreground transition-colors hover:text-brand'
+              >
+                {product.category.name}
+              </Link>
             </div>
 
             <div>
@@ -704,9 +763,7 @@ export function StorefrontProductDetailPageClient({
                   </span>
 
                   <div>
-                    <h2 className='text-lg font-extrabold text-foreground'>
-                      توضیحات و معرفی محصول
-                    </h2>
+                    <h2 className='text-lg font-extrabold text-foreground'>معرفی {product.name}</h2>
 
                     <p className='mt-1 text-sm text-foreground-secondary'>
                       اطلاعات تکمیلی، کاربردها و نکات مهم این قطعه
@@ -814,7 +871,9 @@ export function StorefrontProductDetailPageClient({
             <div className='flex items-center gap-2'>
               <Tag className='size-5 text-brand' />
 
-              <h2 className='text-base font-extrabold text-foreground'>خودروهای سازگار</h2>
+              <h2 className='text-base font-extrabold text-foreground'>
+                خودروهای سازگار با این قطعه
+              </h2>
             </div>
 
             {product.compatibilities.length ? (
@@ -836,7 +895,7 @@ export function StorefrontProductDetailPageClient({
                             {modelImageUrl ? (
                               <Image
                                 src={modelImageUrl}
-                                alt={`تصویر ${model.name}`}
+                                alt={`تصویر ${model.make.name} ${model.name}`}
                                 fill
                                 sizes='48px'
                                 className='object-contain p-1.5'
@@ -849,8 +908,14 @@ export function StorefrontProductDetailPageClient({
                           <div className='min-w-0'>
                             {/* فقط مدل + تیپ، بدون برند */}
                             <p className='text-sm leading-5 font-bold text-foreground'>
-                              {model.name}
-                              {variant.name ? ` ${variant.name}` : ''}
+                              <Link
+                                href={`/vehicles/${encodeURIComponent(model.slug)}`}
+                                className='transition-colors hover:text-brand hover:underline'
+                              >
+                                {model.make.name} {model.name}
+                              </Link>
+
+                              {variant.name ? <span> {variant.name}</span> : null}
                             </p>
 
                             <p className='mt-1 text-xs leading-5 text-foreground-secondary'>

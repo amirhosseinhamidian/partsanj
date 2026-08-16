@@ -1,10 +1,13 @@
+import { revalidatePath, revalidateTag } from 'next/cache';
+import { NextResponse } from 'next/server';
+
 import type {
   SiteSettingsResponse,
   UpdateSiteSettingsPayload,
 } from '@/lib/admin/settings/site-settings.types';
+
 import { apiErrorResponse } from '@/lib/api/route-response';
 import { adminNestApi } from '@/lib/server/admin-api';
-import { NextResponse } from 'next/server';
 
 const ADMIN_SETTINGS_API_PATH = '/api/v1/admin/settings';
 
@@ -30,6 +33,21 @@ export async function PUT(request: Request) {
       method: 'PUT',
       body: JSON.stringify(body),
     });
+
+    /*
+     * تنظیمات عمومی سایت در بخش‌های مختلف Storefront
+     * با tag زیر cache شده‌اند.
+     */
+    revalidateTag('site-settings', {
+      expire: 0,
+    });
+
+    /*
+     * تغییر noIndexSite مستقیماً روی sitemap اثر دارد.
+     * بنابراین sitemap نیز باید در درخواست بعدی
+     * دوباره ساخته شود.
+     */
+    revalidatePath('/sitemap.xml');
 
     return NextResponse.json(result);
   } catch (error) {

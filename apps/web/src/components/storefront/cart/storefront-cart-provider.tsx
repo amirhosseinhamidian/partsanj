@@ -18,6 +18,7 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react';
+import { getRecommendationSessionId } from '@/lib/storefront/recommendations/recommendation-session';
 
 type StorefrontCartContextValue = {
   cart: StorefrontCart | null;
@@ -85,7 +86,13 @@ export function StorefrontCartProvider({ children }: PropsWithChildren) {
       setIsMutating(true);
 
       try {
-        const response = await storefrontCartApi.addItem(input);
+        const recommendationSessionId = getRecommendationSessionId();
+
+        const response = await storefrontCartApi.addItem({
+          ...input,
+
+          recommendationSessionId,
+        });
 
         setCart(response.data);
 

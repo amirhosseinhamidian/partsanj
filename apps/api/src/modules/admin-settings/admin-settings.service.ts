@@ -86,7 +86,7 @@ const defaultSiteSettingsData = {
   id: SITE_SETTINGS_ID,
   siteName: 'پارت‌سنج',
   siteTagline: 'انتخاب مطمئن قطعات خودرو',
-  siteBaseUrl: 'https://partsanj.com',
+  siteBaseUrl: 'https://partsanj.ir',
 
   logoLightUrl: null,
   logoDarkUrl: null,

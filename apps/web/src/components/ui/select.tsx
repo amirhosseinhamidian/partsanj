@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils/cn';
 import * as SelectPrimitive from '@radix-ui/react-select';
-import { Check, ChevronDown, type LucideIcon } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
 import { forwardRef, useId, type ReactNode } from 'react';
 import { useFloatingPortalContainer } from '@/components/ui/floating-portal-context';
 
@@ -20,6 +20,12 @@ export type SelectOption = {
 
   description?: string;
   meta?: ReactNode;
+
+  /** Optional image shown only inside dropdown options. */
+  imageUrl?: string | null;
+  imageAlt?: string;
+
+  /** Optional visual shown only inside dropdown options when imageUrl is absent. */
   icon?: ReactNode;
   disabled?: boolean;
 
@@ -92,7 +98,6 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(function Select
   const portalContainer = useFloatingPortalContainer();
 
   const describedBy = [ariaDescribedBy, messageId].filter(Boolean).join(' ') || undefined;
-  const selectedOption = options.find((option) => option.value === value);
 
   return (
     <div dir='rtl' className={cn('w-full space-y-1.5', wrapperClassName)}>
@@ -146,12 +151,9 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(function Select
             </span>
           ) : null}
 
-          <div className='flex min-w-0 flex-1 items-center gap-2'>
-            {selectedOption?.icon ? <span className='shrink-0'>{selectedOption.icon}</span> : null}
+          <div className='min-w-0 flex-1 truncate'>
             <SelectPrimitive.Value placeholder={placeholder} />
           </div>
-
-          <SelectPrimitive.Value placeholder={placeholder} />
 
           <SelectPrimitive.Icon asChild>
             <ChevronDown className='ms-auto size-4 shrink-0 text-foreground-muted transition-transform duration-200 group-data-[state=open]:rotate-180' />
@@ -174,50 +176,67 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(function Select
             )}
           >
             <SelectPrimitive.Viewport className='max-h-72 touch-pan-y overflow-y-auto overscroll-y-contain p-1'>
-              {options.map((option) => (
-                <SelectPrimitive.Item
-                  key={option.value}
-                  value={option.value}
-                  disabled={option.disabled}
-                  textValue={option.label}
-                  className={cn(
-                    'relative flex cursor-pointer items-center gap-3 rounded-[10px] px-3 py-2.5 pe-10 text-right text-sm text-foreground outline-none select-none',
-                    'transition-colors',
-                    'data-highlighted:bg-surface-muted',
-                    'data-[state=checked]:bg-brand-soft data-[state=checked]:text-brand',
-                    'data-disabled:pointer-events-none data-disabled:opacity-45',
-                    optionClassName,
-                    option.className,
-                  )}
-                >
-                  {option.icon ? (
-                    <span
-                      aria-hidden='true'
-                      className='grid size-8 shrink-0 place-items-center rounded-[9px] bg-surface-muted text-foreground-secondary [&>svg]:size-4'
-                    >
-                      {option.icon}
-                    </span>
-                  ) : null}
+              {options.map((option) => {
+                const imageUrl = option.imageUrl?.trim();
 
-                  <div className='min-w-0 flex-1'>
-                    <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
-
-                    {option.description ? (
-                      <p className='mt-0.5 truncate text-xs text-foreground-muted'>
-                        {option.description}
-                      </p>
+                return (
+                  <SelectPrimitive.Item
+                    key={option.value}
+                    value={option.value}
+                    disabled={option.disabled}
+                    textValue={option.label}
+                    className={cn(
+                      'relative flex cursor-pointer items-center gap-3 rounded-[10px] px-3 py-2.5 pe-10 text-right text-sm text-foreground outline-none select-none',
+                      'transition-colors',
+                      'data-highlighted:bg-surface-muted',
+                      'data-[state=checked]:bg-brand-soft data-[state=checked]:text-brand',
+                      'data-disabled:pointer-events-none data-disabled:opacity-45',
+                      optionClassName,
+                      option.className,
+                    )}
+                  >
+                    {imageUrl ? (
+                      <span
+                        aria-hidden='true'
+                        className='grid size-8 shrink-0 place-items-center overflow-hidden rounded-[9px] border border-border bg-surface-muted'
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={imageUrl}
+                          alt={option.imageAlt?.trim() || option.label}
+                          loading='lazy'
+                          className='size-full object-contain p-1'
+                        />
+                      </span>
+                    ) : option.icon ? (
+                      <span
+                        aria-hidden='true'
+                        className='grid size-8 shrink-0 place-items-center rounded-[9px] bg-surface-muted text-foreground-secondary [&>svg]:size-4'
+                      >
+                        {option.icon}
+                      </span>
                     ) : null}
-                  </div>
 
-                  {option.meta ? (
-                    <span className='shrink-0 text-xs text-foreground-muted'>{option.meta}</span>
-                  ) : null}
+                    <div className='min-w-0 flex-1'>
+                      <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
 
-                  <SelectPrimitive.ItemIndicator className='absolute inset-e-3 grid size-5 place-items-center text-brand'>
-                    <Check className='size-4' />
-                  </SelectPrimitive.ItemIndicator>
-                </SelectPrimitive.Item>
-              ))}
+                      {option.description ? (
+                        <p className='mt-0.5 truncate text-xs text-foreground-muted'>
+                          {option.description}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    {option.meta ? (
+                      <span className='shrink-0 text-xs text-foreground-muted'>{option.meta}</span>
+                    ) : null}
+
+                    <SelectPrimitive.ItemIndicator className='absolute inset-e-3 grid size-5 place-items-center text-brand'>
+                      <Check className='size-4' />
+                    </SelectPrimitive.ItemIndicator>
+                  </SelectPrimitive.Item>
+                );
+              })}
             </SelectPrimitive.Viewport>
           </SelectPrimitive.Content>
         </SelectPrimitive.Portal>

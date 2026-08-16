@@ -14,11 +14,21 @@ import type {
   PublicBlogPostListItem,
 } from '@/lib/storefront/blog/public-blog.types';
 import type {
+  StorefrontCategory,
+  StorefrontCategoryDetail,
+  StorefrontCategoryResponse,
+  StorefrontCategoriesResponse,
   StorefrontProductDetail,
   StorefrontProductListItem,
   StorefrontProductResponse,
   StorefrontProductsResponse,
 } from '@/lib/storefront/catalog/catalog.types';
+import type {
+  StorefrontVehicleModelDetail,
+  StorefrontVehicleModelDetailResponse,
+  StorefrontVehicleModelLandingListItem,
+  StorefrontVehicleModelsLandingResponse,
+} from '@/lib/storefront/vehicles/vehicle.types';
 import { getStorefrontSiteSettings } from '@/lib/storefront/settings/site-settings.server';
 
 export const revalidate = 3600;
@@ -184,6 +194,83 @@ async function getIndexableProducts(): Promise<StorefrontProductDetail[]> {
   });
 }
 
+async function getIndexableStorefrontCategories(): Promise<StorefrontCategoryDetail[]> {
+  const response = await publicNestApi<StorefrontCategoriesResponse>('/api/v1/catalog/categories', {
+    method: 'GET',
+    next: {
+      revalidate,
+      tags: ['sitemap-categories'],
+    },
+  });
+
+  const listItems: StorefrontCategory[] = dedupeBySlug(response.data);
+
+  return mapInBatches(listItems, async (item) => {
+    const categoryResponse = await publicNestApi<StorefrontCategoryResponse>(
+      `/api/v1/catalog/categories/${encodeURIComponent(item.slug)}`,
+      {
+        method: 'GET',
+        next: {
+          revalidate,
+          tags: [`category:${item.slug}`, 'sitemap-categories'],
+        },
+      },
+    );
+
+    return categoryResponse.data.noIndex ? null : categoryResponse.data;
+  });
+}
+
+async function getIndexableVehicleModels(): Promise<StorefrontVehicleModelDetail[]> {
+  const response = await publicNestApi<StorefrontVehicleModelsLandingResponse>(
+    '/api/v1/vehicles/models',
+    {
+      method: 'GET',
+      next: {
+        revalidate,
+        tags: ['sitemap-vehicle-models'],
+      },
+    },
+  );
+
+  const listItems: StorefrontVehicleModelLandingListItem[] = dedupeBySlug(response.data);
+
+  return mapInBatches(listItems, async (item) => {
+    if (item.noIndex) {
+      return null;
+    }
+
+    const [modelResponse, productsResponse] = await Promise.all([
+      publicNestApi<StorefrontVehicleModelDetailResponse>(
+        `/api/v1/vehicles/models/${encodeURIComponent(item.slug)}`,
+        {
+          method: 'GET',
+          next: {
+            revalidate,
+            tags: [`vehicle-model:${item.slug}`, 'sitemap-vehicle-models'],
+          },
+        },
+      ),
+      publicNestApi<StorefrontProductsResponse>(
+        `/api/v1/catalog/products?vehicleModel=${encodeURIComponent(item.slug)}&page=1&limit=1`,
+        {
+          method: 'GET',
+          next: {
+            revalidate,
+            tags: [`vehicle-products:${item.slug}`, 'sitemap-vehicle-models'],
+          },
+        },
+      ),
+    ]);
+
+    if (modelResponse.data.noIndex || productsResponse.meta.total <= 0) {
+      return null;
+    }
+
+    return modelResponse.data;
+  });
+}
+
 async function getAllBlogPostListItems(): Promise<PublicBlogPostListItem[]> {
   const posts: PublicBlogPostListItem[] = [];
 
@@ -304,6 +391,50 @@ function createProductEntries(
   });
 }
 
+function createStorefrontCategoryEntries(
+  categories: StorefrontCategoryDetail[],
+  origin: string,
+): MetadataRoute.Sitemap {
+  return categories.flatMap((category): SitemapEntry[] => {
+    const url = toSameOriginUrl(category.canonicalUrl, `/categories/${category.slug}`, origin);
+
+    if (!url) {
+      return [];
+    }
+
+    return [
+      {
+        url,
+        lastModified: toLastModified(category.updatedAt),
+        changeFrequency: 'weekly',
+        priority: 0.8,
+      },
+    ];
+  });
+}
+
+function createVehicleModelEntries(
+  models: StorefrontVehicleModelDetail[],
+  origin: string,
+): MetadataRoute.Sitemap {
+  return models.flatMap((model): SitemapEntry[] => {
+    const url = toSameOriginUrl(model.canonicalUrl, `/vehicles/${model.slug}`, origin);
+
+    if (!url) {
+      return [];
+    }
+
+    return [
+      {
+        url,
+        lastModified: toLastModified(model.updatedAt),
+        changeFrequency: 'weekly',
+        priority: 0.8,
+      },
+    ];
+  });
+}
+
 function createBlogPostEntries(
   posts: PublicBlogPostDetail[],
   origin: string,
@@ -357,8 +488,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticEntries = createStaticEntries(origin);
 
-  const [productsResult, postsResult, categoriesResult] = await Promise.allSettled([
+  const [
+    productsResult,
+    storefrontCategoriesResult,
+    vehicleModelsResult,
+    postsResult,
+    blogCategoriesResult,
+  ] = await Promise.allSettled([
     getIndexableProducts(),
+    getIndexableStorefrontCategories(),
+    getIndexableVehicleModels(),
     getIndexableBlogPosts(),
     getIndexableBlogCategories(),
   ]);
@@ -371,23 +510,43 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     logSettledFailure('blog posts', postsResult.reason);
   }
 
-  if (categoriesResult.status === 'rejected') {
-    logSettledFailure('blog categories', categoriesResult.reason);
+  if (storefrontCategoriesResult.status === 'rejected') {
+    logSettledFailure('storefront categories', storefrontCategoriesResult.reason);
+  }
+
+  if (vehicleModelsResult.status === 'rejected') {
+    logSettledFailure('vehicle models', vehicleModelsResult.reason);
+  }
+
+  if (blogCategoriesResult.status === 'rejected') {
+    logSettledFailure('blog categories', blogCategoriesResult.reason);
   }
 
   const productEntries =
     productsResult.status === 'fulfilled' ? createProductEntries(productsResult.value, origin) : [];
 
+  const storefrontCategoryEntries =
+    storefrontCategoriesResult.status === 'fulfilled'
+      ? createStorefrontCategoryEntries(storefrontCategoriesResult.value, origin)
+      : [];
+
+  const vehicleModelEntries =
+    vehicleModelsResult.status === 'fulfilled'
+      ? createVehicleModelEntries(vehicleModelsResult.value, origin)
+      : [];
+
   const blogPostEntries =
     postsResult.status === 'fulfilled' ? createBlogPostEntries(postsResult.value, origin) : [];
 
   const blogCategoryEntries =
-    categoriesResult.status === 'fulfilled'
-      ? createBlogCategoryEntries(categoriesResult.value, origin)
+    blogCategoriesResult.status === 'fulfilled'
+      ? createBlogCategoryEntries(blogCategoriesResult.value, origin)
       : [];
 
   return dedupeSitemapEntries([
     ...staticEntries,
+    ...storefrontCategoryEntries,
+    ...vehicleModelEntries,
     ...productEntries,
     ...blogPostEntries,
     ...blogCategoryEntries,

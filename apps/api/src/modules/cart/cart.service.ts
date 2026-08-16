@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import {
   CartOwnerType,
   CartStatus,
+  ProductBehaviorEventType,
   ProductStatus,
   StockStatus,
 } from '../../generated/prisma/client.js';
@@ -129,8 +130,17 @@ export class CartService {
 
     await this.touchCart(cartResolution.cart.id);
 
+    await this.recordAddToCartBehaviorEvent({
+      sessionId: dto.recommendationSessionId,
+
+      productId: dto.productId,
+
+      vehicleVariantId: dto.vehicleVariantId ?? null,
+    });
+
     return {
       cart: await this.serializeCart(cartResolution.cart.id),
+
       issuedGuestToken: cartResolution.issuedGuestToken,
     };
   }
@@ -1090,5 +1100,73 @@ export class CartService {
     }
 
     return parsedValue;
+  }
+
+  private async recordAddToCartBehaviorEvent({
+    sessionId,
+    productId,
+    vehicleVariantId,
+  }: {
+    sessionId: string | undefined;
+
+    productId: string;
+
+    vehicleVariantId: string | null;
+  }) {
+    /*
+     * Tracking هیچ‌وقت نباید
+     * عملیات اصلی سبد خرید را خراب کند.
+     */
+    if (!sessionId) {
+      return;
+    }
+
+    try {
+      /*
+       * هر Product + Vehicle در یک
+       * recommendation session فقط یک
+       * ADD_TO_CART لازم دارد.
+       *
+       * خود session بعد از ۳۰ دقیقه
+       * inactivity عوض می‌شود.
+       */
+      const existingEvent = await this.prisma.productBehaviorEvent.findFirst({
+        where: {
+          type: ProductBehaviorEventType.ADD_TO_CART,
+
+          sessionId,
+
+          productId,
+
+          vehicleVariantId,
+        },
+
+        select: {
+          id: true,
+        },
+      });
+
+      if (existingEvent) {
+        return;
+      }
+
+      await this.prisma.productBehaviorEvent.create({
+        data: {
+          type: ProductBehaviorEventType.ADD_TO_CART,
+
+          sessionId,
+
+          productId,
+
+          vehicleVariantId,
+        },
+      });
+    } catch {
+      /*
+       * Recommendation analytics
+       * نباید Add to Cart موفق را
+       * تبدیل به خطای کاربر کند.
+       */
+    }
   }
 }

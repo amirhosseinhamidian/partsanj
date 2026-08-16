@@ -41,3 +41,21 @@ export function normalizeNullableUrl(value: unknown): string | null | unknown {
 
   return normalizedValue || null;
 }
+
+export function normalizeNullableText(value: unknown): string | null | undefined | unknown {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const normalizedValue = value.trim();
+
+  return normalizedValue || null;
+}

@@ -949,7 +949,13 @@ export function ProductEditorForm({
             description='این اطلاعات در جستجو، کاتالوگ و صفحه محصول استفاده می‌شوند'
           >
             <div className='grid gap-5 md:grid-cols-2'>
-              <FormField label='نام محصول' required error={errors.name} className='md:col-span-2'>
+              <FormField
+                label='نام محصول'
+                required
+                helperText='نام دقیق و قابل جستجو وارد کنید؛ ترجیحاً نوع قطعه + خودرو یا کاربرد + برند + کد شاخص، بدون تکرار و کلمه‌چینی غیرطبیعی'
+                error={errors.name}
+                className='md:col-span-2'
+              >
                 {({ id, labelId, describedBy, invalid, required }) => (
                   <Input
                     id={id}
@@ -961,7 +967,7 @@ export function ProductEditorForm({
                     maxLength={250}
                     value={values.name}
                     onChange={(event) => setField('name', event.target.value)}
-                    placeholder='مثلاً سنسور اکسیژن بوش کد 0258006028'
+                    placeholder='مثلاً سنسور دور موتور پژو 405 فورس کد 123456'
                   />
                 )}
               </FormField>
@@ -1057,7 +1063,7 @@ export function ProductEditorForm({
 
               <FormField
                 label='توضیح کوتاه'
-                helperText='خلاصه‌ای کوتاه برای کارت محصول و نتیجه جستجو'
+                helperText='در ۱ تا ۲ جمله مشخص کنید قطعه چیست، برای چه خودرو یا کاربردی است و مهم‌ترین ویژگی واقعی آن چیست'
                 error={errors.shortDescription}
                 className='md:col-span-2'
               >
@@ -1072,14 +1078,14 @@ export function ProductEditorForm({
                     rows={3}
                     value={values.shortDescription}
                     onChange={(event) => setField('shortDescription', event.target.value)}
-                    placeholder='مثلاً مناسب خودروهای منتخب با سوکت چهار پین'
+                    placeholder='مثلاً سنسور دور موتور فورس مناسب پژو 405 و پارس با موتور XU7، مناسب جایگزینی قطعه معیوب با سوکت و مشخصات فنی مطابق نمونه اصلی.'
                   />
                 )}
               </FormField>
 
               <FormField
                 label='توضیحات کامل'
-                helperText='کاربرد قطعه، نکات نصب، علائم خرابی و جزئیات فنی را وارد کنید'
+                helperText='معرفی و کاربرد، خودروهای قابل استفاده، علائم خرابی، نکات انتخاب و نصب و تفاوت‌های مهم این قطعه را در چند پاراگراف طبیعی بنویسید'
                 error={errors.description}
                 className='md:col-span-2'
               >
@@ -1094,7 +1100,10 @@ export function ProductEditorForm({
                     rows={8}
                     value={values.description}
                     onChange={(event) => setField('description', event.target.value)}
-                    placeholder='توضیحات کامل محصول...'
+                    placeholder={`محصول را به زبان طبیعی معرفی کنید.
+کاربرد اصلی قطعه و وظیفه آن را توضیح دهید.
+خودروها یا موتورهای سازگار و نکات مهم انتخاب قطعه را ذکر کنید.
+در صورت کاربرد، علائم خرابی و نکات نصب یا تعویض را توضیح دهید.`}
                   />
                 )}
               </FormField>
@@ -1440,7 +1449,7 @@ export function ProductEditorForm({
                       disabled={isSaving}
                       value={values.canonicalUrl}
                       onChange={(event) => setField('canonicalUrl', event.target.value)}
-                      placeholder='https://partsanj.com/products/product-slug'
+                      placeholder='https://partsanj.ir/products/product-slug'
                     />
                   )}
                 </FormField>

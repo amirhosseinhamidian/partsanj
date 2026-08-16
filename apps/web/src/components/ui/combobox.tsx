@@ -30,6 +30,12 @@ export type ComboboxOption = {
   label: string;
 
   description?: ReactNode;
+
+  /** Optional image shown only inside dropdown options. */
+  imageUrl?: string | null;
+  imageAlt?: string;
+
+  /** Optional visual shown only inside dropdown options when imageUrl is absent. */
   icon?: ReactNode;
   meta?: ReactNode;
 
@@ -420,17 +426,8 @@ export const Combobox = forwardRef<HTMLButtonElement, ComboboxProps>(function Co
                   {startIcon}
                 </span>
               ) : null}
-              <div className='flex min-w-0 flex-1 items-center gap-2'>
-                {selectedOption?.icon ? (
-                  <span className='shrink-0'>{selectedOption.icon}</span>
-                ) : null}
-
-                <span
-                  className={cn(
-                    'min-w-0 flex-1 truncate',
-                    !selectedOption && 'text-foreground-muted',
-                  )}
-                >
+              <div className='min-w-0 flex-1'>
+                <span className={cn('block truncate', !selectedOption && 'text-foreground-muted')}>
                   {selectedOption?.label ?? placeholder}
                 </span>
               </div>
@@ -541,7 +538,20 @@ export const Combobox = forwardRef<HTMLButtonElement, ComboboxProps>(function Co
                         })
                       ) : (
                         <>
-                          {option.icon ? (
+                          {option.imageUrl?.trim() ? (
+                            <span
+                              aria-hidden='true'
+                              className='grid size-8 shrink-0 place-items-center overflow-hidden rounded-[9px] border border-border bg-surface-muted'
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={option.imageUrl.trim()}
+                                alt={option.imageAlt?.trim() || option.label}
+                                loading='lazy'
+                                className='size-full object-contain p-1'
+                              />
+                            </span>
+                          ) : option.icon ? (
                             <span
                               aria-hidden='true'
                               className='grid size-8 shrink-0 place-items-center rounded-[9px] bg-surface-muted text-foreground-secondary [&>svg]:size-4'

@@ -314,7 +314,7 @@ function CustomerVehicleCard({
               alt={`تصویر ${vehicle.vehicleVariant.model.name}`}
               fill
               sizes='(max-width: 640px) 100vw, 160px'
-              className='object-contain p-3'
+              className='object-cover p-1.5'
             />
           ) : (
             <div className='flex h-full w-full items-center justify-center bg-surface-muted text-foreground-muted'>

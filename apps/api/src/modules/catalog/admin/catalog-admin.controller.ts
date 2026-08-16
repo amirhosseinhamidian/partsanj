@@ -49,6 +49,7 @@ import { UpdateVehicleModelDto } from './dto/update-vehicle-model.dto.js';
 import { CreateVehicleVariantDto } from './dto/create-vehicle-variant.dto.js';
 import { UpdateVehicleVariantDto } from './dto/update-vehicle-variant.dto.js';
 import { FindAdminAuditLogsQueryDto } from './dto/find-admin-audit-logs.query.dto.js';
+import { ReplaceCategoryComplementsDto } from './dto/replace-category-complements.dto.js';
 
 @ApiTags('Admin Catalog')
 @ApiBearerAuth('access-token')
@@ -92,6 +93,22 @@ export class CatalogAdminController {
   })
   deleteCategory(@Param() params: EntityIdParamDto) {
     return this.catalogAdminService.deleteCategory(params.id);
+  }
+
+  @Put('categories/:id/complements')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Replace complementary categories for a category',
+  })
+  @ApiOkResponse()
+  replaceCategoryComplements(
+    @Param() params: EntityIdParamDto,
+    @Body()
+    dto: ReplaceCategoryComplementsDto,
+    @CurrentUser()
+    user: AuthenticatedUser,
+  ) {
+    return this.catalogAdminService.replaceCategoryComplements(params.id, dto, user.id);
   }
 
   @Get('vehicle-makes')

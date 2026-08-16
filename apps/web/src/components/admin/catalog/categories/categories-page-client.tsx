@@ -232,6 +232,14 @@ export function CategoriesPageClient() {
     await loadCategories();
   }
 
+  async function handleSaveCategoryComplements(categoryId: string, categoryIds: string[]) {
+    await adminCategoriesApi.replaceComplements(categoryId, {
+      categoryIds,
+    });
+
+    await loadCategories();
+  }
+
   async function handleDeleteCategory(category: AdminCategory) {
     await adminCategoriesApi.remove(category.id);
 
@@ -362,6 +370,7 @@ export function CategoriesPageClient() {
         category={editingCategory}
         categories={categories}
         onSubmit={handleSaveCategory}
+        onSaveComplements={handleSaveCategoryComplements}
       />
 
       <DeleteCategoryDialog

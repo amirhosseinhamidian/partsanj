@@ -5,6 +5,8 @@ import type {
   StorefrontCategoriesResponse,
   StorefrontProductResponse,
   StorefrontProductsResponse,
+  StorefrontProductViewResponse,
+  TrackStorefrontProductViewPayload,
 } from '@/lib/storefront/catalog/catalog.types';
 
 const STOREFRONT_CATALOG_API_PATH = '/api/catalog';
@@ -33,6 +35,7 @@ function buildProductsQuery(params: FindStorefrontProductsParams): string {
   addOptionalParam(searchParams, 'q', params.q);
   addOptionalParam(searchParams, 'brand', params.brand);
   addOptionalParam(searchParams, 'category', params.category);
+  addOptionalParam(searchParams, 'vehicleModel', params.vehicleModel);
   addOptionalParam(searchParams, 'vehicleVariantId', params.vehicleVariantId);
   addOptionalParam(searchParams, 'stockStatus', params.stockStatus);
   addOptionalParam(searchParams, 'page', params.page);
@@ -44,6 +47,20 @@ function buildProductsQuery(params: FindStorefrontProductsParams): string {
 export const storefrontCatalogApi = {
   listBrands(): Promise<StorefrontBrandsResponse> {
     return requestStorefrontApi<StorefrontBrandsResponse>(`${STOREFRONT_CATALOG_API_PATH}/brands`);
+  },
+
+  trackProductView(
+    slug: string,
+    payload: TrackStorefrontProductViewPayload,
+  ): Promise<StorefrontProductViewResponse> {
+    return requestStorefrontApi<StorefrontProductViewResponse>(
+      `${STOREFRONT_CATALOG_API_PATH}/products/${encodeURIComponent(slug)}/view`,
+      {
+        method: 'POST',
+
+        body: JSON.stringify(payload),
+      },
+    );
   },
 
   listCategories(): Promise<StorefrontCategoriesResponse> {

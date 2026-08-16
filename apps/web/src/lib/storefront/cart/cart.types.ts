@@ -124,6 +124,7 @@ export type AddCartItemInput = {
   productId: string;
   quantity?: number;
   vehicleVariantId?: string;
+  recommendationSessionId?: string;
 };
 
 export type UpdateCartItemQuantityInput = {

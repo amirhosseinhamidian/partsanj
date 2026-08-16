@@ -46,6 +46,17 @@ export class FindProductsQueryDto {
   category?: string;
 
   @ApiPropertyOptional({
+    description:
+      'Only return products compatible with an active variant of this vehicle model slug',
+    example: 'peugeot-405',
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(SLUG_PATTERN)
+  @Transform(({ value }) => normalizeOptionalText(value))
+  vehicleModel?: string;
+
+  @ApiPropertyOptional({
     format: 'uuid',
     description: 'Only return products compatible with this vehicle variant',
   })

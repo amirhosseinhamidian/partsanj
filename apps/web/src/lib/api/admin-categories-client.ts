@@ -1,9 +1,11 @@
 import type {
   AdminCategory,
+  CategoryComplementsResponse,
   CategoryListResponse,
   CategoryMutationResponse,
   CreateCategoryPayload,
   DeleteCategoryResponse,
+  ReplaceCategoryComplementsPayload,
   UpdateCategoryPayload,
 } from '@/lib/admin/catalog/category.types';
 import { ClientApiError } from '@/lib/api/web-client';
@@ -62,6 +64,20 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 export const adminCategoriesApi = {
   async list(): Promise<AdminCategory[]> {
     return request<CategoryListResponse['data']>('/api/admin/catalog/categories');
+  },
+
+  async replaceComplements(
+    id: string,
+    payload: ReplaceCategoryComplementsPayload,
+  ): Promise<CategoryComplementsResponse['data']> {
+    return request<CategoryComplementsResponse['data']>(
+      `/api/admin/catalog/categories/${id}/complements`,
+      {
+        method: 'PUT',
+
+        body: JSON.stringify(payload),
+      },
+    );
   },
 
   async create(payload: CreateCategoryPayload): Promise<CategoryMutationResponse['data']> {

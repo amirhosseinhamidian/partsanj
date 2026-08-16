@@ -65,7 +65,7 @@ export class UpdateSiteSettingsDto {
   @MaxLength(200)
   siteTagline?: string | null;
 
-  @ApiPropertyOptional({ example: 'https://partsanj.com', maxLength: 2048 })
+  @ApiPropertyOptional({ example: 'https://partsanj.ir', maxLength: 2048 })
   @Transform(({ value }) => normalizeText(value), { toClassOnly: true })
   @IsUrl({ require_protocol: true })
   @MaxLength(2048)

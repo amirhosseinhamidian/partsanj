@@ -1,3 +1,4 @@
+/* eslint-disable no-prototype-builtins */
 import {
   BadRequestException,
   ConflictException,
@@ -31,6 +32,7 @@ import { UpdateVehicleModelDto } from './dto/update-vehicle-model.dto.js';
 import { CreateVehicleVariantDto } from './dto/create-vehicle-variant.dto.js';
 import { UpdateVehicleVariantDto } from './dto/update-vehicle-variant.dto.js';
 import { FindAdminAuditLogsQueryDto } from './dto/find-admin-audit-logs.query.dto.js';
+import { ReplaceCategoryComplementsDto } from './dto/replace-category-complements.dto.js';
 
 const DEFAULT_STOCK_QUANTITY = 0;
 const DEFAULT_LOW_STOCK_THRESHOLD = 5;
@@ -303,11 +305,36 @@ export class CatalogAdminService {
             products: true,
           },
         },
+        complementsFrom: {
+          orderBy: [
+            {
+              sortOrder: 'asc',
+            },
+            {
+              createdAt: 'asc',
+            },
+          ],
+
+          select: {
+            targetCategory: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                isActive: true,
+              },
+            },
+          },
+        },
       },
     });
 
     return {
-      data: categories,
+      data: categories.map(({ complementsFrom, ...category }) => ({
+        ...category,
+
+        complementaryCategories: complementsFrom.map((relation) => relation.targetCategory),
+      })),
     };
   }
 
@@ -322,8 +349,22 @@ export class CatalogAdminService {
           data: {
             name: dto.name,
             slug: dto.slug,
+
+            description: dto.description ?? null,
+
             imageUrl: dto.imageUrl ?? null,
             imageAlt: dto.imageAlt ?? null,
+
+            seoTitle: dto.seoTitle ?? null,
+            seoDescription: dto.seoDescription ?? null,
+            canonicalUrl: dto.canonicalUrl ?? null,
+            noIndex: dto.noIndex ?? false,
+
+            openGraphTitle: dto.openGraphTitle ?? null,
+            openGraphDescription: dto.openGraphDescription ?? null,
+            openGraphImageUrl: dto.openGraphImageUrl ?? null,
+            openGraphImageAlt: dto.openGraphImageAlt ?? null,
+
             parentId: dto.parentId ?? null,
             sortOrder: dto.sortOrder ?? 0,
             isActive: dto.isActive ?? true,
@@ -342,12 +383,26 @@ export class CatalogAdminService {
             snapshot: {
               name: category.name,
               slug: category.slug,
+
+              description: category.description,
+
               parentId: category.parentId,
               sortOrder: category.sortOrder,
               isActive: category.isActive,
+              showOnHome: category.showOnHome,
+
               imageUrl: category.imageUrl,
               imageAlt: category.imageAlt,
-              showOnHome: category.showOnHome,
+
+              seoTitle: category.seoTitle,
+              seoDescription: category.seoDescription,
+              canonicalUrl: category.canonicalUrl,
+              noIndex: category.noIndex,
+
+              openGraphTitle: category.openGraphTitle,
+              openGraphDescription: category.openGraphDescription,
+              openGraphImageUrl: category.openGraphImageUrl,
+              openGraphImageAlt: category.openGraphImageAlt,
             },
           },
         });
@@ -380,12 +435,26 @@ export class CatalogAdminService {
             id: true,
             name: true,
             slug: true,
+
+            description: true,
+
             parentId: true,
             sortOrder: true,
             isActive: true,
+            showOnHome: true,
+
             imageUrl: true,
             imageAlt: true,
-            showOnHome: true,
+
+            seoTitle: true,
+            seoDescription: true,
+            canonicalUrl: true,
+            noIndex: true,
+
+            openGraphTitle: true,
+            openGraphDescription: true,
+            openGraphImageUrl: true,
+            openGraphImageAlt: true,
           },
         });
 
@@ -402,6 +471,31 @@ export class CatalogAdminService {
         this.addChange(changes, 'imageUrl', category.imageUrl, dto.imageUrl);
         this.addChange(changes, 'imageAlt', category.imageAlt, dto.imageAlt);
         this.addChange(changes, 'showOnHome', category.showOnHome, dto.showOnHome);
+        this.addChange(changes, 'description', category.description, dto.description);
+        this.addChange(changes, 'seoTitle', category.seoTitle, dto.seoTitle);
+        this.addChange(changes, 'seoDescription', category.seoDescription, dto.seoDescription);
+        this.addChange(changes, 'canonicalUrl', category.canonicalUrl, dto.canonicalUrl);
+        this.addChange(changes, 'noIndex', category.noIndex, dto.noIndex);
+
+        this.addChange(changes, 'openGraphTitle', category.openGraphTitle, dto.openGraphTitle);
+        this.addChange(
+          changes,
+          'openGraphDescription',
+          category.openGraphDescription,
+          dto.openGraphDescription,
+        );
+        this.addChange(
+          changes,
+          'openGraphImageUrl',
+          category.openGraphImageUrl,
+          dto.openGraphImageUrl,
+        );
+        this.addChange(
+          changes,
+          'openGraphImageAlt',
+          category.openGraphImageAlt,
+          dto.openGraphImageAlt,
+        );
 
         if (hasParentIdUpdate) {
           this.addChange(changes, 'parentId', category.parentId, dto.parentId ?? null);
@@ -438,6 +532,35 @@ export class CatalogAdminService {
           ...(dto.showOnHome !== undefined && {
             showOnHome: dto.showOnHome,
           }),
+          ...(dto.description !== undefined && {
+            description: dto.description,
+          }),
+
+          ...(dto.seoTitle !== undefined && {
+            seoTitle: dto.seoTitle,
+          }),
+          ...(dto.seoDescription !== undefined && {
+            seoDescription: dto.seoDescription,
+          }),
+          ...(dto.canonicalUrl !== undefined && {
+            canonicalUrl: dto.canonicalUrl,
+          }),
+          ...(dto.noIndex !== undefined && {
+            noIndex: dto.noIndex,
+          }),
+
+          ...(dto.openGraphTitle !== undefined && {
+            openGraphTitle: dto.openGraphTitle,
+          }),
+          ...(dto.openGraphDescription !== undefined && {
+            openGraphDescription: dto.openGraphDescription,
+          }),
+          ...(dto.openGraphImageUrl !== undefined && {
+            openGraphImageUrl: dto.openGraphImageUrl,
+          }),
+          ...(dto.openGraphImageAlt !== undefined && {
+            openGraphImageAlt: dto.openGraphImageAlt,
+          }),
         };
 
         const updatedCategory = await transaction.category.update({
@@ -466,6 +589,101 @@ export class CatalogAdminService {
     } catch (error) {
       this.rethrowKnownDatabaseError(error);
     }
+  }
+
+  async replaceCategoryComplements(
+    categoryId: string,
+    dto: ReplaceCategoryComplementsDto,
+    actorUserId: string,
+  ) {
+    const category = await this.prisma.category.findUnique({
+      where: {
+        id: categoryId,
+      },
+
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    if (!category) {
+      throw new NotFoundException('دسته‌بندی یافت نشد.');
+    }
+
+    const targetCategoryIds = [...new Set(dto.categoryIds)];
+
+    if (targetCategoryIds.includes(categoryId)) {
+      throw new BadRequestException('یک دسته‌بندی نمی‌تواند مکمل خودش باشد.');
+    }
+
+    const targetCategories =
+      targetCategoryIds.length > 0
+        ? await this.prisma.category.findMany({
+            where: {
+              id: {
+                in: targetCategoryIds,
+              },
+            },
+
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              isActive: true,
+            },
+          })
+        : [];
+
+    if (targetCategories.length !== targetCategoryIds.length) {
+      throw new BadRequestException('یک یا چند دسته‌بندی مکمل معتبر نیستند.');
+    }
+
+    const targetById = new Map(targetCategories.map((target) => [target.id, target]));
+
+    const orderedTargets = targetCategoryIds.map((targetId) => targetById.get(targetId)!);
+
+    await this.prisma.$transaction(async (transaction) => {
+      await transaction.categoryComplement.deleteMany({
+        where: {
+          sourceCategoryId: categoryId,
+        },
+      });
+
+      if (targetCategoryIds.length > 0) {
+        await transaction.categoryComplement.createMany({
+          data: targetCategoryIds.map((targetCategoryId, index) => ({
+            sourceCategoryId: categoryId,
+
+            targetCategoryId,
+
+            sortOrder: index,
+          })),
+        });
+      }
+
+      await this.writeAdminAuditLog(transaction, {
+        actorUserId,
+
+        entityType: AdminAuditEntityType.CATEGORY,
+
+        entityId: category.id,
+
+        entityLabel: category.name,
+
+        action: AdminAuditAction.UPDATED,
+
+        changes: {
+          event: 'admin_category_complements_replaced',
+
+          complementaryCategoryIds: targetCategoryIds,
+        },
+      });
+    });
+
+    return {
+      data: orderedTargets,
+    };
   }
 
   async deleteCategory(id: string) {

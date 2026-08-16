@@ -22,6 +22,38 @@ export type StorefrontCategory = {
   showOnHome: boolean;
 };
 
+export type StorefrontCategorySeoFields = {
+  seoTitle: string | null;
+  seoDescription: string | null;
+  canonicalUrl: string | null;
+  noIndex: boolean;
+
+  openGraphTitle: string | null;
+  openGraphDescription: string | null;
+  openGraphImageUrl: string | null;
+  openGraphImageAlt: string | null;
+};
+
+export type StorefrontCategoryAncestor = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+export type StorefrontCategoryDetail = StorefrontCategorySeoFields &
+  StorefrontCategory & {
+    description: string | null;
+    updatedAt: string;
+
+    ancestors: StorefrontCategoryAncestor[];
+
+    children: StorefrontCategory[];
+  };
+
+export type StorefrontCategoryResponse = {
+  data: StorefrontCategoryDetail;
+};
+
 export type StorefrontProductCode = {
   type: StorefrontProductCodeType;
   value: string;
@@ -58,6 +90,48 @@ export type StorefrontProductListItem = StorefrontProductPricing & {
   category: Pick<StorefrontCategory, 'id' | 'name' | 'slug'>;
   codes: StorefrontProductCode[];
   images: StorefrontProductImage[];
+};
+
+export type StorefrontRelatedProduct = StorefrontProductPricing & {
+  id: string;
+  sku: string;
+  slug: string;
+  name: string;
+
+  shortDescription: string | null;
+
+  stockStatus: StorefrontStockStatus;
+
+  stockQuantity: number;
+
+  updatedAt: string;
+
+  brand: StorefrontBrand;
+
+  category: Pick<StorefrontCategory, 'id' | 'name' | 'slug'>;
+
+  images: StorefrontProductImage[];
+};
+
+export type StorefrontRelatedProductsResponse = {
+  data: StorefrontRelatedProduct[];
+};
+
+export type StorefrontComplementaryProduct = StorefrontRelatedProduct;
+
+export type StorefrontComplementaryProductsResponse = {
+  data: StorefrontComplementaryProduct[];
+};
+
+export type TrackStorefrontProductViewPayload = {
+  sessionId: string;
+  vehicleVariantId?: string;
+};
+
+export type StorefrontProductViewResponse = {
+  data: {
+    recorded: boolean;
+  };
 };
 
 export type StorefrontProductCompatibility = {
@@ -125,6 +199,7 @@ export type FindStorefrontProductsParams = {
   q?: string;
   brand?: string;
   category?: string;
+  vehicleModel?: string;
   vehicleVariantId?: string;
   stockStatus?: StorefrontStockStatus;
   page?: number;

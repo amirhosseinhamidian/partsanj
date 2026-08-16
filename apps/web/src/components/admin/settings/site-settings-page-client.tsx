@@ -436,7 +436,7 @@ export function SiteSettingsPageClient({ initialSettings }: SiteSettingsPageClie
                     disabled={isSaving}
                     value={values.siteBaseUrl}
                     onChange={(event) => setField('siteBaseUrl', event.target.value)}
-                    placeholder='https://partsanj.com'
+                    placeholder='https://partsanj.ir'
                   />
                 )}
               </FormField>

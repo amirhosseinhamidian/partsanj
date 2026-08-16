@@ -164,6 +164,11 @@ enum MediaAssetStatus {
   ERROR
 }
 
+enum ProductBehaviorEventType {
+  VIEW
+  ADD_TO_CART
+}
+
 model User {
   id               String    @id @default(uuid())
   mobile           String    @unique
@@ -229,6 +234,7 @@ model Category {
   isActive   Boolean @default(true)
   sortOrder  Int     @default(0)
   showOnHome Boolean @default(false)
+  description String?
 
   imageUrl String?
   imageAlt String?
@@ -237,10 +243,44 @@ model Category {
   children Category[] @relation("CategoryHierarchy")
   products Product[]
 
+  complementsFrom CategoryComplement[] @relation("CategoryComplementsFrom")
+  complementsTo   CategoryComplement[] @relation("CategoryComplementsTo")
+
+  seoTitle       String?  @db.VarChar(120)
+  seoDescription String?  @db.VarChar(320)
+  canonicalUrl   String?  @db.VarChar(2048)
+  noIndex        Boolean  @default(false)
+
+  openGraphTitle       String? @db.VarChar(160)
+  openGraphDescription String? @db.VarChar(500)
+  openGraphImageUrl    String? @db.VarChar(2048)
+  openGraphImageAlt    String? @db.VarChar(255)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+
+  @@index([parentId])
+}
+
+model CategoryComplement {
+  id String @id @default(uuid())
+
+  sourceCategoryId String
+  targetCategoryId String
+
+  sortOrder Int @default(0)
+
+  sourceCategory Category @relation("CategoryComplementsFrom", fields: [sourceCategoryId], references: [id], onDelete: Cascade)
+
+  targetCategory Category @relation("CategoryComplementsTo", fields: [targetCategoryId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([parentId])
+  @@unique([sourceCategoryId, targetCategoryId])
+  @@index([sourceCategoryId, sortOrder])
+  @@index([targetCategoryId])
 }
 
 model Product {
@@ -290,6 +330,7 @@ model Product {
 
   auditLogs       ProductAuditLog[]
   compatibilities ProductVehicleCompatibility[]
+  behaviorEvents  ProductBehaviorEvent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -468,7 +509,21 @@ model VehicleModel {
   slug      String  @unique
   isActive  Boolean @default(true)
   sortOrder Int     @default(0)
-  imageUrl  String?
+
+  imageUrl String?
+  imageAlt String?
+
+  description String?
+
+  seoTitle       String? @db.VarChar(120)
+  seoDescription String? @db.VarChar(320)
+  canonicalUrl   String? @db.VarChar(2048)
+  noIndex        Boolean @default(false)
+
+  openGraphTitle       String? @db.VarChar(160)
+  openGraphDescription String? @db.VarChar(500)
+  openGraphImageUrl    String? @db.VarChar(2048)
+  openGraphImageAlt    String? @db.VarChar(255)
 
   make     VehicleMake      @relation(fields: [makeId], references: [id], onDelete: Restrict)
   variants VehicleVariant[]
@@ -499,6 +554,7 @@ model VehicleVariant {
   cartItems        CartItem[]
   orderItems       OrderItem[]
   customerVehicles CustomerVehicle[]             @relation("VehicleVariantCustomerVehicles")
+  behaviorEvents   ProductBehaviorEvent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -851,7 +907,7 @@ model SiteSetting {
 
   siteName    String  @default("پارت‌سنج") @db.VarChar(100)
   siteTagline String? @db.VarChar(200)
-  siteBaseUrl String  @default("https://partsanj.com") @db.VarChar(2048)
+  siteBaseUrl String  @default("https://partsanj.ir") @db.VarChar(2048)
 
   logoLightUrl String? @db.VarChar(2048)
   logoDarkUrl  String? @db.VarChar(2048)
@@ -880,4 +936,25 @@ model SiteSetting {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ProductBehaviorEvent {
+  id String @id @default(uuid())
+
+  type      ProductBehaviorEventType
+  sessionId String                   @db.VarChar(64)
+
+  productId        String
+  vehicleVariantId String?
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  vehicleVariant VehicleVariant? @relation(fields: [vehicleVariantId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([sessionId, createdAt])
+  @@index([productId, type, createdAt])
+  @@index([sessionId, productId, type, createdAt])
+  @@index([vehicleVariantId, createdAt])
 }

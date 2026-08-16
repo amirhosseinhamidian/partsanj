@@ -94,7 +94,6 @@ export function HomeFeaturedProducts({ products = [], className }: HomeFeaturedP
 
 function FeaturedProductCard({ product }: { product: StorefrontProductListItem }) {
   const primaryImage = product.images?.[0] ?? null;
-  const metaLines = getProductMetaLines(product);
 
   return (
     <article
@@ -132,13 +131,16 @@ function FeaturedProductCard({ product }: { product: StorefrontProductListItem }
             </h3>
           </Link>
 
-          <ul className='mt-2 space-y-1 text-[11px] leading-4 text-slate-500 dark:text-slate-300'>
-            {metaLines.map((line) => (
-              <li key={line} className='line-clamp-1'>
-                {line}
-              </li>
-            ))}
-          </ul>
+          <div className='mt-2 space-y-1 text-[11px] leading-4 text-slate-500 dark:text-slate-300'>
+            <Link
+              href={`/categories/${encodeURIComponent(product.category.slug)}`}
+              className='block truncate transition-colors hover:text-brand'
+            >
+              {product.category.name}
+            </Link>
+
+            {product.brand?.name ? <p className='truncate'>{product.brand.name}</p> : null}
+          </div>
 
           <div className='mt-auto pt-2'>
             <ProductCardPrice product={product} variant='home-row' />
@@ -161,18 +163,4 @@ function FeaturedProductCard({ product }: { product: StorefrontProductListItem }
       </div>
     </article>
   );
-}
-
-function getProductMetaLines(product: StorefrontProductListItem) {
-  const lines: string[] = [];
-
-  if (product.category?.name) {
-    lines.push(product.category.name);
-  }
-
-  if (product.brand?.name) {
-    lines.push(product.brand.name);
-  }
-
-  return lines.slice(0, 3);
 }

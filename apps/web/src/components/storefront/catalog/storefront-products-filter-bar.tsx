@@ -32,6 +32,8 @@ type StorefrontProductsFilterBarProps = {
   categoryOptions: StorefrontProductFilterOption[];
   stockStatusOptions: StorefrontProductFilterOption[];
 
+  showCategoryFilter?: boolean;
+
   loading?: boolean;
   optionsLoading?: boolean;
   externalActiveFilterCount?: number;
@@ -46,11 +48,15 @@ type StorefrontProductsFilterBarProps = {
 function getActiveFilterCount(
   draft: StorefrontProductsFilterDraft,
   externalActiveFilterCount: number,
+  showCategoryFilter: boolean,
 ) {
-  return (
-    [draft.q.trim(), draft.brand, draft.category, draft.stockStatus].filter(Boolean).length +
-    externalActiveFilterCount
-  );
+  const activeFilters = [draft.q.trim(), draft.brand, draft.stockStatus];
+
+  if (showCategoryFilter) {
+    activeFilters.push(draft.category);
+  }
+
+  return activeFilters.filter(Boolean).length + externalActiveFilterCount;
 }
 
 export function StorefrontProductsFilterBar({
@@ -60,6 +66,7 @@ export function StorefrontProductsFilterBar({
   stockStatusOptions,
   loading = false,
   optionsLoading = false,
+  showCategoryFilter = true,
   externalActiveFilterCount = 0,
   onDraftChange,
   onApply,
@@ -67,7 +74,11 @@ export function StorefrontProductsFilterBar({
 }: StorefrontProductsFilterBarProps) {
   const isBusy = loading || optionsLoading;
 
-  const activeFilterCount = getActiveFilterCount(draft, externalActiveFilterCount);
+  const activeFilterCount = getActiveFilterCount(
+    draft,
+    externalActiveFilterCount,
+    showCategoryFilter,
+  );
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -116,19 +127,21 @@ export function StorefrontProductsFilterBar({
             />
           </div>
 
-          <div className='space-y-2 lg:col-span-3'>
-            <p className='text-sm font-bold text-foreground'>دسته‌بندی</p>
+          {showCategoryFilter ? (
+            <div className='space-y-2 lg:col-span-3'>
+              <p className='text-sm font-bold text-foreground'>دسته‌بندی</p>
 
-            <Select
-              value={draft.category}
-              disabled={optionsLoading}
-              placeholder='همه دسته‌بندی‌ها'
-              options={categoryOptions}
-              onValueChange={(category) => {
-                onDraftChange({ category });
-              }}
-            />
-          </div>
+              <Select
+                value={draft.category}
+                disabled={optionsLoading}
+                placeholder='همه دسته‌بندی‌ها'
+                options={categoryOptions}
+                onValueChange={(category) => {
+                  onDraftChange({ category });
+                }}
+              />
+            </div>
+          ) : null}
 
           <div className='space-y-2 lg:col-span-2'>
             <p className='text-sm font-bold text-foreground'>وضعیت موجودی</p>

@@ -30,11 +30,7 @@ const CATEGORY_ICONS: Record<HomeMainCategoryIconKey, LucideIcon> = {
 };
 
 function createCategoryHref(category: StorefrontCategory) {
-  const params = new URLSearchParams({
-    category: category.slug,
-  });
-
-  return `/products?${params.toString()}`;
+  return `/categories/${encodeURIComponent(category.slug)}`;
 }
 
 function getCategoryIcon(category: StorefrontCategory) {

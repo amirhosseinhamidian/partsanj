@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Check, CarFront, RotateCcw } from 'lucide-react';
+import { Check, CarFront, ChevronLeft, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type {
   StorefrontVehicleSelection,
@@ -168,6 +168,9 @@ export function StorefrontVehicleCompatibilityFilter({
 
   const activeVariantId =
     selectedVehicle?.variant.id ?? effectiveInitialSelection?.variantId ?? null;
+
+  const activeModelSlug =
+    selectedVehicle?.model.slug ?? effectiveInitialSelection?.modelSlug ?? null;
 
   const isSelectedVehicleSaved =
     Boolean(activeVariantId) &&
@@ -367,6 +370,22 @@ export function StorefrontVehicleCompatibilityFilter({
             )}
           />
         )}
+
+        {activeModelSlug ? (
+          <Link
+            href={`/vehicles/${encodeURIComponent(activeModelSlug)}`}
+            className='mt-4 flex items-center justify-between gap-3 rounded-control border border-brand/20 bg-brand-soft px-4 py-3 text-sm font-bold text-brand transition-colors hover:border-brand/40 hover:bg-brand/10'
+          >
+            <span>
+              مشاهده همه قطعات{' '}
+              {selectedVehicle
+                ? `${selectedVehicle.make.name} ${selectedVehicle.model.name}`
+                : 'این مدل خودرو'}
+            </span>
+
+            <ChevronLeft className='size-4 shrink-0' />
+          </Link>
+        ) : null}
       </div>
 
       {selectedVehicle && isAuthenticated && !isSelectedVehicleSaved && onSaveSelectedVehicle ? (

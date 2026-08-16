@@ -241,7 +241,7 @@ export class CreateProductDto {
   seoDescription?: string | null;
 
   @ApiPropertyOptional({
-    example: 'https://partsanj.com/products/bosch-oxygen-sensor-0258006028',
+    example: 'https://partsanj.ir/products/bosch-oxygen-sensor-0258006028',
     maxLength: 2048,
   })
   @Transform(({ value }) => normalizeNullableText(value), { toClassOnly: true })
@@ -278,7 +278,7 @@ export class CreateProductDto {
   openGraphDescription?: string | null;
 
   @ApiPropertyOptional({
-    example: 'https://cdn.partsanj.com/products/bosch-o2.jpg',
+    example: 'https://cdn.partsanj.ir/products/bosch-o2.jpg',
     maxLength: 2048,
   })
   @Transform(({ value }) => normalizeNullableText(value), { toClassOnly: true })

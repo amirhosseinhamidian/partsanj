@@ -33,6 +33,9 @@ function toMakeOptions(makes: StorefrontVehicleMake[]): SelectOption[] {
   return makes.map((make) => ({
     value: make.slug,
     label: make.name,
+
+    imageUrl: make.logoUrl,
+    imageAlt: make.name,
   }));
 }
 
@@ -40,6 +43,9 @@ function toModelOptions(models: StorefrontVehicleModel[]): SelectOption[] {
   return models.map((model) => ({
     value: model.slug,
     label: model.name,
+
+    imageUrl: model.imageUrl,
+    imageAlt: model.name,
   }));
 }
 
@@ -210,13 +216,25 @@ export function HomeHeroFinder() {
 
     const normalizedQuery = query.trim();
 
-    if (!normalizedQuery && !variantId) {
-      setSubmitError('برای جستجو، نام قطعه را وارد کنید یا تیپ و موتور خودرو را انتخاب کنید');
+    /*
+     * حداقل باید:
+     * - نام/کد قطعه داشته باشیم
+     * یا
+     * - مدل خودرو انتخاب شده باشد
+     */
+    if (!normalizedQuery && !modelSlug) {
+      setSubmitError('برای جستجو، نام قطعه را وارد کنید یا مدل خودرو را انتخاب کنید');
+
       return;
     }
 
     setSubmitError(null);
 
+    /*
+     * اگر Variant کامل انتخاب شده،
+     * انتخاب خودرو را برای بررسی سازگاری
+     * در صفحات بعدی ذخیره می‌کنیم.
+     */
     if (variantId && makeSlug && modelSlug) {
       saveStorefrontVehicleSelection({
         makeSlug,
@@ -225,13 +243,54 @@ export function HomeHeroFinder() {
       });
     }
 
-    const params = new URLSearchParams();
+    /*
+     * حالت 1:
+     * فقط خودرو انتخاب شده و
+     * جستجوی قطعه نداریم.
+     *
+     * مقصد اصلی Vehicle Landing است.
+     */
+    if (modelSlug && !normalizedQuery) {
+      router.push(`/vehicles/${encodeURIComponent(modelSlug)}`);
 
-    if (normalizedQuery) {
-      params.set('q', normalizedQuery);
+      return;
     }
 
-    if (variantId) {
+    /*
+     * حالت 2:
+     * مدل خودرو انتخاب شده،
+     * نام قطعه هم داریم،
+     * اما Variant دقیق انتخاب نشده.
+     *
+     * داخل همان Vehicle Landing
+     * جستجو انجام می‌شود.
+     *
+     * این URL فیلترشده noindex است،
+     * ولی Landing اصلی خودرو canonical می‌ماند.
+     */
+    if (modelSlug && normalizedQuery && !variantId) {
+      const params = new URLSearchParams();
+
+      params.set('q', normalizedQuery);
+
+      router.push(`/vehicles/${encodeURIComponent(modelSlug)}?${params.toString()}`);
+
+      return;
+    }
+
+    /*
+     * حالت 3:
+     * قطعه + Variant دقیق.
+     *
+     * چون کاربر تیپ/موتور را دقیق انتخاب کرده،
+     * نتیجه باید با vehicleVariantId
+     * فیلتر شود.
+     */
+    if (normalizedQuery && variantId) {
+      const params = new URLSearchParams();
+
+      params.set('q', normalizedQuery);
+
       params.set('vehicleVariantId', variantId);
 
       if (makeSlug) {
@@ -241,11 +300,23 @@ export function HomeHeroFinder() {
       if (modelSlug) {
         params.set('vehicleModel', modelSlug);
       }
+
+      router.push(`/products?${params.toString()}`);
+
+      return;
     }
 
-    const queryString = params.toString();
+    /*
+     * حالت 4:
+     * فقط نام قطعه یا کد فنی.
+     */
+    if (normalizedQuery) {
+      const params = new URLSearchParams();
 
-    router.push(queryString ? `/products?${queryString}` : '/products');
+      params.set('q', normalizedQuery);
+
+      router.push(`/products?${params.toString()}`);
+    }
   }
 
   const selectedMake = findMakeBySlug(makes, makeSlug);
@@ -263,7 +334,8 @@ export function HomeHeroFinder() {
           </h2>
 
           <p className='mt-1 text-xs leading-5 text-foreground-muted'>
-            خودرو را انتخاب کن و نام قطعه یا کد فنی را وارد کن تا فقط قطعات سازگار نمایش داده شوند
+            خودرو را انتخاب کن تا قطعات مناسب آن را ببینی؛ یا نام قطعه و کد فنی را برای جستجوی
+            دقیق‌تر وارد کن
           </p>
         </div>
 

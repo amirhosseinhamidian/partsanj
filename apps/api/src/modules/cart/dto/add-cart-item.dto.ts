@@ -15,4 +15,8 @@ export class AddCartItemDto {
   @Min(1)
   @Max(99)
   quantity = 1;
+
+  @IsOptional()
+  @IsUUID('4')
+  recommendationSessionId?: string;
 }
