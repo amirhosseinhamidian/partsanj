@@ -347,6 +347,10 @@ export function VehicleVariantPicker({
       makes.map((make) => ({
         value: make.slug,
         label: make.name,
+
+        imageUrl: make.logoUrl,
+        imageAlt: make.name,
+
         icon: <CarFront />,
       })),
     [makes],
@@ -357,7 +361,12 @@ export function VehicleVariantPicker({
       models.map((model) => ({
         value: model.slug,
         label: model.name,
+
         description: selectedMake ? `مدل‌های ${selectedMake.name}` : undefined,
+
+        imageUrl: model.imageUrl,
+        imageAlt: model.name,
+
         icon: <CarFront />,
       })),
     [models, selectedMake],
