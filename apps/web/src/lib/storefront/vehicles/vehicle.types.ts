@@ -126,3 +126,17 @@ export type StorefrontVehicleModelLandingListItem = {
 export type StorefrontVehicleModelsLandingResponse = {
   data: StorefrontVehicleModelLandingListItem[];
 };
+
+export type StorefrontHomeVehicleModel = {
+  id: string;
+  name: string;
+  slug: string;
+  imageUrl: string | null;
+  imageAlt: string | null;
+  homeSortOrder: number;
+  make: StorefrontVehicleMakeContext;
+};
+
+export type StorefrontHomeVehicleModelsResponse = {
+  data: StorefrontHomeVehicleModel[];
+};
