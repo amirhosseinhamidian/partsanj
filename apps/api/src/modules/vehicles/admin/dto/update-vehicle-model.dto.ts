@@ -6,6 +6,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
   Matches,
   MaxLength,
   Min,
@@ -15,6 +16,13 @@ import { normalizeSlug, trimText } from './vehicle-admin.dto.utils.js';
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export class UpdateVehicleModelDto {
+  @ApiPropertyOptional({
+    format: 'uuid',
+  })
+  @IsOptional()
+  @IsUUID('4')
+  makeId?: string;
+
   @ApiPropertyOptional({
     example: 'پژو 206',
   })
