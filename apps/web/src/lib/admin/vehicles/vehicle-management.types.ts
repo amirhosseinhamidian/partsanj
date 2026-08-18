@@ -129,8 +129,8 @@ export type CreateVehicleModelPayload = {
   imageUrl?: string;
   isActive: boolean;
   sortOrder: number;
-  showOnHome: boolean;
-  homeSortOrder: number;
+  showOnHome?: boolean;
+  homeSortOrder?: number;
 };
 
 export type UpdateVehicleModelPayload = Partial<Omit<CreateVehicleModelPayload, 'imageUrl' | 'makeId'>> & {
