@@ -133,6 +133,6 @@ export type CreateVehicleModelPayload = {
   homeSortOrder?: number;
 };
 
-export type UpdateVehicleModelPayload = Partial<Omit<CreateVehicleModelPayload, 'imageUrl' | 'makeId'>> & {
+export type UpdateVehicleModelPayload = Partial<Omit<CreateVehicleModelPayload, 'imageUrl'>> & {
   imageUrl?: string | null;
 };
