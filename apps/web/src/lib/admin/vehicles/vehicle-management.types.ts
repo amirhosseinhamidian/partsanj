@@ -106,6 +106,8 @@ export type AdminVehicleModelSummary = {
   imageUrl: string | null;
   isActive: boolean;
   sortOrder: number;
+  showOnHome: boolean;
+  homeSortOrder: number;
 };
 
 export type CreateVehicleMakePayload = {
@@ -127,8 +129,10 @@ export type CreateVehicleModelPayload = {
   imageUrl?: string;
   isActive: boolean;
   sortOrder: number;
+  showOnHome: boolean;
+  homeSortOrder: number;
 };
 
-export type UpdateVehicleModelPayload = Partial<Omit<CreateVehicleModelPayload, 'imageUrl'>> & {
+export type UpdateVehicleModelPayload = Partial<Omit<CreateVehicleModelPayload, 'imageUrl' | 'makeId'>> & {
   imageUrl?: string | null;
 };
