@@ -168,6 +168,57 @@ export class VehiclesService {
     };
   }
 
+  async findHomeModels() {
+    const models = await this.prisma.vehicleModel.findMany({
+      where: {
+        isActive: true,
+        showOnHome: true,
+        make: {
+          isActive: true,
+        },
+        variants: {
+          some: activeVariantWhere,
+        },
+      },
+      orderBy: [
+        {
+          homeSortOrder: 'asc',
+        },
+        {
+          make: {
+            sortOrder: 'asc',
+          },
+        },
+        {
+          sortOrder: 'asc',
+        },
+        {
+          name: 'asc',
+        },
+      ],
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        imageUrl: true,
+        imageAlt: true,
+        homeSortOrder: true,
+        make: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logoUrl: true,
+          },
+        },
+      },
+    });
+
+    return {
+      data: models,
+    };
+  }
+
   async findActiveModels() {
     const models = await this.prisma.vehicleModel.findMany({
       where: {
