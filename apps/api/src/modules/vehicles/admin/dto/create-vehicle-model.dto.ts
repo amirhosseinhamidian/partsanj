@@ -59,4 +59,95 @@ export class CreateVehicleModelDto {
   @IsOptional()
   @IsBoolean()
   isActive = true;
+
+  @ApiPropertyOptional({
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  showOnHome = false;
+
+  @ApiPropertyOptional({
+    default: 0,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  homeSortOrder = 0;
+
+  @ApiPropertyOptional({ maxLength: 2048 })
+  @IsOptional()
+  @Transform(({ value }) => trimText(value), { toClassOnly: true })
+  @IsString()
+  @MaxLength(2048)
+  imageUrl?: string;
+
+  @ApiPropertyOptional({ maxLength: 255 })
+  @IsOptional()
+  @Transform(({ value }) => trimText(value), { toClassOnly: true })
+  @IsString()
+  @MaxLength(255)
+  imageAlt?: string;
+
+  @ApiPropertyOptional({ maxLength: 20_000 })
+  @IsOptional()
+  @Transform(({ value }) => trimText(value), { toClassOnly: true })
+  @IsString()
+  @MaxLength(20_000)
+  description?: string;
+
+  @ApiPropertyOptional({ maxLength: 120 })
+  @IsOptional()
+  @Transform(({ value }) => trimText(value), { toClassOnly: true })
+  @IsString()
+  @MaxLength(120)
+  seoTitle?: string;
+
+  @ApiPropertyOptional({ maxLength: 320 })
+  @IsOptional()
+  @Transform(({ value }) => trimText(value), { toClassOnly: true })
+  @IsString()
+  @MaxLength(320)
+  seoDescription?: string;
+
+  @ApiPropertyOptional({ maxLength: 2048 })
+  @IsOptional()
+  @Transform(({ value }) => trimText(value), { toClassOnly: true })
+  @IsString()
+  @MaxLength(2048)
+  canonicalUrl?: string;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  noIndex = false;
+
+  @ApiPropertyOptional({ maxLength: 160 })
+  @IsOptional()
+  @Transform(({ value }) => trimText(value), { toClassOnly: true })
+  @IsString()
+  @MaxLength(160)
+  openGraphTitle?: string;
+
+  @ApiPropertyOptional({ maxLength: 500 })
+  @IsOptional()
+  @Transform(({ value }) => trimText(value), { toClassOnly: true })
+  @IsString()
+  @MaxLength(500)
+  openGraphDescription?: string;
+
+  @ApiPropertyOptional({ maxLength: 2048 })
+  @IsOptional()
+  @Transform(({ value }) => trimText(value), { toClassOnly: true })
+  @IsString()
+  @MaxLength(2048)
+  openGraphImageUrl?: string;
+
+  @ApiPropertyOptional({ maxLength: 255 })
+  @IsOptional()
+  @Transform(({ value }) => trimText(value), { toClassOnly: true })
+  @IsString()
+  @MaxLength(255)
+  openGraphImageAlt?: string;
 }
