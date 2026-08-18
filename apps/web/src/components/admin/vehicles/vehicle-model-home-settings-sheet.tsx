@@ -81,7 +81,7 @@ export function VehicleModelHomeSettingsSheet({
     setError(null);
 
     try {
-      await adminVehiclesApi.updateModel(model.id, {
+      await adminVehiclesApi.updateModelHomeSettings(model.id, {
         showOnHome,
         homeSortOrder: order,
       });
