@@ -159,6 +159,10 @@ export class VehicleAdminService {
     this.ensureUpdatePayload(dto);
     await this.ensureModelExists(id);
 
+    if (dto.makeId !== undefined) {
+      await this.ensureMakeExists(dto.makeId);
+    }
+
     try {
       const model = await this.prisma.vehicleModel.update({
         where: {
