@@ -27,9 +27,10 @@ import {
   SlidersHorizontal,
   Tag,
   TriangleAlert,
+  ChevronDown,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ProductCompatibilityDialog } from '@/components/storefront/catalog/product-compatibility-dialog';
 import type {
@@ -405,23 +406,16 @@ export function StorefrontProductDetailPageClient({
   const pathname = usePathname();
   const { addItem, isMutating: isCartMutating } = useStorefrontCart();
   const { cart, isLoading: isCartLoading, reloadCart, updateItemVehicle } = useStorefrontCart();
-
   const [isCompatibilityDialogOpen, setIsCompatibilityDialogOpen] = useState(false);
-
   const [product, setProduct] = useState<StorefrontProductDetail | null>(initialProduct);
-
   const [isLoading, setIsLoading] = useState(false);
-
   const [loadError, setLoadError] = useState<ProductLoadError | null>(null);
-
   const [selectedVehicle, setSelectedVehicle] = useState<ResolvedVehicle | null>(null);
-
+  const [expanded, setExpanded] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
   const vehicleVariantId = searchParams.get('vehicleVariantId') ?? '';
-
   const vehicleMake = searchParams.get('vehicleMake') ?? '';
-
   const vehicleModel = searchParams.get('vehicleModel') ?? '';
-
   const selectionContext = useMemo<VehicleSelectionContext | null>(() => {
     if (vehicleVariantId && vehicleMake && vehicleModel) {
       return {
@@ -756,32 +750,113 @@ export function StorefrontProductDetailPageClient({
 
           {product.description ? (
             <section className='overflow-hidden rounded-card border border-border bg-surface shadow-panel'>
-              <div className='flex flex-col gap-4 border-b border-border bg-surface-muted px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6'>
-                <div className='flex items-center gap-3'>
-                  <span className='grid size-11 shrink-0 place-items-center rounded-control bg-brand-soft text-brand'>
-                    <FileText className='size-5' />
-                  </span>
+              {/* Header */}
+              <div className='flex items-center gap-3 border-b border-border bg-surface-muted px-5 py-5 sm:px-6'>
+                <span className='grid size-11 shrink-0 place-items-center rounded-control bg-brand-soft text-brand'>
+                  <FileText className='size-5' />
+                </span>
 
-                  <div>
-                    <h2 className='text-lg font-extrabold text-foreground'>معرفی {product.name}</h2>
+                <div>
+                  <h2 className='text-lg font-extrabold text-foreground'>معرفی {product.name}</h2>
 
-                    <p className='mt-1 text-sm text-foreground-secondary'>
-                      اطلاعات تکمیلی، کاربردها و نکات مهم این قطعه
-                    </p>
-                  </div>
+                  <p className='mt-1 text-sm text-foreground-secondary'>
+                    اطلاعات تکمیلی، کاربردها و نکات مهم این قطعه
+                  </p>
                 </div>
               </div>
 
               <div className='px-5 py-6 sm:px-6'>
-                <div className='relative overflow-hidden rounded-control border border-border bg-surface-muted/60 p-5 sm:p-6'>
-                  <span className='absolute inset-y-0 start-0 w-1 bg-brand' />
+                <div className='relative overflow-hidden rounded-control border border-border bg-surface-muted/60'>
+                  <span className='absolute inset-y-0 start-0 z-10 w-1 bg-brand' />
 
+                  {/* Expandable content */}
                   <div
-                    className='product-rich-content text-sm leading-8 text-foreground-secondary'
-                    dangerouslySetInnerHTML={{
-                      __html: product.description,
+                    style={{
+                      maxHeight: expanded
+                        ? `${contentRef.current?.scrollHeight ?? 2000}px`
+                        : '180px',
                     }}
+                    className='overflow-hidden transition-[max-height] duration-500 ease-in-out'
+                  >
+                    <div
+                      ref={contentRef}
+                      className={[
+                        'product-rich-content p-5 text-sm leading-8 text-foreground-secondary sm:p-6',
+
+                        '[&_p]:my-4',
+
+                        '[&_h2]:mb-4',
+                        '[&_h2]:mt-8',
+                        '[&_h2]:text-xl',
+                        '[&_h2]:font-extrabold',
+                        '[&_h2]:leading-8',
+                        '[&_h2]:text-foreground',
+
+                        '[&_h3]:mb-3',
+                        '[&_h3]:mt-7',
+                        '[&_h3]:text-lg',
+                        '[&_h3]:font-bold',
+                        '[&_h3]:leading-8',
+                        '[&_h3]:text-foreground',
+
+                        '[&_strong]:font-extrabold',
+                        '[&_strong]:text-foreground',
+
+                        '[&_ul]:my-4',
+                        '[&_ul]:list-disc',
+                        '[&_ul]:pe-6',
+
+                        '[&_ol]:my-4',
+                        '[&_ol]:list-decimal',
+                        '[&_ol]:pe-6',
+
+                        '[&_li]:my-1.5',
+
+                        '[&_blockquote]:my-6',
+                        '[&_blockquote]:border-s-4',
+                        '[&_blockquote]:border-brand',
+                        '[&_blockquote]:ps-4',
+                        '[&_blockquote]:italic',
+
+                        '[&_a]:font-semibold',
+                        '[&_a]:text-brand',
+                        '[&_a]:underline',
+                        '[&_a]:underline-offset-4',
+                      ].join(' ')}
+                      dangerouslySetInnerHTML={{
+                        __html: product.description,
+                      }}
+                    />
+                  </div>
+
+                  {/* Fade when collapsed */}
+                  <div
+                    className={[
+                      'pointer-events-none absolute inset-x-0 bottom-0 h-24',
+                      'bg-gradient-to-t from-surface-muted via-surface-muted/90 to-transparent',
+                      'transition-opacity duration-300',
+                      expanded ? 'opacity-0' : 'opacity-100',
+                    ].join(' ')}
                   />
+                </div>
+
+                {/* Toggle */}
+                <div className='mt-4 flex justify-center'>
+                  <button
+                    type='button'
+                    onClick={() => setExpanded((prev) => !prev)}
+                    aria-expanded={expanded}
+                    className='group flex items-center gap-2 rounded-control px-4 py-2.5 text-sm font-bold text-brand transition-colors hover:bg-brand-soft'
+                  >
+                    {expanded ? 'بستن توضیحات' : 'مشاهده توضیحات کامل'}
+
+                    <ChevronDown
+                      className={[
+                        'size-4 transition-transform duration-500',
+                        expanded ? 'rotate-180' : '',
+                      ].join(' ')}
+                    />
+                  </button>
                 </div>
               </div>
             </section>
