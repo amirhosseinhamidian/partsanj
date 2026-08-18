@@ -128,6 +128,22 @@ export class VehicleAdminService {
           slug: dto.slug,
           sortOrder: dto.sortOrder,
           isActive: dto.isActive,
+          showOnHome: dto.showOnHome,
+          homeSortOrder: dto.homeSortOrder,
+
+          imageUrl: dto.imageUrl,
+          imageAlt: dto.imageAlt,
+          description: dto.description,
+
+          seoTitle: dto.seoTitle,
+          seoDescription: dto.seoDescription,
+          canonicalUrl: dto.canonicalUrl,
+          noIndex: dto.noIndex,
+
+          openGraphTitle: dto.openGraphTitle,
+          openGraphDescription: dto.openGraphDescription,
+          openGraphImageUrl: dto.openGraphImageUrl,
+          openGraphImageAlt: dto.openGraphImageAlt,
         },
       });
 
