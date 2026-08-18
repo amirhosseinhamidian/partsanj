@@ -43,6 +43,10 @@ function getModelPath(id?: string): string {
   return `${VEHICLES_API_PATH}/models/${encodeURIComponent(requiredId(id, 'شناسه مدل خودرو'))}`;
 }
 
+function getModelHomePath(id: string): string {
+  return `${getModelPath(id)}/home`;
+}
+
 function getVariantPath(id?: string): string {
   if (!id) {
     return `${VEHICLES_API_PATH}/variants`;
@@ -105,6 +109,20 @@ export const adminVehiclesApi = {
     return requestAdminApi<{
       data: AdminVehicleModelListItem;
     }>(getModelPath(id), {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async updateModelHomeSettings(
+    id: string,
+    payload: Pick<UpdateVehicleModelPayload, 'showOnHome' | 'homeSortOrder'>,
+  ): Promise<{
+    data: AdminVehicleModelListItem;
+  }> {
+    return requestAdminApi<{
+      data: AdminVehicleModelListItem;
+    }>(getModelHomePath(id), {
       method: 'PATCH',
       body: JSON.stringify(payload),
     });

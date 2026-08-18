@@ -20,9 +20,10 @@ import { IconButton } from '@/components/ui/icon-button';
 import { SearchInput } from '@/components/ui/search-input';
 import { Select } from '@/components/ui/select';
 import { Tooltip } from '@/components/ui/tooltip';
-import { Edit3, Layers3, Plus } from 'lucide-react';
+import { Edit3, Home, Layers3, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { VehicleModelFormSheet } from './vehicle-model-form-sheet';
+import { VehicleModelHomeSettingsSheet } from './vehicle-model-home-settings-sheet';
 import { ImageUrlPreview } from '@/components/ui/image-url-preview';
 import { toPersianDigits } from '@/lib/utils/digits';
 
@@ -45,8 +46,10 @@ export function VehicleModelsTab({ models, makes, loading, onDataChanged }: Vehi
 
   const [page, setPage] = useState(1);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [homeSettingsOpen, setHomeSettingsOpen] = useState(false);
 
   const [editingModel, setEditingModel] = useState<AdminVehicleModelListItem | null>(null);
+  const [homeSettingsModel, setHomeSettingsModel] = useState<AdminVehicleModelListItem | null>(null);
 
   const makeOptions = useMemo(
     () =>
@@ -145,8 +148,20 @@ export function VehicleModelsTab({ models, makes, loading, onDataChanged }: Vehi
         ),
       },
       {
+        key: 'home',
+        header: 'صفحه اصلی',
+        minWidth: '145px',
+        align: 'center',
+        cell: (row) =>
+          row.showOnHome ? (
+            <Badge variant='success'>هوم · {toPersianDigits(row.homeSortOrder)}</Badge>
+          ) : (
+            <Badge variant='neutral'>نمایش داده نمی‌شود</Badge>
+          ),
+      },
+      {
         key: 'sortOrder',
-        header: 'ترتیب نمایش',
+        header: 'ترتیب عمومی',
         minWidth: '135px',
         align: 'center',
         cell: (row) => (
@@ -189,6 +204,11 @@ export function VehicleModelsTab({ models, makes, loading, onDataChanged }: Vehi
   function openEditSheet(model: AdminVehicleModelListItem) {
     setEditingModel(model);
     setSheetOpen(true);
+  }
+
+  function openHomeSettings(model: AdminVehicleModelListItem) {
+    setHomeSettingsModel(model);
+    setHomeSettingsOpen(true);
   }
 
   return (
@@ -285,23 +305,38 @@ export function VehicleModelsTab({ models, makes, loading, onDataChanged }: Vehi
               getRowId={(row) => row.id}
               loading={loading}
               loadingRows={8}
-              tableClassName='min-w-[940px]'
+              tableClassName='min-w-[1080px]'
               emptyTitle='مدل خودرویی پیدا نشد'
               emptyDescription='فیلترها را تغییر دهید یا یک مدل خودرو ایجاد کنید'
               onRowClick={openEditSheet}
               rowActions={(row) => (
-                <Tooltip content='ویرایش مدل خودرو'>
-                  <span className='inline-flex'>
-                    <IconButton
-                      type='button'
-                      aria-label={`ویرایش ${row.name}`}
-                      icon={<Edit3 />}
-                      variant='ghost'
-                      size='sm'
-                      onClick={() => openEditSheet(row)}
-                    />
-                  </span>
-                </Tooltip>
+                <div className='flex items-center gap-1'>
+                  <Tooltip content='تنظیم نمایش در صفحه اصلی'>
+                    <span className='inline-flex'>
+                      <IconButton
+                        type='button'
+                        aria-label={`تنظیم نمایش ${row.name} در صفحه اصلی`}
+                        icon={<Home />}
+                        variant='ghost'
+                        size='sm'
+                        onClick={() => openHomeSettings(row)}
+                      />
+                    </span>
+                  </Tooltip>
+
+                  <Tooltip content='ویرایش مدل خودرو'>
+                    <span className='inline-flex'>
+                      <IconButton
+                        type='button'
+                        aria-label={`ویرایش ${row.name}`}
+                        icon={<Edit3 />}
+                        variant='ghost'
+                        size='sm'
+                        onClick={() => openEditSheet(row)}
+                      />
+                    </span>
+                  </Tooltip>
+                </div>
               )}
               pagination={{
                 page: currentPage,
@@ -319,6 +354,13 @@ export function VehicleModelsTab({ models, makes, loading, onDataChanged }: Vehi
         model={editingModel}
         makes={makes}
         onOpenChange={setSheetOpen}
+        onSaved={onDataChanged}
+      />
+
+      <VehicleModelHomeSettingsSheet
+        open={homeSettingsOpen}
+        model={homeSettingsModel}
+        onOpenChange={setHomeSettingsOpen}
         onSaved={onDataChanged}
       />
     </>

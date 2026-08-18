@@ -8,6 +8,8 @@ export type AdminVehicleMakeListItem = AdminVehicleMakeSummary & {
 
 export type AdminVehicleModelListItem = AdminVehicleModelSummary & {
   makeId: string;
+  showOnHome: boolean;
+  homeSortOrder: number;
   make: AdminVehicleMakeSummary;
   _count: {
     variants: number;
@@ -127,6 +129,8 @@ export type CreateVehicleModelPayload = {
   imageUrl?: string;
   isActive: boolean;
   sortOrder: number;
+  showOnHome?: boolean;
+  homeSortOrder?: number;
 };
 
 export type UpdateVehicleModelPayload = Partial<Omit<CreateVehicleModelPayload, 'imageUrl'>> & {

@@ -32,6 +32,15 @@ export class VehiclesController {
     return this.vehiclesService.findActiveModelsByMakeSlug(params.slug);
   }
 
+  @Get('home')
+  @ApiOperation({
+    summary: 'List vehicle models selected for the storefront home page',
+  })
+  @ApiOkResponse()
+  findHomeModels() {
+    return this.vehiclesService.findHomeModels();
+  }
+
   @Get('models')
   @ApiOperation({
     summary: 'List active vehicle models',

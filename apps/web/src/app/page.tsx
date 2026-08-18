@@ -6,9 +6,11 @@ import { HomeFeaturedProducts } from '@/components/storefront/home/home-featured
 import { HomeHero } from '@/components/storefront/home/home-hero';
 import { HomeMainCategories } from '@/components/storefront/home/home-main-categories';
 import { HomePurchaseProcess } from '@/components/storefront/home/home-purchase-process';
+import { HomeVehicleModels } from '@/components/storefront/home/home-vehicle-models';
 import { getHomeBlogPosts } from '@/lib/storefront/home/home-blog-posts.server';
 import { getHomeMainCategories } from '@/lib/storefront/home/home-categories.server';
 import { getHomeFeaturedProducts } from '@/lib/storefront/home/home-featured-products.server';
+import { getHomeVehicleModels } from '@/lib/storefront/home/home-vehicles.server';
 import { buildSeoMetadata } from '@/lib/storefront/seo/seo-metadata';
 import { StorefrontStructuredData } from '@/lib/storefront/seo/storefront-structured-data';
 import { getStorefrontSiteSettings } from '@/lib/storefront/settings/site-settings.server';
@@ -41,9 +43,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const [homeCategories, featuredProducts, homeBlogPosts, settings] =
+  const [homeCategories, homeVehicleModels, featuredProducts, homeBlogPosts, settings] =
     await Promise.all([
       getHomeMainCategories(),
+      getHomeVehicleModels(),
       getHomeFeaturedProducts(),
       getHomeBlogPosts(),
       getStorefrontSiteSettings(),
@@ -59,7 +62,8 @@ export default async function Home() {
         <HomeMainCategories categories={homeCategories} />
       </div>
 
-      <HomeBenefits className='mt-10' />
+      <HomeVehicleModels vehicles={homeVehicleModels} className='mt-2' />
+      <HomeBenefits className='mt-8 sm:mt-10' />
       <HomeFeaturedProducts products={featuredProducts} className='mt-10' />
       <HomePurchaseProcess className='mt-10' />
       <HomeBlogGuide posts={homeBlogPosts} className='mt-12' />
