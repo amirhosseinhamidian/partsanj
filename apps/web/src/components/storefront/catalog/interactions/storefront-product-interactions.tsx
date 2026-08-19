@@ -106,12 +106,6 @@ function InteractiveRating({
 
   return (
     <div className='space-y-4'>
-      <div className='flex items-center justify-center gap-2 text-foreground-secondary'>
-        <Gauge className='size-5 text-brand' />
-
-        <span className='text-sm font-bold'>امتیاز شما به این قطعه</span>
-      </div>
-
       <div
         className='flex items-center justify-center gap-2'
         dir='ltr'
@@ -246,11 +240,7 @@ function ReviewCard({
         <p className='mt-4 text-sm leading-7 whitespace-pre-line text-foreground-secondary'>
           {review.body}
         </p>
-      ) : (
-        <p className='mt-4 text-sm text-foreground-muted'>
-          این کاربر فقط به این محصول امتیاز داده است.
-        </p>
-      )}
+      ) : null}
 
       <div className='mt-5 flex flex-wrap items-center justify-between gap-3'>
         <button
@@ -525,6 +515,8 @@ export function StorefrontProductInteractions({
 
   const [pendingHelpfulAfterLogin, setPendingHelpfulAfterLogin] = useState<string | null>(null);
 
+  const [isReviewFormOpen, setIsReviewFormOpen] = useState(false);
+
   const [isQuestionFormOpen, setIsQuestionFormOpen] = useState(false);
 
   const loadReviews = useCallback(
@@ -635,6 +627,8 @@ export function StorefrontProductInteractions({
         variant: 'success',
         title: response.message ?? 'امتیاز شما ثبت شد',
       });
+
+      setIsReviewFormOpen(false);
 
       await loadReviews();
     } catch (error) {
@@ -991,42 +985,78 @@ export function StorefrontProductInteractions({
               </div>
             </div>
 
-            <div className='rounded-card border border-brand/20 bg-brand-soft/30 p-5 sm:p-6'>
-              <InteractiveRating value={selectedRating} onChange={setSelectedRating} />
+            <div className='overflow-hidden rounded-card border border-brand/20 bg-brand-soft/30 p-5 sm:p-6'>
+              <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+                <div className='flex items-center gap-2 text-foreground-secondary'>
+                  <Gauge className='size-5 text-brand' />
 
-              {selectedRating > 0 ? (
-                <div className='mt-5 space-y-3'>
-                  <Textarea
-                    value={reviewBody}
-                    rows={4}
-                    maxLength={3000}
-                    placeholder='اگر دوست دارید تجربه‌تان از کیفیت، نصب یا عملکرد این قطعه را هم بنویسید...'
-                    onChange={(event) => setReviewBody(event.target.value)}
-                  />
+                  <span className='text-sm font-bold'>امتیاز شما به این قطعه</span>
+                </div>
 
-                  {pendingReview ? (
-                    <div className='rounded-control border border-warning/30 bg-warning-soft px-4 py-3 text-xs font-semibold text-warning'>
-                      نظر فعلی شما در انتظار بررسی پارت‌سنج است.
-                    </div>
-                  ) : null}
+                <Button
+                  type='button'
+                  size='sm'
+                  variant={isReviewFormOpen ? 'outline' : 'primary'}
+                  iconStart={<MessageSquareText />}
+                  className='shrink-0'
+                  onClick={() => setIsReviewFormOpen((current) => !current)}
+                >
+                  {isReviewFormOpen ? 'بستن فرم' : reviewBody.trim() ? 'ویرایش نظر' : 'نوشتن نظر'}
+                </Button>
+              </div>
 
-                  <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
-                    <p className='text-xs leading-6 text-foreground-muted'>
-                      نوشتن متن اختیاری است؛ می‌توانید فقط امتیازتان را ثبت کنید.
-                    </p>
+              <div className='mt-5'>
+                <InteractiveRating
+                  value={selectedRating}
+                  onChange={(rating) => {
+                    setSelectedRating(rating);
+                    setIsReviewFormOpen(true);
+                  }}
+                />
+              </div>
 
-                    <Button
-                      type='button'
-                      isLoading={isSubmittingReview}
-                      loadingLabel='در حال ثبت'
-                      iconStart={<Star />}
-                      onClick={() => void submitReview()}
-                    >
-                      ثبت امتیاز
-                    </Button>
-                  </div>
+              {pendingReview ? (
+                <div className='mt-5 rounded-control border border-warning/30 bg-warning-soft px-4 py-3 text-xs font-semibold text-warning'>
+                  ثبت فعلی شما در انتظار بررسی پارت‌سنج است.
                 </div>
               ) : null}
+
+              <div
+                className={
+                  isReviewFormOpen
+                    ? 'grid grid-rows-[1fr] opacity-100 transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none'
+                    : 'grid grid-rows-[0fr] opacity-0 transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none'
+                }
+              >
+                <div className='overflow-hidden'>
+                  <div className='mt-5 space-y-3 border-t border-brand/15 pt-5'>
+                    <Textarea
+                      value={reviewBody}
+                      rows={4}
+                      maxLength={3000}
+                      placeholder='اگر دوست دارید تجربه‌تان از کیفیت، نصب یا عملکرد این قطعه را هم بنویسید...'
+                      onChange={(event) => setReviewBody(event.target.value)}
+                    />
+
+                    <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+                      <p className='text-xs leading-6 text-foreground-muted'>
+                        نوشتن متن اختیاری است؛ امتیاز بدون متن فقط در آمار امتیازهای محصول محاسبه
+                        می‌شود و در فهرست نظرات نمایش داده نمی‌شود.
+                      </p>
+
+                      <Button
+                        type='button'
+                        isLoading={isSubmittingReview}
+                        loadingLabel='در حال ثبت'
+                        iconStart={<Star />}
+                        onClick={() => void submitReview()}
+                      >
+                        {reviewBody.trim() ? 'ثبت امتیاز و نظر' : 'ثبت امتیاز'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

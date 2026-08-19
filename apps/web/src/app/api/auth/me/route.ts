@@ -1,6 +1,9 @@
+import { ApiRequestError } from '@/lib/api/api-error';
 import { apiErrorResponse } from '@/lib/api/route-response';
 import { nestApiWithResponse } from '@/lib/api/nest-api';
-import { getAccessToken } from '@/lib/auth/session';
+
+import { clearSession, getAccessToken } from '@/lib/auth/session';
+
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -35,6 +38,18 @@ export async function GET() {
 
     return response;
   } catch (error) {
+    if (error instanceof ApiRequestError && error.status === 401) {
+      const response = NextResponse.json({
+        data: null,
+      });
+
+      clearSession(response, 'customer');
+
+      response.headers.set('Cache-Control', 'no-store');
+
+      return response;
+    }
+
     return apiErrorResponse(error);
   }
 }

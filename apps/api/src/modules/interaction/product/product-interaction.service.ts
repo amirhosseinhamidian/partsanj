@@ -68,9 +68,17 @@ export class ProductInteractionService {
       };
     }
 
-    const where: Prisma.ProductReviewWhereInput = {
+    const reviewWhere: Prisma.ProductReviewWhereInput = {
       productId: product.id,
       status: APPROVED,
+
+      body: {
+        not: null,
+      },
+
+      NOT: {
+        body: '',
+      },
     };
 
     /*
@@ -87,7 +95,7 @@ export class ProductInteractionService {
 
     const [reviews, total, ratingsCount, average, groupedRatings, myReview] = await Promise.all([
       this.prisma.productReview.findMany({
-        where,
+        where: reviewWhere,
 
         skip,
         take: limit,
@@ -144,7 +152,7 @@ export class ProductInteractionService {
       }),
 
       this.prisma.productReview.count({
-        where,
+        where: reviewWhere,
       }),
 
       /*
@@ -295,6 +303,8 @@ export class ProductInteractionService {
 
     const displayName = this.buildUserDisplayName(user);
 
+    const normalizedBody = dto.body?.trim() || null;
+
     const verifiedPurchase = await this.hasVerifiedPurchase(product.id, user.id);
 
     const existing = await this.prisma.productReview.findFirst({
@@ -334,7 +344,7 @@ export class ProductInteractionService {
           data: {
             rating: dto.rating,
 
-            body: dto.body ?? null,
+            body: normalizedBody,
 
             authorDisplayName: displayName,
 
@@ -370,7 +380,7 @@ export class ProductInteractionService {
 
             rating: dto.rating,
 
-            body: dto.body ?? null,
+            body: normalizedBody,
 
             isVerifiedPurchase: verifiedPurchase,
 
@@ -395,7 +405,9 @@ export class ProductInteractionService {
     return {
       data: review,
 
-      message: 'امتیاز و نظر شما ثبت شد و پس از بررسی نمایش داده می‌شود.',
+      message: normalizedBody
+        ? 'امتیاز و نظر شما ثبت شد و پس از بررسی نمایش داده می‌شود.'
+        : 'امتیاز شما ثبت شد و پس از بررسی در امتیازهای محصول محاسبه می‌شود.',
     };
   }
 
@@ -413,6 +425,14 @@ export class ProductInteractionService {
         id: reviewId,
         productId: product.id,
         status: APPROVED,
+
+        body: {
+          not: null,
+        },
+
+        NOT: {
+          body: '',
+        },
       },
 
       select: {
@@ -465,6 +485,14 @@ export class ProductInteractionService {
         id: reviewId,
         productId: product.id,
         status: APPROVED,
+
+        body: {
+          not: null,
+        },
+
+        NOT: {
+          body: '',
+        },
       },
 
       select: {

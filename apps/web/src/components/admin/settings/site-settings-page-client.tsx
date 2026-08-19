@@ -5,7 +5,6 @@ import {
   Globe2,
   ImageIcon,
   Phone,
-  Save,
   SearchCheck,
   Settings2,
   Share2,
@@ -14,7 +13,6 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
@@ -74,13 +72,17 @@ type SiteSettingsFormValues = {
 type SiteSettingsFormErrors = Partial<Record<keyof SiteSettingsFormValues | 'root', string>>;
 
 function toFormValues(settings: SiteSettings): SiteSettingsFormValues {
+  const logoUrl = settings.logoLightUrl ?? settings.logoDarkUrl ?? '';
+
   return {
     siteName: settings.siteName,
     siteTagline: settings.siteTagline ?? '',
     siteBaseUrl: settings.siteBaseUrl,
 
-    logoLightUrl: settings.logoLightUrl ?? '',
-    logoDarkUrl: settings.logoDarkUrl ?? '',
+    // برای سازگاری با ساختار فعلی Settings هر دو فیلد نگه داشته می‌شوند،
+    // اما در UI فقط یک لوگو داریم و هر دو مقدار یکسان ذخیره می‌شوند.
+    logoLightUrl: logoUrl,
+    logoDarkUrl: logoUrl,
     faviconUrl: settings.faviconUrl ?? '',
 
     supportPhone: settings.supportPhone ?? '',
@@ -246,6 +248,23 @@ export function SiteSettingsPageClient({ initialSettings }: SiteSettingsPageClie
     setErrors((current) => ({
       ...current,
       [key]: undefined,
+      root: undefined,
+    }));
+
+    setSuccessMessage(null);
+  }
+
+  function setLogoUrl(url: string) {
+    setValues((current) => ({
+      ...current,
+      logoLightUrl: url,
+      logoDarkUrl: url,
+    }));
+
+    setErrors((current) => ({
+      ...current,
+      logoLightUrl: undefined,
+      logoDarkUrl: undefined,
       root: undefined,
     }));
 
@@ -506,45 +525,30 @@ export function SiteSettingsPageClient({ initialSettings }: SiteSettingsPageClie
 
           <SettingsSection
             title='برند و فایل‌ها'
-            description='آدرس لوگوها و favicon سایت'
+            description='لوگوی سایت و favicon'
             icon={<ImageIcon className='size-5' />}
           >
             <div className='grid gap-5 md:grid-cols-2'>
-              <FormField label='لوگوی حالت روشن' error={errors.logoLightUrl}>
-                {({ id, labelId, describedBy, invalid }) => (
+              <FormField label='لوگوی سایت' error={errors.logoLightUrl ?? errors.logoDarkUrl}>
+                {({ id }) => (
                   <AdminSingleImageUploadField
+                    inputId={id}
                     purpose='general'
                     value={values.logoLightUrl}
-                    onChange={(url) => {
-                      setField('logoLightUrl', url);
-                    }}
-                    alt='لوگوی روشن پارت‌سنج'
+                    onChange={setLogoUrl}
+                    alt='لوگوی پارت‌سنج'
                     disabled={isSaving}
                     previewClassName='size-32'
-                    uploadTitle='آپلود لوگوی روشن'
-                  />
-                )}
-              </FormField>
-
-              <FormField label='لوگوی حالت تیره' error={errors.logoDarkUrl}>
-                {({ id, labelId, describedBy, invalid }) => (
-                  <AdminSingleImageUploadField
-                    purpose='general'
-                    value={values.logoDarkUrl}
-                    onChange={(url) => {
-                      setField('logoDarkUrl', url);
-                    }}
-                    alt='لوگوی تیره پارت‌سنج'
-                    disabled={isSaving}
-                    previewClassName='size-32'
-                    uploadTitle='آپلود لوگوی تیره'
+                    uploadTitle='آپلود لوگوی سایت'
+                    inputPlaceholder='https://partsanj.ir/uploads/...'
                   />
                 )}
               </FormField>
 
               <FormField label='Favicon' error={errors.faviconUrl}>
-                {({ id, labelId, describedBy, invalid }) => (
+                {({ id }) => (
                   <AdminSingleImageUploadField
+                    inputId={id}
                     purpose='general'
                     value={values.faviconUrl}
                     onChange={(url) => {
@@ -553,7 +557,8 @@ export function SiteSettingsPageClient({ initialSettings }: SiteSettingsPageClie
                     alt='لوگوی favicon پارت‌سنج'
                     disabled={isSaving}
                     previewClassName='size-32'
-                    uploadTitle='آپلود لوگوی favicon'
+                    uploadTitle='آپلود favicon'
+                    inputPlaceholder='https://partsanj.ir/uploads/...'
                   />
                 )}
               </FormField>
@@ -774,21 +779,22 @@ export function SiteSettingsPageClient({ initialSettings }: SiteSettingsPageClie
 
               <FormField
                 label='آواتار پاسخ رسمی'
-                helperText='URL تصویر رسمی؛ در صورت خالی بودن از آیکن پیش‌فرض استفاده می‌شود'
+                helperText='تصویر رسمی تیم پارت‌سنج؛ در صورت خالی بودن از آیکن پیش‌فرض استفاده می‌شود'
                 error={errors.supportAvatarUrl}
               >
-                {({ id, labelId, describedBy, invalid }) => (
-                  <Input
-                    id={id}
-                    dir='ltr'
-                    maxLength={2048}
-                    aria-labelledby={labelId}
-                    aria-describedby={describedBy}
-                    aria-invalid={invalid}
-                    disabled={isSaving}
+                {({ id }) => (
+                  <AdminSingleImageUploadField
+                    inputId={id}
+                    purpose='general'
                     value={values.supportAvatarUrl}
-                    onChange={(event) => setField('supportAvatarUrl', event.target.value)}
-                    placeholder='https://cdn.partsanj.com/support-avatar.png'
+                    onChange={(url) => {
+                      setField('supportAvatarUrl', url);
+                    }}
+                    alt={values.supportDisplayName.trim() || 'پارت‌سنج'}
+                    disabled={isSaving}
+                    previewClassName='size-28 rounded-full'
+                    uploadTitle='آپلود آواتار پارت‌سنج'
+                    inputPlaceholder='https://partsanj.ir/uploads/...'
                   />
                 )}
               </FormField>
@@ -816,9 +822,20 @@ export function SiteSettingsPageClient({ initialSettings }: SiteSettingsPageClie
 
               <div className='rounded-2xl border border-border bg-surface-muted p-4'>
                 <div className='flex items-start gap-3'>
-                  <span className='grid size-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand'>
-                    <ShieldCheck className='size-5' />
-                  </span>
+                  {values.supportAvatarUrl ? (
+                    <span className='size-10 shrink-0 overflow-hidden rounded-full border border-brand/20 bg-surface'>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={values.supportAvatarUrl}
+                        alt={values.supportDisplayName || 'پارت‌سنج'}
+                        className='size-full object-cover'
+                      />
+                    </span>
+                  ) : (
+                    <span className='grid size-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand'>
+                      <ShieldCheck className='size-5' />
+                    </span>
+                  )}
 
                   <div>
                     <p className='font-extrabold text-foreground'>پیش‌نمایش هویت رسمی</p>
