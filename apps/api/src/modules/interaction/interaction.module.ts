@@ -1,8 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
+
 import { AuthModule } from '../auth/auth.module.js';
+
+import { BlogInteractionController } from './blog/blog-interaction.controller.js';
+import { BlogInteractionService } from './blog/blog-interaction.service.js';
+
 import { ProductInteractionController } from './product/product-interaction.controller.js';
 import { ProductInteractionService } from './product/product-interaction.service.js';
+
+import { ContentReportController } from './report/content-report.controller.js';
+import { ContentReportService } from './report/content-report.service.js';
 
 @Module({
   imports: [
@@ -18,10 +26,10 @@ import { ProductInteractionService } from './product/product-interaction.service
     }),
   ],
 
-  controllers: [ProductInteractionController],
+  controllers: [ProductInteractionController, BlogInteractionController, ContentReportController],
 
-  providers: [ProductInteractionService],
+  providers: [ProductInteractionService, BlogInteractionService, ContentReportService],
 
-  exports: [ProductInteractionService],
+  exports: [ProductInteractionService, BlogInteractionService, ContentReportService],
 })
 export class InteractionModule {}
