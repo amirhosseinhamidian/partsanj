@@ -106,6 +106,68 @@ export class UpdateSiteSettingsDto {
   @MaxLength(50)
   supportMobile?: string | null;
 
+  @ApiPropertyOptional({
+    example: 'پارت‌سنج',
+    maxLength: 100,
+  })
+  @IsOptional()
+  @Transform(({ value }) => normalizeText(value), {
+    toClassOnly: true,
+  })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  supportDisplayName?: string;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    maxLength: 2048,
+  })
+  @IsOptional()
+  @Transform(({ value }) => normalizeNullableText(value), {
+    toClassOnly: true,
+  })
+  @IsUrl({
+    protocols: ['http', 'https'],
+    require_protocol: true,
+  })
+  @MaxLength(2048)
+  supportAvatarUrl?: string | null;
+
+  @ApiPropertyOptional({
+    example: 'پاسخ رسمی پارت‌سنج',
+    maxLength: 100,
+  })
+  @IsOptional()
+  @Transform(({ value }) => normalizeText(value), {
+    toClassOnly: true,
+  })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  supportBadgeLabel?: string;
+
+  @ApiPropertyOptional({
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  productReviewsEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  productQuestionsEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  blogCommentsEnabled?: boolean;
+
   @ApiPropertyOptional({ nullable: true, maxLength: 2048 })
   @Transform(({ value }) => normalizeNullableText(value), { toClassOnly: true })
   @IsOptional()

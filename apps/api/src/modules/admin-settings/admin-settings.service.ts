@@ -18,6 +18,14 @@ const siteSettingsSelect = {
   supportPhone: true,
   supportMobile: true,
 
+  supportDisplayName: true,
+  supportAvatarUrl: true,
+  supportBadgeLabel: true,
+
+  productReviewsEnabled: true,
+  productQuestionsEnabled: true,
+  blogCommentsEnabled: true,
+
   whatsappUrl: true,
   telegramUrl: true,
   baleUrl: true,
@@ -55,6 +63,14 @@ type SiteSettingsMutationData = {
 
   supportPhone: string | null;
   supportMobile: string | null;
+
+  supportDisplayName: string;
+  supportAvatarUrl: string | null;
+  supportBadgeLabel: string;
+
+  productReviewsEnabled: boolean;
+  productQuestionsEnabled: boolean;
+  blogCommentsEnabled: boolean;
 
   whatsappUrl: string | null;
   telegramUrl: string | null;
@@ -94,6 +110,14 @@ const defaultSiteSettingsData = {
 
   supportPhone: null,
   supportMobile: null,
+
+  supportDisplayName: 'پارت‌سنج',
+  supportAvatarUrl: null,
+  supportBadgeLabel: 'پاسخ رسمی پارت‌سنج',
+
+  productReviewsEnabled: true,
+  productQuestionsEnabled: true,
+  blogCommentsEnabled: true,
 
   whatsappUrl: null,
   telegramUrl: null,
@@ -211,6 +235,14 @@ export class AdminSettingsService {
         supportPhone: settings.supportPhone,
         supportMobile: settings.supportMobile,
 
+        supportDisplayName: settings.supportDisplayName,
+        supportAvatarUrl: settings.supportAvatarUrl,
+        supportBadgeLabel: settings.supportBadgeLabel,
+
+        productReviewsEnabled: settings.productReviewsEnabled,
+        productQuestionsEnabled: settings.productQuestionsEnabled,
+        blogCommentsEnabled: settings.blogCommentsEnabled,
+
         whatsappUrl: settings.whatsappUrl,
         telegramUrl: settings.telegramUrl,
         baleUrl: settings.baleUrl,
@@ -243,6 +275,15 @@ export class AdminSettingsService {
 
       supportPhone: dto.supportPhone ?? null,
       supportMobile: dto.supportMobile ?? null,
+
+      supportDisplayName: dto.supportDisplayName ?? current.supportDisplayName,
+      supportAvatarUrl:
+        dto.supportAvatarUrl === undefined ? current.supportAvatarUrl : dto.supportAvatarUrl,
+
+      supportBadgeLabel: dto.supportBadgeLabel ?? current.supportBadgeLabel,
+      productReviewsEnabled: dto.productReviewsEnabled ?? current.productReviewsEnabled,
+      productQuestionsEnabled: dto.productQuestionsEnabled ?? current.productQuestionsEnabled,
+      blogCommentsEnabled: dto.blogCommentsEnabled ?? current.blogCommentsEnabled,
 
       whatsappUrl: dto.whatsappUrl ?? null,
       telegramUrl: dto.telegramUrl ?? null,
@@ -280,6 +321,33 @@ export class AdminSettingsService {
 
     this.addChange(changes, 'supportPhone', current.supportPhone, next.supportPhone);
     this.addChange(changes, 'supportMobile', current.supportMobile, next.supportMobile);
+
+    this.addChange(
+      changes,
+      'supportDisplayName',
+      current.supportDisplayName,
+      next.supportDisplayName,
+    );
+    this.addChange(changes, 'supportAvatarUrl', current.supportAvatarUrl, next.supportAvatarUrl);
+    this.addChange(changes, 'supportBadgeLabel', current.supportBadgeLabel, next.supportBadgeLabel);
+    this.addChange(
+      changes,
+      'productReviewsEnabled',
+      current.productReviewsEnabled,
+      next.productReviewsEnabled,
+    );
+    this.addChange(
+      changes,
+      'productQuestionsEnabled',
+      current.productQuestionsEnabled,
+      next.productQuestionsEnabled,
+    );
+    this.addChange(
+      changes,
+      'blogCommentsEnabled',
+      current.blogCommentsEnabled,
+      next.blogCommentsEnabled,
+    );
 
     this.addChange(changes, 'whatsappUrl', current.whatsappUrl, next.whatsappUrl);
     this.addChange(changes, 'telegramUrl', current.telegramUrl, next.telegramUrl);
