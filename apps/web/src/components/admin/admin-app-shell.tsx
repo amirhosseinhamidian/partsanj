@@ -18,12 +18,18 @@ import {
   PanelRightOpen,
   Settings2,
   UsersRound,
+  MessagesSquare,
   X,
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  ADMIN_INTERACTIONS_CHANGED_EVENT,
+  adminInteractionsApi,
+} from '@/lib/api/admin-interactions-client';
+import { toPersianDigits } from '@/lib/utils/digits';
 
 export type AdminShellUser = {
   fullName: string | null;
@@ -121,6 +127,27 @@ const navigation: AdminNavigationGroup[] = [
         href: '/admin/orders',
       },
       {
+        label: 'تعاملات',
+        icon: MessagesSquare,
+        href: '/admin/interactions',
+
+        children: [
+          {
+            label: 'مدیریت محتوا',
+            href: '/admin/interactions',
+          },
+
+          {
+            label: 'گزارش‌های کاربران',
+            href: '/admin/interactions/reports',
+          },
+          {
+            label: 'ورود از CSV',
+            href: '/admin/interactions/import',
+          },
+        ],
+      },
+      {
         label: 'مشتریان',
         icon: UsersRound,
         href: '/admin/users',
@@ -140,6 +167,12 @@ function isRouteActive(pathname: string, href: string): boolean {
   }
 
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function getBestMatchingHref(pathname: string, hrefs: string[]): string | undefined {
+  return hrefs
+    .filter((href) => isRouteActive(pathname, href))
+    .sort((a, b) => b.length - a.length)[0];
 }
 
 function getNavigationItemKey(item: AdminNavigationItem) {
@@ -172,10 +205,16 @@ function getInitialExpandedItems(pathname: string) {
 function getCurrentItem(pathname: string) {
   for (const group of navigation) {
     for (const item of group.items) {
-      const currentChild = item.children?.find((child) => isRouteActive(pathname, child.href));
+      const childHrefs = item.children?.map((child) => child.href) ?? [];
 
-      if (currentChild) {
-        return currentChild;
+      const bestChildHref = getBestMatchingHref(pathname, childHrefs);
+
+      if (bestChildHref) {
+        const currentChild = item.children?.find((child) => child.href === bestChildHref);
+
+        if (currentChild) {
+          return currentChild;
+        }
       }
 
       if (item.href && isRouteActive(pathname, item.href)) {
@@ -201,6 +240,8 @@ type SidebarContentProps = {
   admin: AdminShellUser;
   pathname: string;
   collapsed: boolean;
+  interactionPendingCount: number;
+  interactionOpenReportsCount: number;
   onNavigate?: () => void;
   onToggleCollapse?: () => void;
   onCloseMobile?: () => void;
@@ -210,6 +251,8 @@ function SidebarContent({
   admin,
   pathname,
   collapsed,
+  interactionPendingCount,
+  interactionOpenReportsCount,
   onNavigate,
   onToggleCollapse,
   onCloseMobile,
@@ -336,6 +379,14 @@ function SidebarContent({
               {group.items.map((item) => {
                 const Icon = item.icon;
 
+                const interactionActionCount =
+                  interactionPendingCount + interactionOpenReportsCount;
+
+                const itemBadge =
+                  item.href === '/admin/interactions' && interactionActionCount > 0
+                    ? toPersianDigits(String(interactionActionCount))
+                    : item.badge;
+
                 const hasChildren = Boolean(item.children?.length);
 
                 const itemKey = getNavigationItemKey(item);
@@ -363,7 +414,15 @@ function SidebarContent({
 
                 const itemContent = (
                   <>
-                    <Icon className='size-5 shrink-0' />
+                    <span className='relative grid size-5 shrink-0 place-items-center'>
+                      <Icon className='size-5' />
+
+                      {collapsed && itemBadge ? (
+                        <span className='absolute -end-3 -top-2 grid min-w-4 place-items-center rounded-full bg-danger px-1 text-[9px] leading-4 font-extrabold text-white'>
+                          {itemBadge}
+                        </span>
+                      ) : null}
+                    </span>
 
                     {collapsed ? (
                       <span className='sr-only'>{item.label}</span>
@@ -371,9 +430,9 @@ function SidebarContent({
                       <span className='flex min-w-0 items-center gap-2'>
                         <span className='truncate'>{item.label}</span>
 
-                        {item.badge ? (
-                          <span className='rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-bold text-foreground-muted'>
-                            {item.badge}
+                        {itemBadge ? (
+                          <span className='rounded-full bg-danger-soft px-2 py-0.5 text-[10px] font-extrabold text-danger'>
+                            {itemBadge}
                           </span>
                         ) : null}
 
@@ -449,7 +508,23 @@ function SidebarContent({
                         <div className='min-h-0 overflow-hidden'>
                           <div className='space-y-1 border-s border-border ps-3'>
                             {item.children?.map((child) => {
-                              const childActive = isRouteActive(pathname, child.href);
+                              const childHrefs =
+                                item.children?.map((currentChild) => currentChild.href) ?? [];
+
+                              const bestChildHref = getBestMatchingHref(pathname, childHrefs);
+
+                              const childActive = child.href === bestChildHref;
+
+                              const childBadge =
+                                child.href === '/admin/interactions'
+                                  ? interactionPendingCount > 0
+                                    ? toPersianDigits(String(interactionPendingCount))
+                                    : undefined
+                                  : child.href === '/admin/interactions/reports'
+                                    ? interactionOpenReportsCount > 0
+                                      ? toPersianDigits(String(interactionOpenReportsCount))
+                                      : undefined
+                                    : child.badge;
 
                               if (child.disabled) {
                                 return (
@@ -460,9 +535,9 @@ function SidebarContent({
                                   >
                                     <span className='truncate'>{child.label}</span>
 
-                                    {child.badge ? (
+                                    {childBadge ? (
                                       <span className='me-auto rounded-full bg-surface-muted px-1.5 py-0.5 text-[10px] font-bold text-foreground-muted'>
-                                        {child.badge}
+                                        {childBadge}
                                       </span>
                                     ) : null}
                                   </span>
@@ -545,6 +620,44 @@ export function AdminAppShell({ admin, children }: AdminAppShellProps) {
   const [desktopCollapsed, setDesktopCollapsed] = useState(false);
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [interactionPendingCount, setInteractionPendingCount] = useState(0);
+  const [interactionOpenReportsCount, setInteractionOpenReportsCount] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadInteractionSummary() {
+      try {
+        const response = await adminInteractionsApi.summary();
+
+        if (!mounted) {
+          return;
+        }
+
+        setInteractionPendingCount(response.data.totalPending);
+        setInteractionOpenReportsCount(response.data.openReports);
+      } catch {
+        /*
+         * خطای badge نباید کل Admin Shell
+         * را از کار بیندازد.
+         */
+      }
+    }
+
+    function handleInteractionChanged() {
+      void loadInteractionSummary();
+    }
+
+    void loadInteractionSummary();
+
+    window.addEventListener(ADMIN_INTERACTIONS_CHANGED_EVENT, handleInteractionChanged);
+
+    return () => {
+      mounted = false;
+
+      window.removeEventListener(ADMIN_INTERACTIONS_CHANGED_EVENT, handleInteractionChanged);
+    };
+  }, []);
 
   const currentItem = useMemo(() => getCurrentItem(pathname), [pathname]);
 
@@ -597,6 +710,8 @@ export function AdminAppShell({ admin, children }: AdminAppShellProps) {
           admin={admin}
           pathname={pathname}
           collapsed={desktopCollapsed}
+          interactionPendingCount={interactionPendingCount}
+          interactionOpenReportsCount={interactionOpenReportsCount}
           onToggleCollapse={() => {
             setDesktopCollapsed((current) => !current);
           }}
@@ -624,6 +739,8 @@ export function AdminAppShell({ admin, children }: AdminAppShellProps) {
               admin={admin}
               pathname={pathname}
               collapsed={false}
+              interactionPendingCount={interactionPendingCount}
+              interactionOpenReportsCount={interactionOpenReportsCount}
               onNavigate={() => {
                 setMobileSidebarOpen(false);
               }}
