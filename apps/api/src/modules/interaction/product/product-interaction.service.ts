@@ -73,9 +73,19 @@ export class ProductInteractionService {
       status: APPROVED,
     };
 
+    /*
+     * Reviewهای Importشده همچنان در لیست عمومی دیده می‌شوند،
+     * اما فقط امتیازهایی که مستقیماً در پارت‌سنج ثبت شده‌اند
+     * وارد Average Rating و Structured Data می‌شوند.
+     */
+    const ratingWhere: Prisma.ProductReviewWhereInput = {
+      productId: product.id,
+      status: APPROVED,
+      source: InteractionSource.SITE,
+    };
     const orderBy = this.buildReviewOrderBy(query.sort ?? ProductReviewSort.NEWEST);
 
-    const [reviews, total, average, groupedRatings, myReview] = await Promise.all([
+    const [reviews, total, ratingsCount, average, groupedRatings, myReview] = await Promise.all([
       this.prisma.productReview.findMany({
         where,
 
@@ -137,8 +147,15 @@ export class ProductInteractionService {
         where,
       }),
 
+      /*
+       * فقط Ratingهای ثبت‌شده در خود سایت
+       */
+      this.prisma.productReview.count({
+        where: ratingWhere,
+      }),
+
       this.prisma.productReview.aggregate({
-        where,
+        where: ratingWhere,
 
         _avg: {
           rating: true,
@@ -148,7 +165,7 @@ export class ProductInteractionService {
       this.prisma.productReview.groupBy({
         by: ['rating'],
 
-        where,
+        where: ratingWhere,
 
         _count: {
           _all: true,
@@ -203,7 +220,7 @@ export class ProductInteractionService {
 
     const helpfulSet = new Set(helpfulReviewIds.map((item) => item.reviewId));
 
-    const breakdown = this.buildRatingBreakdown(groupedRatings, total);
+    const breakdown = this.buildRatingBreakdown(groupedRatings, ratingsCount);
 
     const averageRating = average._avg.rating === null ? 0 : Number(average._avg.rating.toFixed(1));
 
@@ -215,7 +232,7 @@ export class ProductInteractionService {
 
         summary: {
           averageRating,
-          ratingsCount: total,
+          ratingsCount,
           breakdown,
         },
 

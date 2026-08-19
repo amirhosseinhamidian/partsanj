@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { storefrontProductInteractionsApi } from '@/lib/api/storefront-product-interactions-client';
 import { ClientApiError } from '@/lib/api/web-client';
-
+import { StorefrontContentReportButton } from '@/components/storefront/interactions/storefront-content-report-button';
 import type {
   StorefrontOfficialInteractionIdentity,
   StorefrontProductQuestion,
@@ -252,7 +252,7 @@ function ReviewCard({
         </p>
       )}
 
-      <div className='mt-5 flex items-center'>
+      <div className='mt-5 flex flex-wrap items-center justify-between gap-3'>
         <button
           type='button'
           disabled={helpfulBusy}
@@ -273,6 +273,8 @@ function ReviewCard({
             <span className='numeric'>{toPersianDigits(String(review.helpfulCount))}</span>
           ) : null}
         </button>
+
+        <StorefrontContentReportButton targetType='PRODUCT_REVIEW' targetId={review.id} />
       </div>
 
       {review.replies.length > 0 ? (
@@ -314,6 +316,14 @@ function ReviewCard({
                 <p className='mt-3 text-sm leading-7 whitespace-pre-line text-foreground-secondary'>
                   {reply.body}
                 </p>
+                {!official ? (
+                  <div className='mt-2 flex justify-end'>
+                    <StorefrontContentReportButton
+                      targetType='PRODUCT_REVIEW_REPLY'
+                      targetId={reply.id}
+                    />
+                  </div>
+                ) : null}
               </div>
             );
           })}
@@ -366,6 +376,10 @@ function QuestionCard({
         {question.body}
       </p>
 
+      <div className='mt-2 flex justify-end'>
+        <StorefrontContentReportButton targetType='PRODUCT_QUESTION' targetId={question.id} />
+      </div>
+
       {question.replies.length > 0 ? (
         <div className='mt-5 space-y-3 border-r-2 border-brand/20 pr-4'>
           {question.replies.map((reply) => {
@@ -405,6 +419,14 @@ function QuestionCard({
                 <p className='mt-3 text-sm leading-7 whitespace-pre-line text-foreground-secondary'>
                   {reply.body}
                 </p>
+                {!official ? (
+                  <div className='mt-2 flex justify-end'>
+                    <StorefrontContentReportButton
+                      targetType='PRODUCT_QUESTION_REPLY'
+                      targetId={reply.id}
+                    />
+                  </div>
+                ) : null}
               </div>
             );
           })}
@@ -929,8 +951,9 @@ export function StorefrontProductInteractions({
                   <SmallRating value={Math.round(ratingSummary?.averageRating ?? 0)} />
                 </div>
 
-                <p className='mt-2 text-xs text-foreground-muted'>
-                  بر اساس {toPersianDigits(String(ratingSummary?.ratingsCount ?? 0))} امتیاز
+                <p className='mt-2 text-xs leading-5 text-foreground-muted'>
+                  بر اساس {toPersianDigits(String(ratingSummary?.ratingsCount ?? 0))} امتیاز ثبت‌شده
+                  در پارت‌سنج
                 </p>
               </div>
 

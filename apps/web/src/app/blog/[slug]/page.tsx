@@ -11,6 +11,9 @@ import {
 } from '@/lib/storefront/blog/public-blog.server';
 import { buildSeoMetadata } from '@/lib/storefront/seo/seo-metadata';
 import { getStorefrontSiteSettings } from '@/lib/storefront/settings/site-settings.server';
+import { publicNestApi } from '@/lib/server/public-nest-api';
+
+import type { StorefrontBlogCommentsResponse } from '@/lib/storefront/interactions/blog-interaction.types';
 
 export const revalidate = 300;
 
@@ -19,6 +22,21 @@ type BlogPostPageProps = {
     slug: string;
   }>;
 };
+
+async function getInitialBlogComments(slug: string) {
+  return publicNestApi<StorefrontBlogCommentsResponse>(
+    `/api/v1/blog/posts/${encodeURIComponent(slug)}/comments?page=1&limit=10`,
+    {
+      method: 'GET',
+
+      next: {
+        revalidate: 300,
+
+        tags: [`blog-comments:${slug}`],
+      },
+    },
+  ).catch(() => null);
+}
 
 export async function generateMetadata({ params }: BlogPostPageProps): Promise<Metadata> {
   const { slug } = await params;
@@ -62,14 +80,19 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const { slug } = await params;
 
   try {
-    const result = await getPublicBlogPost(slug);
+    const [result, initialComments] = await Promise.all([
+      getPublicBlogPost(slug),
+
+      getInitialBlogComments(slug),
+    ]);
+
     const post = result.data;
 
     return (
       <>
         <BlogPostStructuredData post={post} />
 
-        <PublicBlogPostPageContent post={post} />
+        <PublicBlogPostPageContent post={post} initialComments={initialComments} />
       </>
     );
   } catch (error) {

@@ -282,7 +282,11 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   return (
     <>
       {!product.noIndex && !settings.noIndexSite ? (
-        <ProductStructuredData product={product} settings={settings} />
+        <ProductStructuredData
+          product={product}
+          settings={settings}
+          reviews={interactions.reviews}
+        />
       ) : null}
 
       <StorefrontProductDetailPageClient

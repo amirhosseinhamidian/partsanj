@@ -8,12 +8,18 @@ import type { PublicBlogPostDetail } from '@/lib/storefront/blog/public-blog.typ
 import { PublicBlogPageShell } from './public-blog-page-shell';
 import { TiptapDocument } from '@/components/ui/tiptap-document';
 import Image from 'next/image';
+import { StorefrontBlogComments } from '@/components/storefront/blog/interactions/storefront-blog-comments';
+import type { StorefrontBlogCommentsResponse } from '@/lib/storefront/interactions/blog-interaction.types';
 
 type PublicBlogPostPageContentProps = {
   post: PublicBlogPostDetail;
+  initialComments: StorefrontBlogCommentsResponse | null;
 };
 
-export function PublicBlogPostPageContent({ post }: PublicBlogPostPageContentProps) {
+export function PublicBlogPostPageContent({
+  post,
+  initialComments,
+}: PublicBlogPostPageContentProps) {
   const showUpdatedAt = shouldShowPublicBlogUpdatedAt(post.publishedAt, post.updatedAt);
 
   return (
@@ -102,6 +108,7 @@ export function PublicBlogPostPageContent({ post }: PublicBlogPostPageContentPro
           </Link>
         </footer>
       </article>
+      <StorefrontBlogComments slug={post.slug} initialComments={initialComments} />
     </PublicBlogPageShell>
   );
 }

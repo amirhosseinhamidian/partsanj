@@ -1,24 +1,18 @@
-import 'server-only';
-
 import type { StorefrontProductDetail } from '@/lib/storefront/catalog/catalog.types';
-import type { StorefrontSiteSettings } from '@/lib/storefront/settings/site-settings.types';
 
-import { JsonLd } from './json-ld';
+import type { StorefrontProductReviewsResponse } from '@/lib/storefront/interactions/product-interaction.types';
+
+import type { StorefrontSiteSettings } from '@/lib/storefront/settings/site-settings.types';
 
 type ProductStructuredDataProps = {
   product: StorefrontProductDetail;
+
   settings: StorefrontSiteSettings;
+
+  reviews?: StorefrontProductReviewsResponse | null;
 };
 
-function getSiteOrigin(value: string): string {
-  try {
-    return new URL(value).origin;
-  } catch {
-    return 'https://partsanj.ir';
-  }
-}
-
-function toAbsoluteUrl(value: string | null | undefined, origin: string): string | undefined {
+function toAbsoluteUrl(value: string | null | undefined, baseUrl: string): string | undefined {
   const normalizedValue = value?.trim();
 
   if (!normalizedValue) {
@@ -26,115 +20,124 @@ function toAbsoluteUrl(value: string | null | undefined, origin: string): string
   }
 
   try {
-    return new URL(normalizedValue, `${origin}/`).toString();
+    const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+
+    return new URL(normalizedValue, normalizedBaseUrl).toString();
   } catch {
     return undefined;
   }
 }
 
-function getSchemaAvailability(product: StorefrontProductDetail): string | undefined {
-  if (product.stockStatus === 'IN_STOCK' && product.stockQuantity > 0) {
-    return 'https://schema.org/InStock';
-  }
+function getAvailability(stockStatus: StorefrontProductDetail['stockStatus']) {
+  switch (stockStatus) {
+    case 'IN_STOCK':
+      return 'https://schema.org/InStock';
 
-  if (
-    product.stockStatus === 'OUT_OF_STOCK' ||
-    (product.stockStatus === 'IN_STOCK' && product.stockQuantity <= 0)
-  ) {
-    return 'https://schema.org/OutOfStock';
-  }
+    case 'OUT_OF_STOCK':
+      return 'https://schema.org/OutOfStock';
 
+    case 'CHECK_AVAILABILITY':
+    default:
+      return 'https://schema.org/LimitedAvailability';
+  }
+}
+
+function serializeJsonLd(value: unknown) {
   /*
-   * CHECK_AVAILABILITY
-   *
-   * موجودی واقعاً مشخص نیست؛
-   * پس اطلاعات اشتباه به Google نمی‌دهیم.
+   * جلوگیری از بسته‌شدن ناخواسته script
+   * در صورت وجود "<" داخل داده‌های متنی.
    */
-  return undefined;
+  return JSON.stringify(value).replace(/</g, '\\u003c');
 }
 
-function toIsoDateTime(value: string | null | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
+export function ProductStructuredData({ product, settings, reviews }: ProductStructuredDataProps) {
+  const productUrl =
+    toAbsoluteUrl(product.canonicalUrl || `/products/${product.slug}`, settings.siteBaseUrl) ??
+    `${settings.siteBaseUrl.replace(/\/+$/, '')}/products/${encodeURIComponent(product.slug)}`;
 
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return undefined;
-  }
-
-  return date.toISOString();
-}
-
-function htmlToPlainText(value: string | null | undefined): string {
-  if (!value?.trim()) {
-    return '';
-  }
-
-  return value
-    .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/<\/(p|h1|h2|h3|h4|h5|h6|li|blockquote)>/gi, ' ')
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-export function ProductStructuredData({ product, settings }: ProductStructuredDataProps) {
-  const origin = getSiteOrigin(settings.siteBaseUrl);
-
-  const productUrl = `${origin}/products/${encodeURIComponent(product.slug)}`;
-
-  const categoryUrl = `${origin}/categories/${encodeURIComponent(product.category.slug)}`;
-
-  const organizationId = `${origin}/#organization`;
-
-  const productId = `${productUrl}#product`;
-
-  const siteName = settings.siteName?.trim() || 'پارت‌سنج';
-
-  const images = product.images.flatMap((image) => {
-    const absoluteUrl = toAbsoluteUrl(image.url, origin);
-
-    return absoluteUrl ? [absoluteUrl] : [];
-  });
+  const images = product.images
+    .map((image) => toAbsoluteUrl(image.url, settings.siteBaseUrl))
+    .filter((value): value is string => Boolean(value));
 
   const description =
     product.seoDescription?.trim() ||
     product.shortDescription?.trim() ||
-    htmlToPlainText(product.description) ||
-    `مشخصات و خرید ${product.name} از ${siteName}`;
+    `${product.name} برند ${product.brand.name}`;
 
+  /*
+   * قیمت‌های دیتابیس پارت‌سنج بر حسب تومان هستند.
+   * Structured Data از IRR استفاده می‌کند،
+   * بنابراین تومان × 10 می‌شود.
+   */
   const effectivePriceToman = product.effectivePriceToman;
 
-  const canPublishOffer =
+  const canExposeOffer =
+    settings.storeEnabled &&
+    settings.orderingEnabled &&
     settings.showPrices &&
     effectivePriceToman !== null &&
-    Number.isFinite(effectivePriceToman) &&
     effectivePriceToman > 0;
 
-  const schemaAvailability = getSchemaAvailability(product);
+  const offer = canExposeOffer
+    ? {
+        '@type': 'Offer',
 
-  const saleValidFrom = product.isSaleActive ? toIsoDateTime(product.saleStartsAt) : undefined;
+        url: productUrl,
 
-  const saleValidThrough = product.isSaleActive ? toIsoDateTime(product.saleEndsAt) : undefined;
+        priceCurrency: 'IRR',
 
-  const productSchema: Record<string, unknown> = {
+        price: effectivePriceToman * 10,
+
+        availability: getAvailability(product.stockStatus),
+
+        itemCondition: 'https://schema.org/NewCondition',
+
+        seller: {
+          '@type': 'Organization',
+
+          name: settings.siteName || 'پارت‌سنج',
+        },
+      }
+    : undefined;
+
+  const ratingSummary = reviews?.data.enabled ? reviews.data.summary : null;
+
+  const canExposeAggregateRating = Boolean(
+    ratingSummary &&
+    ratingSummary.ratingsCount > 0 &&
+    ratingSummary.averageRating >= 1 &&
+    ratingSummary.averageRating <= 5,
+  );
+
+  const aggregateRating =
+    canExposeAggregateRating && ratingSummary
+      ? {
+          '@type': 'AggregateRating',
+
+          ratingValue: ratingSummary.averageRating,
+
+          ratingCount: ratingSummary.ratingsCount,
+
+          bestRating: 5,
+
+          worstRating: 1,
+        }
+      : undefined;
+
+  const structuredData = {
+    '@context': 'https://schema.org',
+
     '@type': 'Product',
-    '@id': productId,
+
+    '@id': `${productUrl}#product`,
+
+    url: productUrl,
 
     name: product.name,
-    description,
 
     sku: product.sku,
 
-    url: productUrl,
+    description,
 
     category: product.category.name,
 
@@ -146,102 +149,28 @@ export function ProductStructuredData({ product, settings }: ProductStructuredDa
 
     brand: {
       '@type': 'Brand',
+
       name: product.brand.name,
     },
 
-    ...(canPublishOffer
+    ...(offer
       ? {
-          offers: {
-            '@type': 'Offer',
+          offers: offer,
+        }
+      : {}),
 
-            url: productUrl,
-
-            priceCurrency: 'IRR',
-
-            price: String(effectivePriceToman * 10),
-
-            itemCondition: 'https://schema.org/NewCondition',
-
-            seller: {
-              '@id': organizationId,
-            },
-
-            ...(schemaAvailability
-              ? {
-                  availability: schemaAvailability,
-                }
-              : {}),
-
-            ...(saleValidFrom
-              ? {
-                  validFrom: saleValidFrom,
-                }
-              : {}),
-
-            ...(saleValidThrough
-              ? {
-                  validThrough: saleValidThrough,
-                }
-              : {}),
-          },
+    ...(aggregateRating
+      ? {
+          aggregateRating,
         }
       : {}),
   };
 
-  const breadcrumbSchema: Record<string, unknown> = {
-    '@type': 'BreadcrumbList',
-
-    '@id': `${productUrl}#breadcrumb`,
-
-    itemListElement: [
-      {
-        '@type': 'ListItem',
-
-        position: 1,
-
-        name: 'خانه',
-
-        item: `${origin}/`,
-      },
-
-      {
-        '@type': 'ListItem',
-
-        position: 2,
-
-        name: 'قطعات خودرو',
-
-        item: `${origin}/products`,
-      },
-
-      {
-        '@type': 'ListItem',
-
-        position: 3,
-
-        name: product.category.name,
-
-        item: categoryUrl,
-      },
-
-      {
-        '@type': 'ListItem',
-
-        position: 4,
-
-        name: product.name,
-
-        item: productUrl,
-      },
-    ],
-  };
-
   return (
-    <JsonLd
-      data={{
-        '@context': 'https://schema.org',
-
-        '@graph': [productSchema, breadcrumbSchema],
+    <script
+      type='application/ld+json'
+      dangerouslySetInnerHTML={{
+        __html: serializeJsonLd(structuredData),
       }}
     />
   );
