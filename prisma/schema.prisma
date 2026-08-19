@@ -72,6 +72,12 @@ enum AdminAuditEntityType {
   BLOG_CATEGORY
   BLOG_POST
   SITE_SETTING
+  PRODUCT_REVIEW
+  PRODUCT_REVIEW_REPLY
+  PRODUCT_QUESTION
+  PRODUCT_QUESTION_REPLY
+  BLOG_COMMENT
+  USER_CONTENT_REPORT
 }
 
 enum AdminAuditAction {
@@ -83,6 +89,14 @@ enum AdminAuditAction {
   ORDER_STATUS_UPDATED
   ORDER_SHIPMENT_UPDATED
   ORDER_CANCELLED
+
+  APPROVED
+  REJECTED
+  MARKED_SPAM
+  DELETED
+  RESTORED
+  REPLIED
+  IMPORTED
 }
 
 enum OrderStatus {
@@ -149,6 +163,43 @@ enum BlogPostStatus {
   ARCHIVED
 }
 
+enum ContentModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SPAM
+  DELETED
+}
+
+enum InteractionAuthorType {
+  USER
+  STAFF
+  IMPORTED_CUSTOMER
+}
+
+enum InteractionSource {
+  SITE
+  ADMIN
+  LEGACY
+  INSTAGRAM
+  WHATSAPP
+  PHONE
+}
+
+enum ContentReportTargetType {
+  PRODUCT_REVIEW
+  PRODUCT_REVIEW_REPLY
+  PRODUCT_QUESTION
+  PRODUCT_QUESTION_REPLY
+  BLOG_COMMENT
+}
+
+enum ContentReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
 enum MediaAssetPurpose {
   PRODUCT
   BLOG
@@ -189,6 +240,14 @@ model User {
   adminAuditLogs      AdminAuditLog[]
   blogPosts           BlogPost[]        @relation("BlogPostAuthor")
   uploadedMediaAssets MediaAsset[]      @relation("MediaAssetUploader")
+
+  productReviews ProductReview[] @relation("ProductReviewAuthor")
+  productReviewReplies ProductReviewReply[] @relation("ProductReviewReplyAuthor")
+  productReviewHelpfulVotes ProductReviewHelpfulVote[]
+  productQuestions ProductQuestion[] @relation("ProductQuestionAuthor")
+  productQuestionReplies ProductQuestionReply[] @relation("ProductQuestionReplyAuthor")
+  blogComments BlogComment[] @relation("BlogCommentAuthor")
+  contentReports UserContentReport[] @relation("ContentReportReporter")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -332,6 +391,9 @@ model Product {
   compatibilities ProductVehicleCompatibility[]
   behaviorEvents  ProductBehaviorEvent[]
 
+  reviews   ProductReview[]
+  questions ProductQuestion[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -368,6 +430,198 @@ model ProductImage {
   createdAt DateTime @default(now())
 
   @@unique([productId, sortOrder])
+}
+
+model ProductReview {
+  id String @id @default(uuid())
+  productId String
+  authorUserId String?
+
+  authorType InteractionAuthorType @default(USER)
+  authorDisplayName String? @db.VarChar(100)
+  rating Int
+  body String? @db.VarChar(3000)
+  status ContentModerationStatus @default(PENDING)
+  isVerifiedPurchase Boolean @default(false)
+
+  source InteractionSource @default(SITE)
+  sourceReference String? @db.VarChar(255)
+
+  sourceCreatedAt DateTime?
+  moderatedAt DateTime?
+  publishedAt DateTime?
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  authorUser User? @relation("ProductReviewAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+
+  replies ProductReviewReply[]
+  helpfulVotes ProductReviewHelpfulVote[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId, status, publishedAt])
+  @@index([productId, authorUserId])
+  @@index([authorUserId, createdAt])
+  @@index([status, createdAt])
+  @@index([source, sourceReference])
+}
+
+model ProductReviewReply {
+  id String @id @default(uuid())
+  reviewId String
+  parentId String?
+  authorUserId String?
+
+  authorType InteractionAuthorType @default(USER)
+  authorDisplayName String? @db.VarChar(100)
+  body String @db.VarChar(3000)
+  status ContentModerationStatus @default(PENDING)
+  source InteractionSource @default(SITE)
+  sourceReference String? @db.VarChar(255)
+
+  sourceCreatedAt DateTime?
+  moderatedAt DateTime?
+  publishedAt DateTime?
+
+  review ProductReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  authorUser User? @relation("ProductReviewReplyAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+  parent ProductReviewReply? @relation("ProductReviewReplyTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children ProductReviewReply[] @relation("ProductReviewReplyTree")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([reviewId, status, createdAt])
+  @@index([parentId])
+  @@index([authorUserId, createdAt])
+}
+
+model ProductReviewHelpfulVote {
+  reviewId String
+  userId String
+
+  review ProductReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([reviewId, userId])
+  @@index([userId, createdAt])
+}
+
+model ProductQuestion {
+  id String @id @default(uuid())
+  productId String
+  authorUserId String?
+
+  authorType InteractionAuthorType @default(USER)
+  authorDisplayName String? @db.VarChar(100)
+  body String @db.VarChar(2000)
+  status ContentModerationStatus @default(PENDING)
+  source InteractionSource @default(SITE)
+  sourceReference String? @db.VarChar(255)
+
+  sourceCreatedAt DateTime?
+  isPinned Boolean @default(false)
+  moderatedAt DateTime?
+  publishedAt DateTime?
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  authorUser User? @relation("ProductQuestionAuthor", fields: [authorUserId], references: [id],onDelete: Restrict)
+  replies ProductQuestionReply[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId, status, publishedAt])
+  @@index([productId, isPinned, publishedAt])
+  @@index([authorUserId, createdAt])
+  @@index([status, createdAt])
+  @@index([source, sourceReference])
+}
+
+model ProductQuestionReply {
+  id String @id @default(uuid())
+  questionId String
+  parentId String?
+  authorUserId String?
+
+  authorType InteractionAuthorType @default(USER)
+  authorDisplayName String? @db.VarChar(100)
+  body String @db.VarChar(3000)
+  status ContentModerationStatus @default(PENDING)
+  source InteractionSource @default(SITE)
+  sourceReference String? @db.VarChar(255)
+
+  sourceCreatedAt DateTime?
+  moderatedAt DateTime?
+  publishedAt DateTime?
+
+  question ProductQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  authorUser User? @relation("ProductQuestionReplyAuthor", fields: [authorUserId], references: [id],onDelete: Restrict)
+  parent ProductQuestionReply? @relation("ProductQuestionReplyTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children ProductQuestionReply[] @relation("ProductQuestionReplyTree")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([questionId, status, createdAt])
+  @@index([parentId])
+  @@index([authorUserId, createdAt])
+}
+
+model BlogComment {
+  id String @id @default(uuid())
+  blogPostId String
+  parentId String?
+  authorUserId String?
+
+  authorType InteractionAuthorType @default(USER)
+  authorDisplayName String? @db.VarChar(100)
+  body String @db.VarChar(3000)
+  status ContentModerationStatus @default(PENDING)
+  source InteractionSource @default(SITE)
+  sourceReference String? @db.VarChar(255)
+
+  sourceCreatedAt DateTime?
+  moderatedAt DateTime?
+  publishedAt DateTime?
+
+  blogPost BlogPost @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
+  authorUser User? @relation("BlogCommentAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+  parent BlogComment? @relation("BlogCommentTree", fields: [parentId], references: [id],onDelete: Cascade)
+  children BlogComment[] @relation("BlogCommentTree")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([blogPostId, status, createdAt])
+  @@index([blogPostId, parentId, createdAt])
+  @@index([parentId])
+  @@index([authorUserId, createdAt])
+}
+
+model UserContentReport {
+  id String @id @default(uuid())
+  reporterUserId String
+
+  targetType ContentReportTargetType
+  targetId String
+  reason String @db.VarChar(150)
+  details String? @db.VarChar(1000)
+  status ContentReportStatus @default(OPEN)
+
+  resolvedAt DateTime?
+
+  reporter User @relation("ContentReportReporter", fields: [reporterUserId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([targetType, targetId, reporterUserId])
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
 }
 
 model MediaAsset {
@@ -898,6 +1152,8 @@ model BlogPost {
 
   authorUser User @relation("BlogPostAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
 
+  comments BlogComment[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -937,6 +1193,14 @@ model SiteSetting {
   defaultShippingCostToman   Int?
   freeShippingThresholdToman Int?
   orderExpirationMinutes     Int  @default(30)
+
+  supportDisplayName String @default("پارت‌سنج") @db.VarChar(100)
+  supportAvatarUrl String? @db.VarChar(2048)
+  supportBadgeLabel String @default("پاسخ رسمی پارت‌سنج") @db.VarChar(100)
+
+  productReviewsEnabled   Boolean @default(true)
+  productQuestionsEnabled Boolean @default(true)
+  blogCommentsEnabled     Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
