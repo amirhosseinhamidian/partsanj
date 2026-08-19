@@ -49,6 +49,12 @@ export async function PUT(request: Request) {
      */
     revalidatePath('/sitemap.xml');
 
+    revalidateTag('site-settings', 'max');
+
+    revalidatePath('/products/[slug]', 'page');
+
+    revalidatePath('/blog/[slug]', 'page');
+
     return NextResponse.json(result);
   } catch (error) {
     return apiErrorResponse(error);

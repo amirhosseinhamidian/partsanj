@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 
+import { AuthModule } from '../auth/auth.module.js';
+
 import { AdminInteractionController } from './admin-interaction.controller.js';
 import { AdminInteractionService } from './admin-interaction.service.js';
 
@@ -10,6 +12,8 @@ import { AdminContentReportController } from './report/admin-content-report.cont
 import { AdminContentReportService } from './report/admin-content-report.service.js';
 
 @Module({
+  imports: [AuthModule],
+
   controllers: [
     AdminInteractionController,
     AdminInteractionImportController,

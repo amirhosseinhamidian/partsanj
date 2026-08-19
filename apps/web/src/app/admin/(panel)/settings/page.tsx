@@ -13,6 +13,10 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
   supportPhone: null,
   supportMobile: null,
 
+  supportDisplayName: 'پارت‌سنج',
+  supportAvatarUrl: null,
+  supportBadgeLabel: 'پاسخ رسمی پارت‌سنج',
+
   whatsappUrl: null,
   telegramUrl: null,
   baleUrl: null,
@@ -31,6 +35,9 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
   defaultShippingCostToman: null,
   freeShippingThresholdToman: null,
   orderExpirationMinutes: 30,
+  productReviewsEnabled: false,
+  productQuestionsEnabled: false,
+  blogCommentsEnabled: false,
 };
 
 export default function AdminSettingsPage() {

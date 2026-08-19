@@ -18,6 +18,10 @@ const FALLBACK_SITE_SETTINGS: StorefrontSiteSettings = {
   supportPhone: null,
   supportMobile: null,
 
+  supportDisplayName: 'پارت‌سنج',
+  supportAvatarUrl: null,
+  supportBadgeLabel: 'پاسخ رسمی پارت‌سنج',
+
   whatsappUrl: null,
   telegramUrl: null,
   baleUrl: null,
@@ -32,6 +36,10 @@ const FALLBACK_SITE_SETTINGS: StorefrontSiteSettings = {
   storeEnabled: true,
   orderingEnabled: true,
   showPrices: true,
+
+  productReviewsEnabled: true,
+  productQuestionsEnabled: true,
+  blogCommentsEnabled: true,
 };
 
 export async function getStorefrontSiteSettings(): Promise<StorefrontSiteSettings> {

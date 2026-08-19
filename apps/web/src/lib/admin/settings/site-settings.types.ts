@@ -10,6 +10,10 @@ export type SiteSettings = {
   supportPhone: string | null;
   supportMobile: string | null;
 
+  supportDisplayName: string;
+  supportAvatarUrl: string | null;
+  supportBadgeLabel: string;
+
   whatsappUrl: string | null;
   telegramUrl: string | null;
   baleUrl: string | null;
@@ -23,6 +27,10 @@ export type SiteSettings = {
   storeEnabled: boolean;
   orderingEnabled: boolean;
   showPrices: boolean;
+
+  productReviewsEnabled: boolean;
+  productQuestionsEnabled: boolean;
+  blogCommentsEnabled: boolean;
 
   defaultShippingCostToman: number | null;
   freeShippingThresholdToman: number | null;

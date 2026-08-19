@@ -10,6 +10,10 @@ export type StorefrontSiteSettings = {
   supportPhone: string | null;
   supportMobile: string | null;
 
+  supportDisplayName: string;
+  supportAvatarUrl: string | null;
+  supportBadgeLabel: string;
+
   whatsappUrl: string | null;
   telegramUrl: string | null;
   baleUrl: string | null;
@@ -23,6 +27,10 @@ export type StorefrontSiteSettings = {
   storeEnabled: boolean;
   orderingEnabled: boolean;
   showPrices: boolean;
+
+  productReviewsEnabled: boolean;
+  productQuestionsEnabled: boolean;
+  blogCommentsEnabled: boolean;
 };
 
 export type StorefrontSiteSettingsResponse = {

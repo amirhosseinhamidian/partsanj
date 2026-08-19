@@ -10,6 +10,8 @@ import {
   Settings2,
   Share2,
   ShoppingCart,
+  MessagesSquare,
+  ShieldCheck,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -42,6 +44,10 @@ type SiteSettingsFormValues = {
   supportPhone: string;
   supportMobile: string;
 
+  supportDisplayName: string;
+  supportAvatarUrl: string;
+  supportBadgeLabel: string;
+
   whatsappUrl: string;
   telegramUrl: string;
   baleUrl: string;
@@ -55,6 +61,10 @@ type SiteSettingsFormValues = {
   storeEnabled: boolean;
   orderingEnabled: boolean;
   showPrices: boolean;
+
+  productReviewsEnabled: boolean;
+  productQuestionsEnabled: boolean;
+  blogCommentsEnabled: boolean;
 
   defaultShippingCostToman: string;
   freeShippingThresholdToman: string;
@@ -76,6 +86,10 @@ function toFormValues(settings: SiteSettings): SiteSettingsFormValues {
     supportPhone: settings.supportPhone ?? '',
     supportMobile: settings.supportMobile ?? '',
 
+    supportDisplayName: settings.supportDisplayName,
+    supportAvatarUrl: settings.supportAvatarUrl ?? '',
+    supportBadgeLabel: settings.supportBadgeLabel,
+
     whatsappUrl: settings.whatsappUrl ?? '',
     telegramUrl: settings.telegramUrl ?? '',
     baleUrl: settings.baleUrl ?? '',
@@ -89,6 +103,10 @@ function toFormValues(settings: SiteSettings): SiteSettingsFormValues {
     storeEnabled: settings.storeEnabled,
     orderingEnabled: settings.orderingEnabled,
     showPrices: settings.showPrices,
+
+    productReviewsEnabled: settings.productReviewsEnabled,
+    productQuestionsEnabled: settings.productQuestionsEnabled,
+    blogCommentsEnabled: settings.blogCommentsEnabled,
 
     defaultShippingCostToman:
       settings.defaultShippingCostToman !== null ? String(settings.defaultShippingCostToman) : '',
@@ -240,8 +258,23 @@ export function SiteSettingsPageClient({ initialSettings }: SiteSettingsPageClie
     const siteName = values.siteName.trim();
     const siteBaseUrl = values.siteBaseUrl.trim();
 
+    const supportDisplayName = values.supportDisplayName.trim();
+    const supportBadgeLabel = values.supportBadgeLabel.trim();
+
     if (!siteName) {
       nextErrors.siteName = 'نام سایت الزامی است';
+    }
+
+    if (!supportDisplayName) {
+      nextErrors.supportDisplayName = 'نام رسمی پاسخ‌دهنده الزامی است';
+    } else if (supportDisplayName.length > 100) {
+      nextErrors.supportDisplayName = 'نام رسمی حداکثر ۱۰۰ کاراکتر باشد';
+    }
+
+    if (!supportBadgeLabel) {
+      nextErrors.supportBadgeLabel = 'عنوان پاسخ رسمی الزامی است';
+    } else if (supportBadgeLabel.length > 120) {
+      nextErrors.supportBadgeLabel = 'عنوان پاسخ رسمی حداکثر ۱۲۰ کاراکتر باشد';
     }
 
     if (!siteBaseUrl) {
@@ -257,6 +290,7 @@ export function SiteSettingsPageClient({ initialSettings }: SiteSettingsPageClie
       'whatsappUrl',
       'telegramUrl',
       'baleUrl',
+      'supportAvatarUrl',
       'instagramUrl',
       'defaultOgImageUrl',
     ];
@@ -312,6 +346,10 @@ export function SiteSettingsPageClient({ initialSettings }: SiteSettingsPageClie
       supportPhone: nullableText(values.supportPhone),
       supportMobile: nullableText(values.supportMobile),
 
+      supportDisplayName,
+      supportAvatarUrl: nullableText(values.supportAvatarUrl),
+      supportBadgeLabel,
+
       whatsappUrl: nullableText(values.whatsappUrl),
       telegramUrl: nullableText(values.telegramUrl),
       baleUrl: nullableText(values.baleUrl),
@@ -325,6 +363,10 @@ export function SiteSettingsPageClient({ initialSettings }: SiteSettingsPageClie
       storeEnabled: values.storeEnabled,
       orderingEnabled: values.orderingEnabled,
       showPrices: values.showPrices,
+
+      productReviewsEnabled: values.productReviewsEnabled,
+      productQuestionsEnabled: values.productQuestionsEnabled,
+      blogCommentsEnabled: values.blogCommentsEnabled,
 
       defaultShippingCostToman,
       freeShippingThresholdToman,
@@ -700,6 +742,129 @@ export function SiteSettingsPageClient({ initialSettings }: SiteSettingsPageClie
                   />
                 )}
               </FormField>
+            </div>
+          </SettingsSection>
+
+          <SettingsSection
+            title='تعاملات کاربران'
+            description='هویت رسمی پارت‌سنج و فعال بودن نظرات، پرسش‌ها و دیدگاه‌ها'
+            icon={<MessagesSquare className='size-5' />}
+          >
+            <div className='grid gap-5'>
+              <FormField
+                label='نام رسمی پاسخ‌دهنده'
+                required
+                helperText='این نام کنار پاسخ‌های رسمی پارت‌سنج نمایش داده می‌شود'
+                error={errors.supportDisplayName}
+              >
+                {({ id, labelId, describedBy, invalid }) => (
+                  <Input
+                    id={id}
+                    maxLength={100}
+                    aria-labelledby={labelId}
+                    aria-describedby={describedBy}
+                    aria-invalid={invalid}
+                    disabled={isSaving}
+                    value={values.supportDisplayName}
+                    onChange={(event) => setField('supportDisplayName', event.target.value)}
+                    placeholder='پارت‌سنج'
+                  />
+                )}
+              </FormField>
+
+              <FormField
+                label='آواتار پاسخ رسمی'
+                helperText='URL تصویر رسمی؛ در صورت خالی بودن از آیکن پیش‌فرض استفاده می‌شود'
+                error={errors.supportAvatarUrl}
+              >
+                {({ id, labelId, describedBy, invalid }) => (
+                  <Input
+                    id={id}
+                    dir='ltr'
+                    maxLength={2048}
+                    aria-labelledby={labelId}
+                    aria-describedby={describedBy}
+                    aria-invalid={invalid}
+                    disabled={isSaving}
+                    value={values.supportAvatarUrl}
+                    onChange={(event) => setField('supportAvatarUrl', event.target.value)}
+                    placeholder='https://cdn.partsanj.com/support-avatar.png'
+                  />
+                )}
+              </FormField>
+
+              <FormField
+                label='عنوان پاسخ رسمی'
+                required
+                helperText='Badge نمایش‌داده‌شده کنار پاسخ تیم پارت‌سنج'
+                error={errors.supportBadgeLabel}
+              >
+                {({ id, labelId, describedBy, invalid }) => (
+                  <Input
+                    id={id}
+                    maxLength={120}
+                    aria-labelledby={labelId}
+                    aria-describedby={describedBy}
+                    aria-invalid={invalid}
+                    disabled={isSaving}
+                    value={values.supportBadgeLabel}
+                    onChange={(event) => setField('supportBadgeLabel', event.target.value)}
+                    placeholder='پاسخ رسمی پارت‌سنج'
+                  />
+                )}
+              </FormField>
+
+              <div className='rounded-2xl border border-border bg-surface-muted p-4'>
+                <div className='flex items-start gap-3'>
+                  <span className='grid size-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand'>
+                    <ShieldCheck className='size-5' />
+                  </span>
+
+                  <div>
+                    <p className='font-extrabold text-foreground'>پیش‌نمایش هویت رسمی</p>
+
+                    <div className='mt-2 flex flex-wrap items-center gap-2'>
+                      <span className='font-bold text-foreground'>
+                        {values.supportDisplayName || 'پارت‌سنج'}
+                      </span>
+
+                      <span className='rounded-full bg-brand px-2.5 py-1 text-[10px] font-bold text-white'>
+                        {values.supportBadgeLabel || 'پاسخ رسمی پارت‌سنج'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className='border-t border-border pt-5'>
+                <p className='mb-4 text-sm font-extrabold text-foreground'>بخش‌های فعال</p>
+
+                <div className='space-y-5'>
+                  <Switch
+                    label='نظرات و امتیاز محصولات'
+                    helperText='امکان مشاهده و ثبت Rating و Review روی محصولات'
+                    disabled={isSaving}
+                    checked={values.productReviewsEnabled}
+                    onCheckedChange={(checked) => setField('productReviewsEnabled', checked)}
+                  />
+
+                  <Switch
+                    label='پرسش و پاسخ محصولات'
+                    helperText='امکان مشاهده و ثبت سؤال درباره محصولات'
+                    disabled={isSaving}
+                    checked={values.productQuestionsEnabled}
+                    onCheckedChange={(checked) => setField('productQuestionsEnabled', checked)}
+                  />
+
+                  <Switch
+                    label='دیدگاه مقالات'
+                    helperText='امکان مشاهده، ثبت دیدگاه و پاسخ در صفحات بلاگ'
+                    disabled={isSaving}
+                    checked={values.blogCommentsEnabled}
+                    onCheckedChange={(checked) => setField('blogCommentsEnabled', checked)}
+                  />
+                </div>
+              </div>
             </div>
           </SettingsSection>
 
