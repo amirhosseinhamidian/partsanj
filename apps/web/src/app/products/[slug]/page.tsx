@@ -12,6 +12,10 @@ import type {
 import { ProductStructuredData } from '@/lib/storefront/seo/product-structured-data';
 import { getStorefrontSiteSettings } from '@/lib/storefront/settings/site-settings.server';
 import { StorefrontRelatedProducts } from '@/components/storefront/catalog/storefront-related-products';
+import type {
+  StorefrontProductQuestionsResponse,
+  StorefrontProductReviewsResponse,
+} from '@/lib/storefront/interactions/product-interaction.types';
 
 type ProductDetailPageProps = {
   params: Promise<{
@@ -219,6 +223,43 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
   };
 }
 
+async function getInitialProductInteractions(slug: string) {
+  const encodedSlug = encodeURIComponent(slug);
+
+  const [reviews, questions] = await Promise.all([
+    publicNestApi<StorefrontProductReviewsResponse>(
+      `/api/v1/catalog/products/${encodedSlug}/reviews?sort=NEWEST&page=1&limit=10`,
+      {
+        method: 'GET',
+
+        next: {
+          revalidate: 300,
+
+          tags: [`product-interactions:${slug}`],
+        },
+      },
+    ).catch(() => null),
+
+    publicNestApi<StorefrontProductQuestionsResponse>(
+      `/api/v1/catalog/products/${encodedSlug}/questions`,
+      {
+        method: 'GET',
+
+        next: {
+          revalidate: 300,
+
+          tags: [`product-interactions:${slug}`],
+        },
+      },
+    ).catch(() => null),
+  ]);
+
+  return {
+    reviews,
+    questions,
+  };
+}
+
 export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
   const { slug } = await params;
 
@@ -232,9 +273,10 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     notFound();
   }
 
-  const [relatedProducts, complementaryProducts] = await Promise.all([
+  const [relatedProducts, complementaryProducts, interactions] = await Promise.all([
     getRelatedProducts(slug),
     getComplementaryProducts(slug),
+    getInitialProductInteractions(slug),
   ]);
 
   return (
@@ -243,8 +285,15 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         <ProductStructuredData product={product} settings={settings} />
       ) : null}
 
-      <StorefrontProductDetailPageClient slug={slug} initialProduct={product} />
+      <StorefrontProductDetailPageClient
+        slug={slug}
+        initialProduct={product}
+        initialProductReviews={interactions.reviews}
+        initialProductQuestions={interactions.questions}
+      />
+
       <StorefrontRelatedProducts products={relatedProducts} />
+
       <StorefrontRelatedProducts products={complementaryProducts} variant='complementary' />
     </>
   );

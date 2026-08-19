@@ -46,10 +46,17 @@ import {
   hasTrackedProductView,
   markProductViewTracked,
 } from '@/lib/storefront/recommendations/recommendation-session';
+import { StorefrontProductInteractions } from '@/components/storefront/catalog/interactions/storefront-product-interactions';
+import type {
+  StorefrontProductQuestionsResponse,
+  StorefrontProductReviewsResponse,
+} from '@/lib/storefront/interactions/product-interaction.types';
 
 type StorefrontProductDetailPageClientProps = {
   slug: string;
   initialProduct: StorefrontProductDetail;
+  initialProductReviews: StorefrontProductReviewsResponse | null;
+  initialProductQuestions: StorefrontProductQuestionsResponse | null;
 };
 
 type VehicleSelectionContext = {
@@ -400,6 +407,8 @@ function ProductCompatibilityStatus({
 export function StorefrontProductDetailPageClient({
   slug,
   initialProduct,
+  initialProductReviews,
+  initialProductQuestions,
 }: StorefrontProductDetailPageClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -910,6 +919,12 @@ export function StorefrontProductDetailPageClient({
               </dl>
             </section>
           ) : null}
+
+          <StorefrontProductInteractions
+            slug={slug}
+            initialReviews={initialProductReviews}
+            initialQuestions={initialProductQuestions}
+          />
         </div>
 
         <aside className='space-y-6'>
