@@ -22,6 +22,7 @@ import { AdminSettingsModule } from './modules/admin-settings/admin-settings.mod
 import { AdminDashboardModule } from './modules/admin-dashboard/admin-dashboard.module.js';
 import { UploadsModule } from './modules/uploads/uploads.module.js';
 import { AdminInteractionModule } from './modules/admin-interaction/admin-interaction.module.js';
+import { InteractionModule } from './modules/interaction/interaction.module.js';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { AdminInteractionModule } from './modules/admin-interaction/admin-intera
     AdminDashboardModule,
     UploadsModule,
     AdminInteractionModule,
+    InteractionModule,
   ],
 })
 export class AppModule {}
